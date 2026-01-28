@@ -87,7 +87,6 @@ export function InnerSidebar() {
   const lists = useListStore((state) => state.lists) || [];
   const createList = useListStore((state) => state.createList);
   const docs = useDocStore((state) => state.docs) || [];
-  const createDoc = useDocStore((state) => state.createDoc);
   const channels = useChatStore((state) => state.channels) || [];
   const directMessages = useChatStore((state) => state.directMessages) || [];
   const createChannel = useChatStore((state) => state.createChannel);

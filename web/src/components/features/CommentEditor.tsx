@@ -36,14 +36,7 @@ export const CommentEditor = forwardRef<
   ) => {
     const editor = useEditor({
       extensions: [
-        StarterKit.configure({
-          hardBreak: {
-            // Disable default Enter behavior, only allow Shift+Enter
-            addInputRules() {
-              return [];
-            },
-          },
-        }),
+        StarterKit,
         Placeholder.configure({
           placeholder,
         }),
@@ -54,7 +47,7 @@ export const CommentEditor = forwardRef<
           class:
             "flex-1 bg-transparent text-dark-text placeholder:text-dark-text-muted focus:outline-none resize-none leading-6 text-base prose prose-invert max-w-none",
         },
-        handleKeyDown: (view, event) => {
+        handleKeyDown: (_view, event) => {
           // Enter without Shift sends the message
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -105,7 +98,6 @@ export const CommentEditor = forwardRef<
 
     const isThread = variant === "thread";
     const containerBg = isThread ? "bg-dark-bg" : "bg-dark-surface";
-    const toolbarBg = isThread ? "" : "";
     const buttonHoverBg = isThread
       ? "hover:bg-dark-surface"
       : "hover:bg-dark-bg";

@@ -18,9 +18,6 @@ defmodule Bridge.Docs.Doc do
     timestamps()
   end
 
-  # Allowed HTML tags for rich text formatting (matching TipTap StarterKit)
-  @allowed_tags ~w(p br strong em u s ul ol li blockquote pre code h1 h2 h3 h4 h5 h6)
-
   @doc false
   def changeset(doc, attrs) do
     doc
@@ -36,9 +33,8 @@ defmodule Bridge.Docs.Doc do
         changeset
 
       content ->
-        sanitized_content =
-          HtmlSanitizeEx.basic_html(content, tags: @allowed_tags, attributes: [])
-
+        # Use HTML5 scrubber which allows safe formatting tags
+        sanitized_content = HtmlSanitizeEx.html5(content)
         put_change(changeset, :content, sanitized_content)
     end
   end

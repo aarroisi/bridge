@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Quote, ArrowDown } from "lucide-react";
 import { Message } from "./Message";
-import { DiscussionThread } from "./DiscussionThread";
 import { CommentEditor } from "./CommentEditor";
 import { Message as MessageType } from "@/types";
 
@@ -28,23 +27,21 @@ interface DiscussionViewProps {
 export function DiscussionView({
   messages,
   onSendMessage,
-  onSendReply,
+  onSendReply: _onSendReply,
   placeholder = "Add a comment...",
   emptyStateTitle = "No comments yet",
   emptyStateDescription = "Be the first to add one below.",
   showJumpToBottom = true,
-  className = "",
-  openThread: externalOpenThread,
+  className: _className = "",
+  openThread: _externalOpenThread,
   onOpenThread,
   hasMoreMessages = false,
   onLoadMore,
   isLoadingMore = false,
 }: DiscussionViewProps) {
-  const [internalOpenThread, setInternalOpenThread] =
+  const [_internalOpenThread, _setInternalOpenThread] =
     useState<MessageType | null>(null);
-  const openThread =
-    externalOpenThread !== undefined ? externalOpenThread : internalOpenThread;
-  const setOpenThread = onOpenThread || setInternalOpenThread;
+  const setOpenThread = onOpenThread || _setInternalOpenThread;
   const [quotingMessage, setQuotingMessage] = useState<MessageType | null>(
     null,
   );

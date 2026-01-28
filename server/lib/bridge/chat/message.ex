@@ -17,9 +17,6 @@ defmodule Bridge.Chat.Message do
     timestamps()
   end
 
-  # Allowed HTML tags for rich text formatting (matching TipTap StarterKit)
-  @allowed_tags ~w(p br strong em u s ul ol li blockquote pre code h1 h2 h3 h4 h5 h6)
-
   @doc false
   def changeset(message, attrs) do
     message
@@ -36,7 +33,8 @@ defmodule Bridge.Chat.Message do
         changeset
 
       text ->
-        sanitized_text = HtmlSanitizeEx.basic_html(text, tags: @allowed_tags, attributes: [])
+        # Use HTML5 scrubber which allows safe formatting tags
+        sanitized_text = HtmlSanitizeEx.html5(text)
         put_change(changeset, :text, sanitized_text)
     end
   end

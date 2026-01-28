@@ -59,7 +59,11 @@ export function HomePage() {
                   </span>
                 </div>
                 <h3 className="font-medium text-dark-text">
-                  {item.name || (item as any).title}
+                  {"name" in item
+                    ? item.name
+                    : "title" in item
+                      ? item.title
+                      : ""}
                 </h3>
               </div>
             ))}

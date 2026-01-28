@@ -2,7 +2,6 @@ defmodule BridgeWeb.DirectMessageController do
   use BridgeWeb, :controller
 
   alias Bridge.Chat
-  alias Bridge.Chat.DirectMessage
   import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)

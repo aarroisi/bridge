@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { LayoutGrid, List, Plus } from "lucide-react";
 import { TaskCard } from "@/components/features/TaskCard";
 import { TaskDetailPanel } from "@/components/features/TaskDetailPanel";

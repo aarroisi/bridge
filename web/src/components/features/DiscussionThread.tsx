@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Quote } from "lucide-react";
+import { X } from "lucide-react";
 import { Message } from "./Message";
 import { CommentEditor } from "./CommentEditor";
 import { Message as MessageType } from "@/types";

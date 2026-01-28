@@ -2,7 +2,6 @@ defmodule BridgeWeb.ProjectController do
   use BridgeWeb, :controller
 
   alias Bridge.Projects
-  alias Bridge.Projects.Project
   import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)

@@ -2,7 +2,6 @@ defmodule BridgeWeb.DocController do
   use BridgeWeb, :controller
 
   alias Bridge.Docs
-  alias Bridge.Docs.Doc
   import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)

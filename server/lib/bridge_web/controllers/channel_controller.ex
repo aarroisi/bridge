@@ -2,7 +2,6 @@ defmodule BridgeWeb.ChannelController do
   use BridgeWeb, :controller
 
   alias Bridge.Chat
-  alias Bridge.Chat.Channel
   import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)

@@ -1,11 +1,5 @@
 import { useEffect } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { HomePage } from "./pages/HomePage";
 import { EmptyState } from "./pages/EmptyState";
@@ -20,17 +14,13 @@ import { useProjectStore } from "./stores/projectStore";
 import { useListStore } from "./stores/listStore";
 import { useDocStore } from "./stores/docStore";
 import { useChatStore } from "./stores/chatStore";
-import { useUIStore } from "./stores/uiStore";
 
 function App() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const { checkAuth, isAuthenticated, isLoading } = useAuthStore();
   const { fetchProjects } = useProjectStore();
   const { fetchLists } = useListStore();
   const { fetchDocs } = useDocStore();
   const { fetchChannels, fetchDirectMessages } = useChatStore();
-  const { activeCategory, activeItem } = useUIStore();
 
   useEffect(() => {
     checkAuth();

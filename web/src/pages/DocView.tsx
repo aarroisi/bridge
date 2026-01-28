@@ -18,7 +18,6 @@ import {
   Redo,
   Edit3,
   Check,
-  X,
   ArrowDown,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -60,9 +59,6 @@ export function DocView() {
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
-    null,
-  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +105,6 @@ export function DocView() {
     const guard = async (): Promise<boolean> => {
       if (hasUnsavedChanges()) {
         return new Promise((resolve) => {
-          setPendingNavigation(location.pathname);
           setShowUnsavedModal(true);
           // Store resolve function to be called by modal actions
           (window as any).__navResolve = resolve;
@@ -145,7 +140,6 @@ export function DocView() {
 
   const handleDiscardChanges = () => {
     setShowUnsavedModal(false);
-    setPendingNavigation(null);
     if ((window as any).__navResolve) {
       (window as any).__navResolve(true);
       delete (window as any).__navResolve;
@@ -154,7 +148,6 @@ export function DocView() {
 
   const handleCancelNavigation = () => {
     setShowUnsavedModal(false);
-    setPendingNavigation(null);
     if ((window as any).__navResolve) {
       (window as any).__navResolve(false);
       delete (window as any).__navResolve;
@@ -167,7 +160,6 @@ export function DocView() {
       // (user already confirmed via the unsaved changes modal)
       await performSave();
       setShowUnsavedModal(false);
-      setPendingNavigation(null);
       if ((window as any).__navResolve) {
         (window as any).__navResolve(true);
         delete (window as any).__navResolve;
@@ -465,7 +457,7 @@ export function DocView() {
               placeholder="Add a title..."
             />
             <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-              {isEditing && hasUnsavedChanges() && (
+              {isEditing && !isNewDoc && hasUnsavedChanges() && (
                 <>
                   <span className="hidden lg:flex text-sm text-amber-500 items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>

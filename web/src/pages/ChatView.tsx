@@ -55,14 +55,11 @@ export function ChatView() {
   const chatMessages = [...validMessages].reverse();
 
   // Subscribe to channel for real-time updates
-  const channel = useChannel(
-    entityId ? `${entityType}:${entityId}` : "",
-    (event, payload) => {
-      if (event === "new_message") {
-        addMessage(payload);
-      }
-    },
-  );
+  useChannel(entityId ? `${entityType}:${entityId}` : "", (event, payload) => {
+    if (event === "new_message") {
+      addMessage(payload);
+    }
+  });
 
   useEffect(() => {
     if (entityId) {

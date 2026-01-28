@@ -2,7 +2,6 @@ defmodule BridgeWeb.MessageController do
   use BridgeWeb, :controller
 
   alias Bridge.Chat
-  alias Bridge.Chat.Message
 
   action_fallback(BridgeWeb.FallbackController)
 

@@ -29,7 +29,7 @@ export function InfiniteScrollList({
   hasMore,
   isLoading,
   onLoadMore,
-  emptyMessage = "No items found",
+  emptyMessage: _emptyMessage = "No items found",
   loadingMessage = "Loading more...",
   className = "",
 }: InfiniteScrollListProps) {

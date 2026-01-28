@@ -2,7 +2,6 @@ defmodule BridgeWeb.SubtaskController do
   use BridgeWeb, :controller
 
   alias Bridge.Lists
-  alias Bridge.Lists.Subtask
 
   action_fallback(BridgeWeb.FallbackController)
 

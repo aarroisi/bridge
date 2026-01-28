@@ -10,7 +10,6 @@ import {
 import { Category } from "@/types";
 import { useProjectStore } from "@/stores/projectStore";
 import { useListStore } from "@/stores/listStore";
-import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
 
@@ -21,7 +20,6 @@ export function EmptyState() {
 
   const createProject = useProjectStore((state) => state.createProject);
   const createList = useListStore((state) => state.createList);
-  const createDoc = useDocStore((state) => state.createDoc);
   const createChannel = useChatStore((state) => state.createChannel);
 
   // Determine category from URL
@@ -133,7 +131,7 @@ export function EmptyState() {
         <h2 className="text-2xl font-bold text-dark-text mb-3">{title}</h2>
         <p className="text-dark-text-muted mb-8">{description}</p>
 
-        {actionText && action && (
+        {actionText && action !== null && (
           <button
             onClick={handleCreate}
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"

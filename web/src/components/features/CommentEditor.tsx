@@ -1,6 +1,10 @@
-import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useEffect, forwardRef, useImperativeHandle } from "react";
 import { Bold, Italic, List, ListOrdered, Quote, X } from "lucide-react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Message as MessageType } from "@/types";
+import { clsx } from "clsx";
 
 interface CommentEditorProps {
   value: string;
@@ -30,40 +34,74 @@ export const CommentEditor = forwardRef<
     },
     ref,
   ) => {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const editor = useEditor({
+      extensions: [
+        StarterKit.configure({
+          hardBreak: {
+            // Disable default Enter behavior, only allow Shift+Enter
+            addInputRules() {
+              return [];
+            },
+          },
+        }),
+        Placeholder.configure({
+          placeholder,
+        }),
+      ],
+      content: value,
+      editorProps: {
+        attributes: {
+          class:
+            "flex-1 bg-transparent text-dark-text placeholder:text-dark-text-muted focus:outline-none resize-none leading-6 text-base prose prose-invert max-w-none",
+        },
+        handleKeyDown: (view, event) => {
+          // Enter without Shift sends the message
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            onSubmit();
+            return true;
+          }
+          // Shift+Enter adds a line break (default behavior)
+          return false;
+        },
+      },
+      onUpdate: ({ editor }) => {
+        onChange(editor.getHTML());
+      },
+    });
 
-    // Expose the textarea ref to parent
-    useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement);
+    // Expose editor focus method
+    useImperativeHandle(
+      ref,
+      () =>
+        ({
+          focus: () => editor?.commands.focus(),
+        }) as any,
+    );
+
+    // Update editor content when value changes externally
+    useEffect(() => {
+      if (editor && value !== editor.getHTML()) {
+        editor.commands.setContent(value);
+      }
+    }, [value, editor]);
 
     useEffect(() => {
-      if (autoFocus && textareaRef.current) {
+      if (autoFocus && editor) {
         setTimeout(() => {
-          textareaRef.current?.focus();
+          editor.commands.focus();
         }, 100);
       }
-    }, [autoFocus]);
+    }, [autoFocus, editor]);
 
     // Focus when quoting message changes
     useEffect(() => {
-      if (quotingMessage && textareaRef.current) {
+      if (quotingMessage && editor) {
         setTimeout(() => {
-          textareaRef.current?.focus();
+          editor.commands.focus();
         }, 100);
       }
-    }, [quotingMessage]);
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        onSubmit();
-      }
-    };
-
-    const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
-      const target = e.target as HTMLTextAreaElement;
-      target.style.height = "24px";
-      target.style.height = target.scrollHeight + "px";
-    };
+    }, [quotingMessage, editor]);
 
     const isThread = variant === "thread";
     const containerBg = isThread ? "bg-dark-bg" : "bg-dark-surface";
@@ -79,33 +117,59 @@ export const CommentEditor = forwardRef<
       >
         <div className="flex items-center gap-1 px-3 py-2 border-b border-dark-border">
           <button
-            className={`p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`}
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+            className={clsx(
+              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
+              editor?.isActive("bold") && "bg-dark-border text-dark-text",
+            )}
             title="Bold"
+            type="button"
           >
             <Bold size={18} />
           </button>
           <button
-            className={`p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`}
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+            className={clsx(
+              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
+              editor?.isActive("italic") && "bg-dark-border text-dark-text",
+            )}
             title="Italic"
+            type="button"
           >
             <Italic size={18} />
           </button>
           <div className="w-px h-5 bg-dark-border mx-1" />
           <button
-            className={`p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            className={clsx(
+              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
+              editor?.isActive("bulletList") && "bg-dark-border text-dark-text",
+            )}
             title="Bullet List"
+            type="button"
           >
             <List size={18} />
           </button>
           <button
-            className={`p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`}
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+            className={clsx(
+              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
+              editor?.isActive("orderedList") &&
+                "bg-dark-border text-dark-text",
+            )}
             title="Numbered List"
+            type="button"
           >
             <ListOrdered size={18} />
           </button>
           <button
-            className={`p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`}
+            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+            className={clsx(
+              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
+              editor?.isActive("blockquote") && "bg-dark-border text-dark-text",
+            )}
             title="Quote"
+            type="button"
           >
             <Quote size={18} />
           </button>
@@ -132,22 +196,13 @@ export const CommentEditor = forwardRef<
             </div>
           </div>
         )}
-        <div className="flex items-center gap-2 px-3 py-3">
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            rows={1}
-            autoFocus={autoFocus}
-            className="flex-1 bg-transparent text-dark-text placeholder:text-dark-text-muted focus:outline-none resize-none leading-6 text-base"
-            style={{ minHeight: "24px", maxHeight: "200px" }}
-            onInput={handleInput}
-          />
+        <div className="flex items-start gap-2 px-3 py-3">
+          <div className="flex-1 min-h-[24px] max-h-[200px] overflow-y-auto">
+            <EditorContent editor={editor} />
+          </div>
           <button
             onClick={onSubmit}
-            disabled={!value.trim()}
+            disabled={!editor || !editor.getText().trim()}
             className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
             title="Send"
           >

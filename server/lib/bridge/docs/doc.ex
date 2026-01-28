@@ -18,10 +18,28 @@ defmodule Bridge.Docs.Doc do
     timestamps()
   end
 
+  # Allowed HTML tags for rich text formatting (matching TipTap StarterKit)
+  @allowed_tags ~w(p br strong em u s ul ol li blockquote pre code h1 h2 h3 h4 h5 h6)
+
   @doc false
   def changeset(doc, attrs) do
     doc
     |> cast(attrs, [:title, :content, :starred, :workspace_id, :project_id, :author_id])
     |> validate_required([:title, :workspace_id, :author_id])
+    |> sanitize_html()
+  end
+
+  # Sanitize HTML content to prevent XSS attacks
+  defp sanitize_html(changeset) do
+    case get_change(changeset, :content) do
+      nil ->
+        changeset
+
+      content ->
+        sanitized_content =
+          HtmlSanitizeEx.basic_html(content, tags: @allowed_tags, attributes: [])
+
+        put_change(changeset, :content, sanitized_content)
+    end
   end
 end

@@ -65,6 +65,7 @@ export function DocView() {
   );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const commentEditorRef = useRef<HTMLTextAreaElement>(null);
   const doc = isNewDoc ? null : docs.find((d) => d.id === docId);
   const rawDocComments =
     docId && !isNewDoc && Array.isArray(messages[`doc:${docId}`])
@@ -381,9 +382,9 @@ export function DocView() {
 
   const handleQuote = (message: MessageType) => {
     setQuotingMessage(message);
-    // Focus the comment textarea
+    // Focus the comment editor
     setTimeout(() => {
-      commentTextareaRef.current?.focus();
+      commentEditorRef.current?.focus();
     }, 100);
   };
 
@@ -721,6 +722,7 @@ export function DocView() {
         {!isEditing && (
           <div className="border-t border-dark-border bg-dark-bg p-4 max-w-7xl mx-auto w-full">
             <CommentEditor
+              ref={commentEditorRef}
               value={newComment}
               onChange={setNewComment}
               onSubmit={handleAddComment}

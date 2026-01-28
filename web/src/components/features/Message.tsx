@@ -3,6 +3,7 @@ import { Reply, Quote } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Message as MessageType } from "@/types";
 import { clsx } from "clsx";
+import DOMPurify from "dompurify";
 
 interface MessageProps {
   message: MessageType;
@@ -23,6 +24,31 @@ export function Message({
 }: MessageProps) {
   // Use the quote from the message itself if not provided
   const displayQuote = quotedMessage || message.quote;
+
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedText = DOMPurify.sanitize(message.text, {
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "em",
+      "u",
+      "s",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "pre",
+      "code",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+    ],
+    ALLOWED_ATTR: [],
+  });
   return (
     <div
       className={clsx(
@@ -58,9 +84,10 @@ export function Message({
           </button>
         )}
 
-        <p className="text-base text-dark-text mt-1 whitespace-pre-wrap break-words">
-          {message.text}
-        </p>
+        <div
+          className="ProseMirror text-base text-dark-text mt-1 whitespace-pre-wrap break-words prose prose-invert prose-slate max-w-none"
+          dangerouslySetInnerHTML={{ __html: sanitizedText }}
+        />
 
         {/* Action buttons - absolutely positioned to not take up space */}
         {(onReply || onQuote) && (

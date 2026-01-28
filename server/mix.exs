@@ -55,6 +55,7 @@ defmodule Bridge.MixProject do
       {:cors_plug, "~> 3.0"},
       {:uuidv7, "~> 1.0"},
       {:paginator, "~> 1.2"},
+      {:html_sanitize_ex, "~> 1.4"},
       {:ex_machina, "~> 2.7", only: :test},
       {:faker, "~> 0.18", only: :test}
     ]

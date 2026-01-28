@@ -6,7 +6,7 @@ defmodule Bridge.Accounts do
   import Ecto.Query, warn: false
   alias Bridge.Repo
 
-  alias Bridge.Accounts.User
+  alias Bridge.Accounts.{User, Workspace}
 
   @doc """
   Returns the list of users.
@@ -162,5 +162,76 @@ defmodule Bridge.Accounts do
   """
   def set_user_online_status(%User{} = user, online) when is_boolean(online) do
     update_user(user, %{online: online})
+  end
+
+  # Workspace functions
+
+  def get_workspace(id), do: Repo.get(Workspace, id)
+  def get_workspace!(id), do: Repo.get!(Workspace, id)
+  def get_workspace_by_slug(slug), do: Repo.get_by(Workspace, slug: slug)
+
+  def create_workspace(attrs) do
+    %Workspace{}
+    |> Workspace.registration_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  # Authentication functions
+
+  @doc """
+  Registers a new workspace with the first user.
+  Returns {:ok, %{workspace: workspace, user: user}} or {:error, changeset}
+  """
+  def register_workspace_and_user(workspace_name, user_name, email, password) do
+    Repo.transaction(fn ->
+      # Create workspace
+      workspace_attrs = %{name: workspace_name, slug: slugify(workspace_name)}
+
+      case create_workspace(workspace_attrs) do
+        {:ok, workspace} ->
+          # Create first user
+          user_attrs = %{
+            name: user_name,
+            email: email,
+            password: password,
+            workspace_id: workspace.id
+          }
+
+          case %User{}
+               |> User.registration_changeset(user_attrs)
+               |> Repo.insert() do
+            {:ok, user} ->
+              %{workspace: workspace, user: user}
+
+            {:error, changeset} ->
+              Repo.rollback(changeset)
+          end
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  @doc """
+  Authenticates a user by email and password.
+  Returns {:ok, user} or {:error, :invalid_credentials}
+  """
+  def authenticate_user(email, password) do
+    user = Repo.get_by(User, email: email) |> Repo.preload(:workspace)
+
+    if user && User.verify_password(user, password) do
+      {:ok, user}
+    else
+      {:error, :invalid_credentials}
+    end
+  end
+
+  defp slugify(name) do
+    name
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9-]/, "-")
+    |> String.replace(~r/-+/, "-")
+    |> String.trim("-")
   end
 end

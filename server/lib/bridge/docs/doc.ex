@@ -4,6 +4,8 @@ defmodule Bridge.Docs.Doc do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
+  @timestamps_opts [type: :utc_datetime_usec]
+
   schema "docs" do
     field(:title, :string)
     field(:content, :string, default: "")

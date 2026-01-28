@@ -15,7 +15,7 @@ defmodule Bridge.Repo.Migrations.CreateTasks do
         null: false
       )
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
 
     create(index(:tasks, [:list_id]))

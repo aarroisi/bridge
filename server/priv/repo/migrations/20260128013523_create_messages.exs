@@ -11,7 +11,7 @@ defmodule Bridge.Repo.Migrations.CreateMessages do
       add(:parent_id, references(:messages, type: :binary_id, on_delete: :delete_all))
       add(:quote_id, references(:messages, type: :binary_id, on_delete: :nilify_all))
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
 
     create(index(:messages, [:entity_type, :entity_id]))

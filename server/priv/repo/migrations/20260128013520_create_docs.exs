@@ -10,7 +10,7 @@ defmodule Bridge.Repo.Migrations.CreateDocs do
       add(:project_id, references(:projects, type: :binary_id, on_delete: :nilify_all))
       add(:author_id, references(:users, type: :binary_id, on_delete: :nilify_all), null: false)
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
 
     create(index(:docs, [:project_id]))

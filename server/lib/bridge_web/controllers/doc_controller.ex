@@ -11,7 +11,19 @@ defmodule BridgeWeb.DocController do
     render(conn, :index, docs: docs)
   end
 
-  def create(conn, %{"doc" => doc_params}) do
+  def create(conn, params) do
+    current_user = conn.assigns.current_user
+
+    # Handle both nested and flat params
+    doc_params =
+      case params do
+        %{"doc" => nested_params} -> nested_params
+        flat_params -> flat_params
+      end
+
+    # Add author_id
+    doc_params = Map.put(doc_params, "author_id", current_user.id)
+
     case Docs.create_doc(doc_params) do
       {:ok, doc} ->
         conn

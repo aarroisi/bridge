@@ -1,96 +1,122 @@
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 interface RequestOptions extends RequestInit {
-  params?: Record<string, string>
+  params?: Record<string, string>;
+}
+
+// Helper to convert snake_case to camelCase
+function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+// Recursively convert object keys from snake_case to camelCase
+function convertKeysToCamelCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToCamelCase);
+  } else if (obj !== null && typeof obj === "object") {
+    return Object.keys(obj).reduce((acc, key) => {
+      const camelKey = toCamelCase(key);
+      acc[camelKey] = convertKeysToCamelCase(obj[key]);
+      return acc;
+    }, {} as any);
+  }
+  return obj;
 }
 
 class ApiClient {
-  private baseUrl: string
-  private token: string | null = null
+  private baseUrl: string;
+  private token: string | null = null;
 
   constructor(baseUrl: string) {
-    this.baseUrl = baseUrl
-    this.token = localStorage.getItem('auth_token')
+    this.baseUrl = baseUrl;
+    this.token = localStorage.getItem("auth_token");
   }
 
   setToken(token: string) {
-    this.token = token
-    localStorage.setItem('auth_token', token)
+    this.token = token;
+    localStorage.setItem("auth_token", token);
   }
 
   clearToken() {
-    this.token = null
-    localStorage.removeItem('auth_token')
+    this.token = null;
+    localStorage.removeItem("auth_token");
   }
 
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    }
+      "Content-Type": "application/json",
+    };
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`
+      headers["Authorization"] = `Bearer ${this.token}`;
     }
-    return headers
+    return headers;
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {
-    const url = new URL(`${this.baseUrl}${path}`)
+    let url = `${this.baseUrl}${path}`;
+
     if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value)
-      })
+      const searchParams = new URLSearchParams(params);
+      url += `?${searchParams.toString()}`;
     }
-    return url.toString()
+
+    return url;
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { params, ...init } = options
-    const url = this.buildUrl(path, params)
+    const { params, ...init } = options;
+    const url = this.buildUrl(path, params);
 
     const response = await fetch(url, {
       ...init,
+      credentials: "include", // Always include cookies for session-based auth
       headers: {
         ...this.getHeaders(),
         ...init.headers,
       },
-    })
+    });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }))
-      throw new Error(error.message || `HTTP ${response.status}`)
+      const error = await response
+        .json()
+        .catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
 
-    return response.json()
+    const data = await response.json();
+
+    // Convert snake_case keys to camelCase
+    return convertKeysToCamelCase(data.data || data) as T;
   }
 
   get<T>(path: string, params?: Record<string, string>): Promise<T> {
-    return this.request<T>(path, { method: 'GET', params })
+    return this.request<T>(path, { method: "GET", params });
   }
 
   post<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
-    })
+    });
   }
 
   put<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
-    })
+    });
   }
 
   patch<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(data),
-    })
+    });
   }
 
   delete<T>(path: string): Promise<T> {
-    return this.request<T>(path, { method: 'DELETE' })
+    return this.request<T>(path, { method: "DELETE" });
   }
 }
 
-export const api = new ApiClient(API_URL)
+export const api = new ApiClient(API_URL);

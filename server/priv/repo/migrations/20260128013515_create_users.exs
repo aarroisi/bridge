@@ -9,7 +9,7 @@ defmodule Bridge.Repo.Migrations.CreateUsers do
       add(:avatar, :string)
       add(:online, :boolean, default: false, null: false)
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
 
     create(unique_index(:users, [:email]))

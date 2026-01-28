@@ -1,29 +1,30 @@
-import { create } from 'zustand'
-import { ActiveItem, Category, ViewMode } from '@/types'
+import { create } from "zustand";
+import { ActiveItem, Category, ViewMode } from "@/types";
 
 interface UIState {
-  activeCategory: Category
-  activeItem: ActiveItem | null
-  sidebarOpen: boolean
-  viewMode: ViewMode
-  selectedTaskId: string | null
-  openThreadId: string | null
-  collapsedSections: Record<string, boolean>
+  activeCategory: Category;
+  activeItem: ActiveItem | null;
+  sidebarOpen: boolean;
+  viewMode: ViewMode;
+  selectedTaskId: string | null;
+  openThreadId: string | null;
+  collapsedSections: Record<string, boolean>;
 
-  setActiveCategory: (category: Category) => void
-  setActiveItem: (item: ActiveItem | null) => void
-  toggleSidebar: () => void
-  setViewMode: (mode: ViewMode) => void
-  setSelectedTask: (id: string | null) => void
-  setOpenThread: (id: string | null) => void
-  toggleSection: (section: string) => void
+  setActiveCategory: (category: Category) => void;
+  setActiveItem: (item: ActiveItem | null) => void;
+  toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
+  setViewMode: (mode: ViewMode) => void;
+  setSelectedTask: (id: string | null) => void;
+  setOpenThread: (id: string | null) => void;
+  toggleSection: (section: string) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  activeCategory: 'home',
+  activeCategory: "home",
   activeItem: null,
   sidebarOpen: true,
-  viewMode: 'board',
+  viewMode: "board",
   selectedTaskId: null,
   openThreadId: null,
   collapsedSections: {},
@@ -33,6 +34,8 @@ export const useUIStore = create<UIState>((set) => ({
   setActiveItem: (item) => set({ activeItem: item }),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -47,4 +50,4 @@ export const useUIStore = create<UIState>((set) => ({
         [section]: !state.collapsedSections[section],
       },
     })),
-}))
+}));

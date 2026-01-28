@@ -1,45 +1,132 @@
-import { Star, Plus, ChevronDown, ChevronRight, ListTodo, FileText, Hash } from 'lucide-react'
-import { clsx } from 'clsx'
-import { useUIStore } from '@/stores/uiStore'
-import { useProjectStore } from '@/stores/projectStore'
-import { useListStore } from '@/stores/listStore'
-import { useDocStore } from '@/stores/docStore'
-import { useChatStore } from '@/stores/chatStore'
-import { Avatar } from '@/components/ui/Avatar'
+import {
+  Star,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  ListTodo,
+  FileText,
+  Hash,
+} from "lucide-react";
+import { clsx } from "clsx";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useUIStore } from "@/stores/uiStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { useListStore } from "@/stores/listStore";
+import { useDocStore } from "@/stores/docStore";
+import { useChatStore } from "@/stores/chatStore";
+import { Avatar } from "@/components/ui/Avatar";
+import { Category } from "@/types";
 
 export function InnerSidebar() {
-  const { activeCategory, sidebarOpen, activeItem, setActiveItem, collapsedSections, toggleSection } =
-    useUIStore()
-  const { projects } = useProjectStore()
-  const { lists } = useListStore()
-  const { docs } = useDocStore()
-  const { channels, directMessages } = useChatStore()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    sidebarOpen,
+    activeItem,
+    setActiveItem,
+    collapsedSections,
+    toggleSection,
+  } = useUIStore();
 
-  if (!sidebarOpen) return null
+  // Determine active category from URL
+  const getCurrentCategory = (): Category => {
+    const path = location.pathname;
+    if (path === "/") return "home";
+    if (path.startsWith("/projects")) return "projects";
+    if (path.startsWith("/lists")) return "lists";
+    if (path.startsWith("/docs")) return "docs";
+    if (path.startsWith("/channels")) return "channels";
+    if (path.startsWith("/dms")) return "dms";
+    return "home";
+  };
+
+  const activeCategory = getCurrentCategory();
+
+  // Helper to navigate to an item
+  const navigateToItem = (type: string, id: string) => {
+    setActiveItem({ type: type as any, id });
+    navigate(`/${type}/${id}`);
+  };
+  const projects = useProjectStore((state) => state.projects) || [];
+  const createProject = useProjectStore((state) => state.createProject);
+  const lists = useListStore((state) => state.lists) || [];
+  const createList = useListStore((state) => state.createList);
+  const docs = useDocStore((state) => state.docs) || [];
+  const createDoc = useDocStore((state) => state.createDoc);
+  const channels = useChatStore((state) => state.channels) || [];
+  const directMessages = useChatStore((state) => state.directMessages) || [];
+  const createChannel = useChatStore((state) => state.createChannel);
+
+  // Ensure all are arrays
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const safeLists = Array.isArray(lists) ? lists : [];
+  const safeDocs = Array.isArray(docs) ? docs : [];
+  const safeChannels = Array.isArray(channels) ? channels : [];
+  const safeDirectMessages = Array.isArray(directMessages)
+    ? directMessages
+    : [];
+
+  if (!sidebarOpen) return null;
+
+  const handleCreateItem = async () => {
+    console.log("Creating item for category:", activeCategory);
+    try {
+      switch (activeCategory) {
+        case "projects":
+          const project = await createProject("New Project");
+          navigateToItem("projects", project.id);
+          break;
+        case "lists":
+          const list = await createList("New List");
+          navigateToItem("lists", list.id);
+          break;
+        case "docs":
+          console.log("Creating doc...");
+          const doc = await createDoc("Untitled Document", "");
+          console.log("Doc created:", doc);
+          navigateToItem("docs", doc.id);
+          break;
+        case "channels":
+          const channel = await createChannel("new-channel");
+          navigateToItem("channels", channel.id);
+          break;
+      }
+    } catch (error) {
+      console.error("Failed to create item:", error);
+      alert("Error: " + (error as Error).message);
+    }
+  };
 
   const renderStarred = (items: any[], type: string) => {
-    const starred = items.filter((item) => item.starred)
-    if (starred.length === 0) return null
+    if (!items || !Array.isArray(items)) return null;
+    const starred = items.filter((item) => item.starred);
+    if (starred.length === 0) return null;
 
     return (
       <div className="mb-4">
         <button
-          onClick={() => toggleSection('starred')}
+          onClick={() => toggleSection("starred")}
           className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider w-full hover:text-dark-text"
         >
-          {collapsedSections['starred'] ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          {collapsedSections["starred"] ? (
+            <ChevronRight size={14} />
+          ) : (
+            <ChevronDown size={14} />
+          )}
           <Star size={14} />
           Starred
         </button>
-        {!collapsedSections['starred'] && (
+        {!collapsedSections["starred"] && (
           <div className="mt-1">
             {starred.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveItem({ type: type as any, id: item.id })}
+                onClick={() =>
+                  setActiveItem({ type: type as any, id: item.id })
+                }
                 className={clsx(
-                  'w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors',
-                  activeItem?.id === item.id && 'bg-dark-surface text-blue-400'
+                  "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                  activeItem?.id === item.id && "bg-dark-surface text-blue-400",
                 )}
               >
                 {getItemIcon(type)}
@@ -49,50 +136,56 @@ export function InnerSidebar() {
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   const getItemIcon = (type: string) => {
     switch (type) {
-      case 'lists':
-        return <ListTodo size={16} />
-      case 'docs':
-        return <FileText size={16} />
-      case 'channels':
-        return <Hash size={16} />
+      case "lists":
+        return <ListTodo size={16} />;
+      case "docs":
+        return <FileText size={16} />;
+      case "channels":
+        return <Hash size={16} />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const renderContent = () => {
     switch (activeCategory) {
-      case 'home':
+      case "home":
         return (
           <div className="p-4">
-            <h3 className="text-sm font-semibold text-dark-text-muted mb-2">Recent</h3>
+            <h3 className="text-sm font-semibold text-dark-text-muted mb-2">
+              Recent
+            </h3>
             <p className="text-sm text-dark-text-muted">No recent items</p>
           </div>
-        )
+        );
 
-      case 'projects':
+      case "projects":
         return (
           <div>
-            {renderStarred(projects, 'projects')}
+            {renderStarred(safeProjects, "projects")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Projects
-              <button className="hover:text-dark-text">
+              <button
+                onClick={handleCreateItem}
+                className="hover:text-dark-text"
+              >
                 <Plus size={14} />
               </button>
             </div>
             <div className="mt-1">
-              {projects.map((project) => (
+              {safeProjects.map((project) => (
                 <div key={project.id}>
                   <button
                     onClick={() => toggleSection(`project-${project.id}`)}
                     className={clsx(
-                      'w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors',
-                      activeItem?.id === project.id && 'bg-dark-surface text-blue-400'
+                      "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                      activeItem?.id === project.id &&
+                        "bg-dark-surface text-blue-400",
                     )}
                   >
                     {collapsedSections[`project-${project.id}`] ? (
@@ -102,44 +195,54 @@ export function InnerSidebar() {
                     )}
                     <span className="truncate flex-1">{project.name}</span>
                   </button>
-                  {!collapsedSections[`project-${project.id}`] && project.items && (
-                    <div className="ml-4">
-                      {project.items.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setActiveItem({ type: item.type as any, id: item.id })}
-                          className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors text-dark-text-muted"
-                        >
-                          {getItemIcon(item.type)}
-                          <span className="truncate">{item.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {!collapsedSections[`project-${project.id}`] &&
+                    project.items && (
+                      <div className="ml-4">
+                        {project.items.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() =>
+                              setActiveItem({
+                                type: item.type as any,
+                                id: item.id,
+                              })
+                            }
+                            className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors text-dark-text-muted"
+                          >
+                            {getItemIcon(item.type)}
+                            <span className="truncate">{item.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
           </div>
-        )
+        );
 
-      case 'lists':
+      case "lists":
         return (
           <div>
-            {renderStarred(lists, 'lists')}
+            {renderStarred(safeLists, "lists")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Lists
-              <button className="hover:text-dark-text">
+              <button
+                onClick={handleCreateItem}
+                className="hover:text-dark-text"
+              >
                 <Plus size={14} />
               </button>
             </div>
             <div className="mt-1">
-              {lists.map((list) => (
+              {safeLists.map((list) => (
                 <button
                   key={list.id}
-                  onClick={() => setActiveItem({ type: 'lists', id: list.id })}
+                  onClick={() => navigateToItem("lists", list.id)}
                   className={clsx(
-                    'w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors',
-                    activeItem?.id === list.id && 'bg-dark-surface text-blue-400'
+                    "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                    activeItem?.id === list.id &&
+                      "bg-dark-surface text-blue-400",
                   )}
                 >
                   <ListTodo size={16} />
@@ -148,26 +251,30 @@ export function InnerSidebar() {
               ))}
             </div>
           </div>
-        )
+        );
 
-      case 'docs':
+      case "docs":
         return (
           <div>
-            {renderStarred(docs, 'docs')}
+            {renderStarred(safeDocs, "docs")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Docs
-              <button className="hover:text-dark-text">
+              <button
+                onClick={handleCreateItem}
+                className="hover:text-dark-text"
+              >
                 <Plus size={14} />
               </button>
             </div>
             <div className="mt-1">
-              {docs.map((doc) => (
+              {safeDocs.map((doc) => (
                 <button
                   key={doc.id}
-                  onClick={() => setActiveItem({ type: 'docs', id: doc.id })}
+                  onClick={() => navigateToItem("docs", doc.id)}
                   className={clsx(
-                    'w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors',
-                    activeItem?.id === doc.id && 'bg-dark-surface text-blue-400'
+                    "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                    activeItem?.id === doc.id &&
+                      "bg-dark-surface text-blue-400",
                   )}
                 >
                   <FileText size={16} />
@@ -176,26 +283,30 @@ export function InnerSidebar() {
               ))}
             </div>
           </div>
-        )
+        );
 
-      case 'channels':
+      case "channels":
         return (
           <div>
-            {renderStarred(channels, 'channels')}
+            {renderStarred(safeChannels, "channels")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Channels
-              <button className="hover:text-dark-text">
+              <button
+                onClick={handleCreateItem}
+                className="hover:text-dark-text"
+              >
                 <Plus size={14} />
               </button>
             </div>
             <div className="mt-1">
-              {channels.map((channel) => (
+              {safeChannels.map((channel) => (
                 <button
                   key={channel.id}
-                  onClick={() => setActiveItem({ type: 'channels', id: channel.id })}
+                  onClick={() => navigateToItem("channels", channel.id)}
                   className={clsx(
-                    'w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors',
-                    activeItem?.id === channel.id && 'bg-dark-surface text-blue-400'
+                    "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                    activeItem?.id === channel.id &&
+                      "bg-dark-surface text-blue-400",
                   )}
                 >
                   <Hash size={16} />
@@ -204,26 +315,30 @@ export function InnerSidebar() {
               ))}
             </div>
           </div>
-        )
+        );
 
-      case 'dms':
+      case "dms":
         return (
           <div>
-            {renderStarred(directMessages, 'dms')}
+            {renderStarred(safeDirectMessages, "dms")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               Direct Messages
-              <button className="hover:text-dark-text">
+              <button
+                onClick={handleCreateItem}
+                className="hover:text-dark-text"
+                disabled
+              >
                 <Plus size={14} />
               </button>
             </div>
             <div className="mt-1">
-              {directMessages.map((dm) => (
+              {safeDirectMessages.map((dm) => (
                 <button
                   key={dm.id}
-                  onClick={() => setActiveItem({ type: 'dms', id: dm.id })}
+                  onClick={() => navigateToItem("dms", dm.id)}
                   className={clsx(
-                    'w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors',
-                    activeItem?.id === dm.id && 'bg-dark-surface text-blue-400'
+                    "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                    activeItem?.id === dm.id && "bg-dark-surface text-blue-400",
                   )}
                 >
                   <Avatar name={dm.name} size="xs" online={dm.online} />
@@ -232,16 +347,16 @@ export function InnerSidebar() {
               ))}
             </div>
           </div>
-        )
+        );
 
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div className="w-52 bg-dark-surface border-r border-dark-border overflow-y-auto flex-shrink-0">
       {renderContent()}
     </div>
-  )
+  );
 }

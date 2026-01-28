@@ -8,7 +8,7 @@ defmodule Bridge.Repo.Migrations.CreateChannels do
       add(:starred, :boolean, default: false, null: false)
       add(:project_id, references(:projects, type: :binary_id, on_delete: :nilify_all))
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
 
     create(index(:channels, [:project_id]))

@@ -4,6 +4,7 @@ defmodule Bridge.Lists.Task do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
+  @timestamps_opts [type: :utc_datetime_usec]
   schema "tasks" do
     field(:title, :string)
     field(:status, :string, default: "todo")

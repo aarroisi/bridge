@@ -3,11 +3,27 @@ defmodule BridgeWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    plug(:fetch_session)
+  end
+
+  pipeline :authenticated do
+    plug(BridgeWeb.Plugs.AuthPlug)
   end
 
   scope "/api", BridgeWeb do
     pipe_through(:api)
 
+    # Auth routes (no authentication required)
+    post("/auth/register", AuthController, :register)
+    post("/auth/login", AuthController, :login)
+    post("/auth/logout", AuthController, :logout)
+    get("/auth/me", AuthController, :me)
+  end
+
+  scope "/api", BridgeWeb do
+    pipe_through([:api, :authenticated])
+
+    # Resource routes (authentication required)
     resources("/projects", ProjectController, except: [:new, :edit])
     resources("/lists", ListController, except: [:new, :edit])
     resources("/tasks", TaskController, except: [:new, :edit])

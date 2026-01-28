@@ -1,14 +1,14 @@
-import { create } from 'zustand'
-import { User } from '@/types'
-import { api } from '@/lib/api'
+import { create } from "zustand";
+import { User } from "@/types";
+import { api } from "@/lib/api";
 
 interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  checkAuth: () => Promise<void>
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -18,29 +18,40 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (email: string, password: string) => {
     try {
-      const data = await api.post<{ user: User; token: string }>('/auth/login', {
-        email,
-        password,
-      })
-      api.setToken(data.token)
-      set({ user: data.user, isAuthenticated: true })
+      const data = await api.post<{ user: User; token: string }>(
+        "/auth/login",
+        {
+          email,
+          password,
+        },
+      );
+      api.setToken(data.token);
+      set({ user: data.user, isAuthenticated: true });
     } catch (error) {
-      console.error('Login failed:', error)
-      throw error
+      console.error("Login failed:", error);
+      throw error;
     }
   },
 
   logout: () => {
-    api.clearToken()
-    set({ user: null, isAuthenticated: false })
+    api.clearToken();
+    set({ user: null, isAuthenticated: false });
   },
 
   checkAuth: async () => {
     try {
-      const user = await api.get<User>('/auth/me')
-      set({ user, isAuthenticated: true, isLoading: false })
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        set({ user: data.user, isAuthenticated: true, isLoading: false });
+      } else {
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      }
     } catch (error) {
-      set({ user: null, isAuthenticated: false, isLoading: false })
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
-}))
+}));

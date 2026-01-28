@@ -9,7 +9,7 @@ import Config
 
 config :bridge,
   ecto_repos: [Bridge.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime_usec]
 
 # Configure the endpoint
 config :bridge, BridgeWeb.Endpoint,

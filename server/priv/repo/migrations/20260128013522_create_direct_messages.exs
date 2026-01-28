@@ -8,7 +8,7 @@ defmodule Bridge.Repo.Migrations.CreateDirectMessages do
       add(:user1_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false)
       add(:user2_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false)
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
 
     create(index(:direct_messages, [:user1_id]))

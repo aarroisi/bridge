@@ -61,7 +61,22 @@ defmodule BridgeWeb.Endpoint do
 
   plug(CORSPlug,
     origin: ["http://localhost:5173", "http://localhost:3000"],
-    credentials: true
+    credentials: true,
+    max_age: 86400,
+    headers: [
+      "Authorization",
+      "Content-Type",
+      "Accept",
+      "Origin",
+      "User-Agent",
+      "DNT",
+      "Cache-Control",
+      "X-Mx-ReqToken",
+      "Keep-Alive",
+      "X-Requested-With",
+      "If-Modified-Since",
+      "X-CSRF-Token"
+    ]
   )
 
   plug(BridgeWeb.Router)

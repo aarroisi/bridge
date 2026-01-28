@@ -75,6 +75,8 @@ mix ecto.reset        # Drop, create, migrate, seed
 - Use changesets for all data validation
 - Pattern match liberally
 - Pipelines over nested function calls
+- **Always use `timestamptz` for timestamps in migrations** for timezone-aware timestamps
+- Backend APIs return snake_case JSON (frontend handles conversion to camelCase)
 
 ```elixir
 # Good

@@ -4,6 +4,7 @@ defmodule Bridge.Chat.Message do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
+  @timestamps_opts [type: :utc_datetime_usec]
   schema "messages" do
     field(:text, :string)
     field(:entity_type, :string)

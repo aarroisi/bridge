@@ -30,8 +30,10 @@ defmodule BridgeWeb.DocJSON do
       starred: doc.starred,
       project_id: doc.project_id,
       author_id: doc.author_id,
-      inserted_at: doc.inserted_at,
-      updated_at: doc.updated_at
+      # TODO: Load from author relationship
+      author_name: "User",
+      inserted_at: DateTime.to_iso8601(doc.inserted_at),
+      updated_at: DateTime.to_iso8601(doc.updated_at)
     }
   end
 

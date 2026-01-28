@@ -7,7 +7,7 @@ defmodule Bridge.Repo.Migrations.CreateProjects do
       add(:name, :string, null: false)
       add(:starred, :boolean, default: false, null: false)
 
-      timestamps()
+      timestamps(type: :timestamptz)
     end
   end
 end

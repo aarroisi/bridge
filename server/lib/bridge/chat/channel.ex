@@ -11,6 +11,7 @@ defmodule Bridge.Chat.Channel do
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
     belongs_to(:project, Bridge.Projects.Project)
+    belongs_to(:created_by, Bridge.Accounts.User)
 
     timestamps()
   end
@@ -18,7 +19,7 @@ defmodule Bridge.Chat.Channel do
   @doc false
   def changeset(channel, attrs) do
     channel
-    |> cast(attrs, [:name, :starred, :workspace_id, :project_id])
+    |> cast(attrs, [:name, :starred, :workspace_id, :project_id, :created_by_id])
     |> validate_required([:name, :workspace_id])
   end
 end

@@ -13,6 +13,8 @@ defmodule Bridge.Projects.Project do
     has_many(:lists, Bridge.Lists.List)
     has_many(:docs, Bridge.Docs.Doc)
     has_many(:channels, Bridge.Chat.Channel)
+    has_many(:project_members, Bridge.Projects.ProjectMember)
+    has_many(:members, through: [:project_members, :user])
 
     timestamps()
   end

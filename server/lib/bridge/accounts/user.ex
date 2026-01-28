@@ -12,27 +12,34 @@ defmodule Bridge.Accounts.User do
     field(:online, :boolean, default: false)
     field(:password_hash, :string)
     field(:password, :string, virtual: true)
+    field(:role, :string, default: "owner")
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
+    has_many(:project_members, Bridge.Projects.ProjectMember)
+    has_many(:projects, through: [:project_members, :project])
 
     timestamps()
   end
 
+  @roles ["owner", "member", "guest"]
+
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:name, :email, :avatar, :online, :workspace_id])
+    |> cast(attrs, [:name, :email, :avatar, :online, :workspace_id, :role])
     |> validate_required([:name, :email])
     |> validate_format(:email, ~r/@/)
+    |> validate_inclusion(:role, @roles)
     |> unique_constraint(:email)
   end
 
   def registration_changeset(user, attrs) do
     user
-    |> cast(attrs, [:name, :email, :password, :workspace_id])
+    |> cast(attrs, [:name, :email, :password, :workspace_id, :role])
     |> validate_required([:name, :email, :password, :workspace_id])
     |> validate_format(:email, ~r/@/)
     |> validate_length(:password, min: 6)
+    |> validate_inclusion(:role, @roles)
     |> unique_constraint(:email)
     |> put_password_hash()
   end

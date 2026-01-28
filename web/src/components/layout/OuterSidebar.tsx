@@ -5,10 +5,12 @@ import {
   FileText,
   Hash,
   MessageSquare,
+  Users,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUIStore } from "@/stores/uiStore";
+import { useAuthStore } from "@/stores/authStore";
 import { Category } from "@/types";
 import { ProfileMenu } from "@/components/features/ProfileMenu";
 
@@ -25,6 +27,7 @@ export function OuterSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setActiveCategory, setSidebarOpen } = useUIStore();
+  const { isOwner } = useAuthStore();
 
   const handleCategoryClick = async (category: Category) => {
     // Check navigation guard before navigating
@@ -80,6 +83,21 @@ export function OuterSidebar() {
       </div>
 
       <div className="flex-1" />
+
+      {isOwner() && (
+        <button
+          onClick={() => navigate("/members")}
+          className={clsx(
+            "w-10 h-10 rounded-lg flex items-center justify-center transition-colors mb-2",
+            location.pathname === "/members"
+              ? "bg-blue-600 text-white"
+              : "text-dark-text-muted hover:bg-dark-surface hover:text-dark-text",
+          )}
+          title="Workspace Members"
+        >
+          <Users size={20} />
+        </button>
+      )}
 
       <ProfileMenu />
     </div>

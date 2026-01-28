@@ -2,15 +2,49 @@ defmodule BridgeWeb.ProjectController do
   use BridgeWeb, :controller
 
   alias Bridge.Projects
+  alias Bridge.Authorization.Policy
   import BridgeWeb.PaginationHelpers
+  import Plug.Conn
 
   action_fallback(BridgeWeb.FallbackController)
 
+  plug(:load_resource when action in [:show, :update, :delete])
+  plug(:authorize, :view_project when action in [:show])
+  plug(:authorize, :manage_projects when action in [:create, :update, :delete])
+
+  defp load_resource(conn, _opts) do
+    case Projects.get_project(conn.params["id"], conn.assigns.workspace_id) do
+      {:ok, project} ->
+        assign(conn, :project, project)
+
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+        |> halt()
+    end
+  end
+
+  defp authorize(conn, permission) do
+    user = conn.assigns.current_user
+    resource = conn.assigns[:project]
+
+    if Policy.can?(user, permission, resource) do
+      conn
+    else
+      conn
+      |> put_status(:forbidden)
+      |> Phoenix.Controller.json(%{error: "Forbidden"})
+      |> halt()
+    end
+  end
+
   def index(conn, params) do
     workspace_id = conn.assigns.workspace_id
+    user = conn.assigns.current_user
 
     opts = build_pagination_opts(params)
-    page = Projects.list_projects(workspace_id, opts)
+    page = Projects.list_projects(workspace_id, user, opts)
 
     render(conn, :index, page: page)
   end
@@ -26,28 +60,18 @@ defmodule BridgeWeb.ProjectController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    workspace_id = conn.assigns.workspace_id
+  def show(conn, _params) do
+    render(conn, :show, project: conn.assigns.project)
+  end
 
-    with {:ok, project} <- Projects.get_project(id, workspace_id) do
+  def update(conn, %{"project" => project_params}) do
+    with {:ok, project} <- Projects.update_project(conn.assigns.project, project_params) do
       render(conn, :show, project: project)
     end
   end
 
-  def update(conn, %{"id" => id, "project" => project_params}) do
-    workspace_id = conn.assigns.workspace_id
-
-    with {:ok, project} <- Projects.get_project(id, workspace_id),
-         {:ok, project} <- Projects.update_project(project, project_params) do
-      render(conn, :show, project: project)
-    end
-  end
-
-  def delete(conn, %{"id" => id}) do
-    workspace_id = conn.assigns.workspace_id
-
-    with {:ok, project} <- Projects.get_project(id, workspace_id),
-         {:ok, _project} <- Projects.delete_project(project) do
+  def delete(conn, _params) do
+    with {:ok, _project} <- Projects.delete_project(conn.assigns.project) do
       send_resp(conn, :no_content, "")
     end
   end

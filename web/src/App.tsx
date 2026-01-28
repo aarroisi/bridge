@@ -6,6 +6,7 @@ import { EmptyState } from "./pages/EmptyState";
 import { ListView } from "./pages/ListView";
 import { DocView } from "./pages/DocView";
 import { ChatView } from "./pages/ChatView";
+import { WorkspaceMembersPage } from "./pages/WorkspaceMembersPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ToastContainer } from "./components/ui/Toast";
@@ -156,6 +157,14 @@ function App() {
           element={
             <MainLayout>
               <ChatView />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/members"
+          element={
+            <MainLayout>
+              <WorkspaceMembersPage />
             </MainLayout>
           }
         />

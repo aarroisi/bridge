@@ -2,8 +2,110 @@ defmodule BridgeWeb.MessageController do
   use BridgeWeb, :controller
 
   alias Bridge.Chat
+  alias Bridge.Authorization.Policy
+  import Plug.Conn
 
   action_fallback(BridgeWeb.FallbackController)
+
+  plug(:load_resource when action in [:show, :update, :delete])
+  plug(:authorize, :view_message when action in [:show])
+  plug(:authorize, :create_message when action in [:create])
+  plug(:authorize, :update_message when action in [:update])
+  plug(:authorize, :delete_message when action in [:delete])
+
+  defp load_resource(conn, _opts) do
+    case Chat.get_message(conn.params["id"]) do
+      {:ok, message} ->
+        assign(conn, :message, message)
+
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+        |> halt()
+    end
+  end
+
+  defp authorize(conn, permission) do
+    user = conn.assigns.current_user
+
+    allowed =
+      case permission do
+        :view_message ->
+          # Anyone can view messages (entity access is handled at entity level)
+          true
+
+        :create_message ->
+          # Check if user can comment on the entity
+          # If entity_type/entity_id are missing/invalid, let validation handle it
+          params = conn.params["message"] || conn.params
+          entity_type = params["entity_type"]
+          entity_id = params["entity_id"]
+
+          cond do
+            # If entity_type or entity_id is missing, let validation handle it
+            is_nil(entity_type) or entity_type == "" or is_nil(entity_id) or entity_id == "" ->
+              true
+
+            # If entity_type is not a valid type, let validation handle it
+            entity_type not in ["task", "subtask", "doc", "channel", "dm"] ->
+              true
+
+            # Otherwise, check entity access
+            true ->
+              entity = get_entity(entity_type, entity_id, conn)
+              entity != nil and Policy.can?(user, :comment, entity)
+          end
+
+        :update_message ->
+          # Only message author can update
+          conn.assigns.message.user_id == user.id
+
+        :delete_message ->
+          # Only message author can delete (or owner via Policy)
+          conn.assigns.message.user_id == user.id or user.role == "owner"
+      end
+
+    if allowed do
+      conn
+    else
+      conn
+      |> put_status(:forbidden)
+      |> Phoenix.Controller.json(%{error: "Forbidden"})
+      |> halt()
+    end
+  end
+
+  defp get_entity("task", id, _conn) when is_binary(id) do
+    case Bridge.Lists.get_task(id) do
+      {:ok, task} -> task
+      _ -> nil
+    end
+  end
+
+  defp get_entity("subtask", id, _conn) when is_binary(id) do
+    case Bridge.Lists.get_subtask(id) do
+      {:ok, subtask} -> subtask
+      _ -> nil
+    end
+  end
+
+  defp get_entity("doc", id, conn) when is_binary(id) do
+    case Bridge.Docs.get_doc(id, conn.assigns.workspace_id) do
+      {:ok, doc} -> doc
+      _ -> nil
+    end
+  end
+
+  defp get_entity("channel", id, conn) when is_binary(id) do
+    case Bridge.Chat.get_channel(id, conn.assigns.workspace_id) do
+      {:ok, channel} -> channel
+      _ -> nil
+    end
+  end
+
+  defp get_entity("dm", _id, _conn), do: %{project_id: :dm}
+  defp get_entity(_, _, _), do: nil
 
   def index(conn, params) do
     opts = BridgeWeb.PaginationHelpers.build_pagination_opts(params)
@@ -34,22 +136,18 @@ defmodule BridgeWeb.MessageController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    with {:ok, message} <- Chat.get_message(id) do
+  def show(conn, _params) do
+    render(conn, :show, message: conn.assigns.message)
+  end
+
+  def update(conn, %{"message" => message_params}) do
+    with {:ok, message} <- Chat.update_message(conn.assigns.message, message_params) do
       render(conn, :show, message: message)
     end
   end
 
-  def update(conn, %{"id" => id, "message" => message_params}) do
-    with {:ok, message} <- Chat.get_message(id),
-         {:ok, message} <- Chat.update_message(message, message_params) do
-      render(conn, :show, message: message)
-    end
-  end
-
-  def delete(conn, %{"id" => id}) do
-    with {:ok, message} <- Chat.get_message(id),
-         {:ok, _message} <- Chat.delete_message(message) do
+  def delete(conn, _params) do
+    with {:ok, _message} <- Chat.delete_message(conn.assigns.message) do
       send_resp(conn, :no_content, "")
     end
   end

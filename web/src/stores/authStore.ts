@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { User } from "@/types";
 import { api } from "@/lib/api";
 
+interface ItemWithCreator {
+  createdById?: string;
+  authorId?: string;
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -10,6 +15,10 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string }) => Promise<void>;
+  // Permission helpers
+  isOwner: () => boolean;
+  canEdit: (item: ItemWithCreator) => boolean;
+  canDelete: (item: ItemWithCreator) => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -65,5 +74,28 @@ export const useAuthStore = create<AuthState>((set) => ({
   updateProfile: async (data: { name?: string; email?: string }) => {
     const response = await api.put<{ user: User }>("/auth/me", { user: data });
     set({ user: response.user });
+  },
+
+  // Permission helpers
+  isOwner: (): boolean => {
+    return useAuthStore.getState().user?.role === "owner";
+  },
+
+  canEdit: (item: ItemWithCreator): boolean => {
+    const user = useAuthStore.getState().user;
+    if (!user) return false;
+    if (user.role === "owner") return true;
+    // Members and guests can only edit their own items
+    const creatorId = item.authorId || item.createdById;
+    return creatorId === user.id;
+  },
+
+  canDelete: (item: ItemWithCreator): boolean => {
+    const user = useAuthStore.getState().user;
+    if (!user) return false;
+    if (user.role === "owner") return true;
+    // Members and guests can only delete their own items
+    const creatorId = item.authorId || item.createdById;
+    return creatorId === user.id;
   },
 }));

@@ -7,22 +7,38 @@ defmodule Bridge.Docs do
   alias Bridge.Repo
 
   alias Bridge.Docs.Doc
+  alias Bridge.Authorization
 
   @doc """
-  Returns the list of docs for a workspace.
+  Returns the list of docs for a workspace, filtered by user access.
 
   ## Examples
 
-      iex> list_docs(workspace_id)
+      iex> list_docs(workspace_id, user)
       [%Doc{}, ...]
 
   """
-  def list_docs(workspace_id, opts \\ []) do
+  def list_docs(workspace_id, user, opts \\ []) do
+    base_query(workspace_id)
+    |> filter_by_user_access(user)
+    |> preload([:project, :author])
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
+  end
+
+  defp base_query(workspace_id) do
     Doc
     |> where([d], d.workspace_id == ^workspace_id)
     |> order_by([d], desc: d.id)
-    |> preload([:project, :author])
-    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
+  end
+
+  defp filter_by_user_access(query, user) do
+    case Authorization.accessible_project_ids(user) do
+      :all ->
+        query
+
+      project_ids ->
+        where(query, [d], d.project_id in ^project_ids)
+    end
   end
 
   @doc """

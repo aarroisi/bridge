@@ -22,6 +22,29 @@ defmodule Bridge.Accounts do
   end
 
   @doc """
+  Returns the list of users in a workspace.
+  """
+  def list_workspace_users(workspace_id) do
+    User
+    |> where([u], u.workspace_id == ^workspace_id)
+    |> order_by([u], desc: u.inserted_at)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a user within a workspace.
+  Returns `{:ok, user}` if found, `{:error, :not_found}` otherwise.
+  """
+  def get_workspace_user(id, workspace_id) do
+    case User
+         |> where([u], u.workspace_id == ^workspace_id)
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      user -> {:ok, user}
+    end
+  end
+
+  @doc """
   Gets a single user.
 
   Returns `{:ok, user}` if found, `{:error, :not_found}` otherwise.
@@ -74,7 +97,7 @@ defmodule Bridge.Accounts do
   """
   def create_user(attrs \\ %{}) do
     %User{}
-    |> User.changeset(attrs)
+    |> User.registration_changeset(attrs)
     |> Repo.insert()
   end
 

@@ -26,6 +26,14 @@ defmodule BridgeWeb.Router do
     # Auth routes (authentication required)
     put("/auth/me", AuthController, :update_me)
 
+    # Workspace member management (owner only)
+    resources("/workspace/members", WorkspaceMemberController, except: [:new, :edit, :show])
+
+    # Project member management (owner only)
+    resources("/projects/:project_id/members", ProjectMemberController,
+      only: [:index, :create, :delete]
+    )
+
     # Resource routes (authentication required)
     resources("/projects", ProjectController, except: [:new, :edit])
     resources("/lists", ListController, except: [:new, :edit])

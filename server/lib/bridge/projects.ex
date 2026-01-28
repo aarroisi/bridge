@@ -7,52 +7,64 @@ defmodule Bridge.Projects do
   alias Bridge.Repo
 
   alias Bridge.Projects.Project
+  alias Bridge.Projects.ProjectMember
+  alias Bridge.Authorization
 
   @doc """
-  Returns the list of projects for a workspace.
+  Returns the list of projects for a workspace, filtered by user access.
 
   ## Examples
 
-      iex> list_projects(workspace_id)
+      iex> list_projects(workspace_id, user)
       [%Project{}, ...]
 
   """
-  def list_projects(workspace_id, opts \\ []) do
+  def list_projects(workspace_id, user, opts \\ []) do
     Project
     |> where([p], p.workspace_id == ^workspace_id)
+    |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
+  defp filter_by_user_access(query, user) do
+    case Authorization.accessible_project_ids(user) do
+      :all -> query
+      project_ids -> where(query, [p], p.id in ^project_ids)
+    end
+  end
+
   @doc """
-  Returns the list of projects with their associations preloaded for a workspace.
+  Returns the list of projects with their associations preloaded for a workspace, filtered by user access.
 
   ## Examples
 
-      iex> list_projects_with_associations(workspace_id)
+      iex> list_projects_with_associations(workspace_id, user)
       [%Project{lists: [...], docs: [...], channels: [...]}, ...]
 
   """
-  def list_projects_with_associations(workspace_id, opts \\ []) do
+  def list_projects_with_associations(workspace_id, user, opts \\ []) do
     Project
     |> where([p], p.workspace_id == ^workspace_id)
+    |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
     |> preload([:lists, :docs, :channels])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred projects for a workspace.
+  Returns the list of starred projects for a workspace, filtered by user access.
 
   ## Examples
 
-      iex> list_starred_projects(workspace_id)
+      iex> list_starred_projects(workspace_id, user)
       [%Project{}, ...]
 
   """
-  def list_starred_projects(workspace_id, opts \\ []) do
+  def list_starred_projects(workspace_id, user, opts \\ []) do
     Project
     |> where([p], p.starred == true and p.workspace_id == ^workspace_id)
+    |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
@@ -180,5 +192,55 @@ defmodule Bridge.Projects do
   """
   def toggle_project_starred(%Project{} = project) do
     update_project(project, %{starred: !project.starred})
+  end
+
+  # Project Members
+
+  @doc """
+  Checks if a user is a member of a project.
+  """
+  def is_member?(project_id, user_id) do
+    ProjectMember
+    |> where([pm], pm.project_id == ^project_id and pm.user_id == ^user_id)
+    |> Repo.exists?()
+  end
+
+  @doc """
+  Returns the list of project IDs a user is a member of.
+  """
+  def get_user_project_ids(user_id) do
+    ProjectMember
+    |> where([pm], pm.user_id == ^user_id)
+    |> select([pm], pm.project_id)
+    |> Repo.all()
+  end
+
+  @doc """
+  Adds a user as a member to a project.
+  """
+  def add_member(project_id, user_id) do
+    %ProjectMember{}
+    |> ProjectMember.changeset(%{project_id: project_id, user_id: user_id})
+    |> Repo.insert()
+  end
+
+  @doc """
+  Removes a user from a project.
+  """
+  def remove_member(project_id, user_id) do
+    case Repo.get_by(ProjectMember, project_id: project_id, user_id: user_id) do
+      nil -> {:error, :not_found}
+      member -> Repo.delete(member)
+    end
+  end
+
+  @doc """
+  Lists all members of a project.
+  """
+  def list_members(project_id) do
+    ProjectMember
+    |> where([pm], pm.project_id == ^project_id)
+    |> preload(:user)
+    |> Repo.all()
   end
 end

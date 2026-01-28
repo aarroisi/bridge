@@ -11,6 +11,7 @@ defmodule Bridge.Lists.List do
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
     belongs_to(:project, Bridge.Projects.Project)
+    belongs_to(:created_by, Bridge.Accounts.User)
     has_many(:tasks, Bridge.Lists.Task)
 
     timestamps()
@@ -19,7 +20,7 @@ defmodule Bridge.Lists.List do
   @doc false
   def changeset(list, attrs) do
     list
-    |> cast(attrs, [:name, :starred, :workspace_id, :project_id])
+    |> cast(attrs, [:name, :starred, :workspace_id, :project_id, :created_by_id])
     |> validate_required([:name, :workspace_id])
   end
 end

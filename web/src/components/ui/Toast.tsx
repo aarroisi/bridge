@@ -2,6 +2,12 @@ import { X, CheckCircle, XCircle, Info, AlertTriangle } from "lucide-react";
 import { clsx } from "clsx";
 import { useToastStore, Toast as ToastType } from "@/stores/toastStore";
 
+// Helper for showing toasts
+export const toast = {
+  success: (message: string) => useToastStore.getState().success(message),
+  error: (message: string) => useToastStore.getState().error(message),
+};
+
 interface ToastProps {
   toast: ToastType;
 }

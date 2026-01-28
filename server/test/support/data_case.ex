@@ -24,6 +24,7 @@ defmodule Bridge.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       import Bridge.DataCase
+      import Bridge.Factory
     end
   end
 

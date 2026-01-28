@@ -2,15 +2,61 @@ defmodule BridgeWeb.DocController do
   use BridgeWeb, :controller
 
   alias Bridge.Docs
+  alias Bridge.Authorization.Policy
   import BridgeWeb.PaginationHelpers
+  import Plug.Conn
 
   action_fallback(BridgeWeb.FallbackController)
 
+  plug(:load_resource when action in [:show, :update, :delete])
+  plug(:authorize, :view_item when action in [:show])
+  plug(:authorize, :create_item when action in [:create])
+  plug(:authorize, :update_item when action in [:update])
+  plug(:authorize, :delete_item when action in [:delete])
+
+  defp load_resource(conn, _opts) do
+    case Docs.get_doc(conn.params["id"], conn.assigns.workspace_id) do
+      {:ok, doc} ->
+        assign(conn, :doc, doc)
+
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+        |> halt()
+    end
+  end
+
+  defp authorize(conn, permission) do
+    user = conn.assigns.current_user
+    resource = get_authorization_resource(conn, permission)
+
+    if Policy.can?(user, permission, resource) do
+      conn
+    else
+      conn
+      |> put_status(:forbidden)
+      |> Phoenix.Controller.json(%{error: "Forbidden"})
+      |> halt()
+    end
+  end
+
+  defp get_authorization_resource(conn, :create_item) do
+    # For create, we check project_id from params
+    params = conn.params["doc"] || conn.params
+    params["project_id"]
+  end
+
+  defp get_authorization_resource(conn, _permission) do
+    conn.assigns[:doc]
+  end
+
   def index(conn, params) do
     workspace_id = conn.assigns.workspace_id
+    user = conn.assigns.current_user
 
     opts = build_pagination_opts(params)
-    page = Docs.list_docs(workspace_id, opts)
+    page = Docs.list_docs(workspace_id, user, opts)
 
     render(conn, :index, page: page)
   end
@@ -39,17 +85,12 @@ defmodule BridgeWeb.DocController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    workspace_id = conn.assigns.workspace_id
-
-    with {:ok, doc} <- Docs.get_doc(id, workspace_id) do
-      render(conn, :show, doc: doc)
-    end
+  def show(conn, _params) do
+    render(conn, :show, doc: conn.assigns.doc)
   end
 
   def update(conn, params) do
-    workspace_id = conn.assigns.workspace_id
-    id = params["id"]
+    doc = conn.assigns.doc
 
     # Handle both nested and flat params
     doc_params =
@@ -58,17 +99,13 @@ defmodule BridgeWeb.DocController do
         flat_params -> Map.drop(flat_params, ["id"])
       end
 
-    with {:ok, doc} <- Docs.get_doc(id, workspace_id),
-         {:ok, doc} <- Docs.update_doc(doc, doc_params) do
+    with {:ok, doc} <- Docs.update_doc(doc, doc_params) do
       render(conn, :show, doc: doc)
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    workspace_id = conn.assigns.workspace_id
-
-    with {:ok, doc} <- Docs.get_doc(id, workspace_id),
-         {:ok, _doc} <- Docs.delete_doc(doc) do
+  def delete(conn, _params) do
+    with {:ok, _doc} <- Docs.delete_doc(conn.assigns.doc) do
       send_resp(conn, :no_content, "")
     end
   end

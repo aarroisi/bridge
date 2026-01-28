@@ -1,3 +1,6 @@
+// Role type
+export type Role = "owner" | "member" | "guest";
+
 // User types
 export interface User {
   id: string;
@@ -5,6 +8,17 @@ export interface User {
   email: string;
   avatar: string;
   online: boolean;
+  role: Role;
+  insertedAt: string;
+  updatedAt: string;
+}
+
+// Project member type
+export interface ProjectMember {
+  id: string;
+  userId: string;
+  projectId: string;
+  user: User;
   insertedAt: string;
   updatedAt: string;
 }

@@ -22,6 +22,7 @@ defmodule BridgeWeb.AuthController do
             id: user.id,
             name: user.name,
             email: user.email,
+            role: user.role,
             workspace_id: workspace.id
           },
           workspace: %{
@@ -49,6 +50,7 @@ defmodule BridgeWeb.AuthController do
             id: user.id,
             name: user.name,
             email: user.email,
+            role: user.role,
             workspace_id: user.workspace_id
           },
           workspace: %{
@@ -88,6 +90,7 @@ defmodule BridgeWeb.AuthController do
                 id: user.id,
                 name: user.name,
                 email: user.email,
+                role: user.role,
                 workspace_id: user.workspace_id
               },
               workspace: %{
@@ -120,6 +123,7 @@ defmodule BridgeWeb.AuthController do
             id: user.id,
             name: user.name,
             email: user.email,
+            role: user.role,
             workspace_id: user.workspace_id
           },
           workspace: %{

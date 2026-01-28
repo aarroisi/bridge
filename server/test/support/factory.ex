@@ -12,7 +12,8 @@ defmodule Bridge.Factory do
     %Bridge.Accounts.User{
       name: Faker.Person.name(),
       email: sequence(:email, &"user-#{&1}@example.com"),
-      password_hash: Bridge.Accounts.User.hash_password("password123")
+      password_hash: Bridge.Accounts.User.hash_password("password123"),
+      role: "owner"
     }
   end
 
@@ -72,5 +73,9 @@ defmodule Bridge.Factory do
       entity_type: "channel",
       entity_id: UUIDv7.generate()
     }
+  end
+
+  def project_member_factory do
+    %Bridge.Projects.ProjectMember{}
   end
 end

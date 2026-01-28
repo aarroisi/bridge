@@ -2,22 +2,72 @@ defmodule BridgeWeb.ChannelController do
   use BridgeWeb, :controller
 
   alias Bridge.Chat
+  alias Bridge.Authorization.Policy
   import BridgeWeb.PaginationHelpers
+  import Plug.Conn
 
   action_fallback(BridgeWeb.FallbackController)
 
+  plug(:load_resource when action in [:show, :update, :delete])
+  plug(:authorize, :view_item when action in [:show])
+  plug(:authorize, :create_item when action in [:create])
+  plug(:authorize, :update_item when action in [:update])
+  plug(:authorize, :delete_item when action in [:delete])
+
+  defp load_resource(conn, _opts) do
+    case Chat.get_channel(conn.params["id"], conn.assigns.workspace_id) do
+      {:ok, channel} ->
+        assign(conn, :channel, channel)
+
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+        |> halt()
+    end
+  end
+
+  defp authorize(conn, permission) do
+    user = conn.assigns.current_user
+    resource = get_authorization_resource(conn, permission)
+
+    if Policy.can?(user, permission, resource) do
+      conn
+    else
+      conn
+      |> put_status(:forbidden)
+      |> Phoenix.Controller.json(%{error: "Forbidden"})
+      |> halt()
+    end
+  end
+
+  defp get_authorization_resource(conn, :create_item) do
+    params = conn.params["channel"] || conn.params
+    params["project_id"]
+  end
+
+  defp get_authorization_resource(conn, _permission) do
+    conn.assigns[:channel]
+  end
+
   def index(conn, params) do
     workspace_id = conn.assigns.workspace_id
+    user = conn.assigns.current_user
 
     opts = build_pagination_opts(params)
-    page = Chat.list_channels(workspace_id, opts)
+    page = Chat.list_channels(workspace_id, user, opts)
 
     render(conn, :index, page: page)
   end
 
   def create(conn, %{"channel" => channel_params}) do
     workspace_id = conn.assigns.workspace_id
-    channel_params = Map.put(channel_params, "workspace_id", workspace_id)
+    user = conn.assigns.current_user
+
+    channel_params =
+      channel_params
+      |> Map.put("workspace_id", workspace_id)
+      |> Map.put("created_by_id", user.id)
 
     with {:ok, channel} <- Chat.create_channel(channel_params) do
       conn
@@ -26,28 +76,18 @@ defmodule BridgeWeb.ChannelController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    workspace_id = conn.assigns.workspace_id
+  def show(conn, _params) do
+    render(conn, :show, channel: conn.assigns.channel)
+  end
 
-    with {:ok, channel} <- Chat.get_channel(id, workspace_id) do
+  def update(conn, %{"channel" => channel_params}) do
+    with {:ok, channel} <- Chat.update_channel(conn.assigns.channel, channel_params) do
       render(conn, :show, channel: channel)
     end
   end
 
-  def update(conn, %{"id" => id, "channel" => channel_params}) do
-    workspace_id = conn.assigns.workspace_id
-
-    with {:ok, channel} <- Chat.get_channel(id, workspace_id),
-         {:ok, channel} <- Chat.update_channel(channel, channel_params) do
-      render(conn, :show, channel: channel)
-    end
-  end
-
-  def delete(conn, %{"id" => id}) do
-    workspace_id = conn.assigns.workspace_id
-
-    with {:ok, channel} <- Chat.get_channel(id, workspace_id),
-         {:ok, _channel} <- Chat.delete_channel(channel) do
+  def delete(conn, _params) do
+    with {:ok, _channel} <- Chat.delete_channel(conn.assigns.channel) do
       send_resp(conn, :no_content, "")
     end
   end

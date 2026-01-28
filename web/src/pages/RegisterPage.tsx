@@ -87,10 +87,14 @@ export function RegisterPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-dark-text mb-2">
+            <label
+              htmlFor="workspaceName"
+              className="block text-sm font-medium text-dark-text mb-2"
+            >
               Workspace Name
             </label>
             <input
+              id="workspaceName"
               type="text"
               value={workspaceName}
               onChange={(e) => setWorkspaceName(e.target.value)}
@@ -107,10 +111,14 @@ export function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-text mb-2">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-dark-text mb-2"
+            >
               Your Name
             </label>
             <input
+              id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -121,10 +129,14 @@ export function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-text mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-dark-text mb-2"
+            >
               Email
             </label>
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -135,10 +147,14 @@ export function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-text mb-2">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-dark-text mb-2"
+            >
               Password
             </label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

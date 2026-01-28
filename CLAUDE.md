@@ -1,46 +1,41 @@
-# Bridge Development Documentation
+# Bridge Project
 
-This document contains important patterns and conventions used in the Bridge project.
+Bridge is a team collaboration platform: Elixir/Phoenix backend + React/TypeScript frontend.
 
-## Authentication & Authorization
+## Quick Reference
 
-All API endpoints require authentication and workspace context through JWT tokens.
+```bash
+# Backend (port 4000)           # Frontend (port 5173)
+cd server && mix phx.server     cd web && npm run dev
 
-Critical: All queries must filter by workspace_id to prevent cross-workspace data leakage.
-
-## UUIDv7
-
-Package: {:uuidv7, "~> 1.0"}
-
-Schema Pattern:
-@primary_key {:id, UUIDv7, autogenerate: true}
-@foreign_key_type Ecto.UUID
-
-Benefits: Time-ordered IDs, better database index performance, distributed-safe.
-
-## Pagination
-
-Package: {:paginator, "~> 1.2"}
-
-All list endpoints use cursor-based pagination for better performance and consistency.
-
-Default limit: 50 items per page
-Always use desc: id for default sorting
-
-Query parameters:
-- after: Cursor for next page
-- before: Cursor for previous page
-- limit: Items per page
-
-## Database Indices
-
-Composite indices on (workspace_id, id) for optimal pagination performance.
-Both single-column and composite indices are maintained.
+# Tests
+cd server && mix test           cd web && npx playwright test
+```
 
 ## Critical Rules
 
-1. Always filter by workspace_id in queries
-2. Always use desc: id for default sorting in paginated queries
-3. Use UUIDv7 for all primary keys
-4. Use cursor-based pagination for all list endpoints
-5. Maintain composite indices for (workspace_id, id) on paginated resources
+1. **Workspace Isolation**: Always filter by `workspace_id` - prevents data leakage
+2. **Tuple Returns**: Use `{:ok, result}` / `{:error, reason}` - never bang functions
+3. **Test-Driven**: Always use TDD for both backend and frontend - write tests first, then implement
+4. **E2E Testing**: Use `keyboard.insertText()` for React inputs, NOT `fill()`
+
+## Documentation
+
+Detailed guides organized as skills in `.claude/skills/`:
+
+- `/development` - Project structure, commands, monorepo navigation
+- `/architecture` - Patterns: error handling, controllers, multi-tenancy, UUIDs, pagination
+- `/testing` - TDD practices, factories, meaningful tests
+- `/e2e-testing` - Playwright + React gotchas (controlled inputs)
+
+Background skills (auto-loaded by context):
+
+- `backend` - Elixir/Phoenix patterns when in `server/`
+- `frontend` - React/TypeScript patterns when in `web/`
+
+## Tech Stack
+
+**Backend**: Elixir 1.16+, Phoenix 1.8, PostgreSQL, Phoenix Channels  
+**Frontend**: React 18, TypeScript, Vite, Zustand, Tailwind, Playwright
+
+Claude automatically loads relevant skills based on your work context.

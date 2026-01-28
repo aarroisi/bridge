@@ -19,6 +19,7 @@ import {
   Edit3,
   Check,
   ArrowDown,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
@@ -59,6 +60,7 @@ export function DocView() {
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -315,6 +317,53 @@ export function DocView() {
     setSearchParams(params);
   };
 
+  const handleCancelEdit = () => {
+    // Check if there are unsaved changes
+    if (hasUnsavedChanges()) {
+      setShowCancelConfirmModal(true);
+    } else {
+      performCancelEdit();
+    }
+  };
+
+  const performCancelEdit = () => {
+    // Reset to original content
+    if (doc) {
+      setEditedTitle(doc.title);
+      setEditedContent(doc.content || "");
+      if (editor) {
+        editor.commands.setContent(doc.content || "");
+      }
+    }
+    handleExitEditMode();
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirmModal(false);
+    if (isNewDoc) {
+      performCancelNew();
+    } else {
+      performCancelEdit();
+    }
+  };
+
+  const handleCancelCancelModal = () => {
+    setShowCancelConfirmModal(false);
+  };
+
+  const handleCancelNew = () => {
+    // Check if there's any content in the new doc
+    if (editedTitle.trim() !== "" || editedContent.trim() !== "") {
+      setShowCancelConfirmModal(true);
+    } else {
+      navigate("/docs");
+    }
+  };
+
+  const performCancelNew = () => {
+    navigate("/docs");
+  };
+
   const handleSave = async () => {
     // Validate title is not empty
     if (!editedTitle.trim()) {
@@ -470,40 +519,68 @@ export function DocView() {
                 </>
               )}
               {isNewDoc ? (
-                <button
-                  onClick={handleSave}
-                  disabled={!editedTitle.trim()}
-                  className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                  title="Save"
-                >
-                  <Check size={16} className="flex-shrink-0" />
-                  <span className="hidden lg:inline whitespace-nowrap">
-                    Save
-                  </span>
-                </button>
+                <>
+                  <button
+                    onClick={handleCancelNew}
+                    className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-dark-surface hover:bg-dark-border text-dark-text transition-colors flex-shrink-0"
+                    title="Cancel"
+                  >
+                    <X size={16} className="flex-shrink-0" />
+                    <span className="hidden lg:inline whitespace-nowrap">
+                      Cancel
+                    </span>
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={!editedTitle.trim()}
+                    className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    title="Save"
+                  >
+                    <Check size={16} className="flex-shrink-0" />
+                    <span className="hidden lg:inline whitespace-nowrap">
+                      Save
+                    </span>
+                  </button>
+                </>
               ) : (
-                <button
-                  onClick={isEditing ? handleSave : handleEnterEditMode}
-                  disabled={isEditing && !editedTitle.trim()}
-                  className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                  title={isEditing ? "Save" : "Edit"}
-                >
+                <>
                   {isEditing ? (
                     <>
-                      <Check size={16} className="flex-shrink-0" />
-                      <span className="hidden lg:inline whitespace-nowrap">
-                        Save
-                      </span>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-dark-surface hover:bg-dark-border text-dark-text transition-colors flex-shrink-0"
+                        title="Cancel"
+                      >
+                        <X size={16} className="flex-shrink-0" />
+                        <span className="hidden lg:inline whitespace-nowrap">
+                          Cancel
+                        </span>
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        disabled={!editedTitle.trim()}
+                        className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        title="Save"
+                      >
+                        <Check size={16} className="flex-shrink-0" />
+                        <span className="hidden lg:inline whitespace-nowrap">
+                          Save
+                        </span>
+                      </button>
                     </>
                   ) : (
-                    <>
+                    <button
+                      onClick={handleEnterEditMode}
+                      className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0"
+                      title="Edit"
+                    >
                       <Edit3 size={16} className="flex-shrink-0" />
                       <span className="hidden lg:inline whitespace-nowrap">
                         Edit
                       </span>
-                    </>
+                    </button>
                   )}
-                </button>
+                </>
               )}
             </div>
           </div>
@@ -760,6 +837,17 @@ export function DocView() {
         confirmVariant="primary"
         onConfirm={handleConfirmSave}
         onCancel={handleCancelSave}
+      />
+
+      <ConfirmModal
+        isOpen={showCancelConfirmModal}
+        title="Discard Changes?"
+        message="You have unsaved changes. Are you sure you want to discard all changes?"
+        confirmText="Discard"
+        cancelText="Keep Editing"
+        confirmVariant="danger"
+        onConfirm={handleConfirmCancel}
+        onCancel={handleCancelCancelModal}
       />
     </div>
   );

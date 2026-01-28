@@ -8,15 +8,17 @@ defmodule BridgeWeb.DocChannel do
   @impl true
   def join("doc:" <> doc_id, _payload, socket) do
     # Verify that the document exists and user has access
-    case Docs.get_doc(doc_id) do
-      nil ->
-        {:error, %{reason: "document not found"}}
+    workspace_id = socket.assigns.workspace_id
 
-      _doc ->
+    case Docs.get_doc(doc_id, workspace_id) do
+      {:ok, _doc} ->
         # You could add additional authorization checks here
         # For now, we allow any authenticated user to join
         socket = assign(socket, :doc_id, doc_id)
         {:ok, socket}
+
+      {:error, :not_found} ->
+        {:error, %{reason: "document not found"}}
     end
   end
 
@@ -24,12 +26,10 @@ defmodule BridgeWeb.DocChannel do
   def handle_in("update_content", %{"content" => content}, socket) do
     doc_id = socket.assigns.doc_id
     user_id = socket.assigns.user_id
+    workspace_id = socket.assigns.workspace_id
 
-    case Docs.get_doc(doc_id) do
-      nil ->
-        {:reply, {:error, %{reason: "document not found"}}, socket}
-
-      doc ->
+    case Docs.get_doc(doc_id, workspace_id) do
+      {:ok, doc} ->
         case Docs.update_doc(doc, %{content: content}) do
           {:ok, updated_doc} ->
             # Preload associations for broadcasting
@@ -48,18 +48,19 @@ defmodule BridgeWeb.DocChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "document not found"}}, socket}
     end
   end
 
   @impl true
   def handle_in("update_title", %{"title" => title}, socket) do
     doc_id = socket.assigns.doc_id
+    workspace_id = socket.assigns.workspace_id
 
-    case Docs.get_doc(doc_id) do
-      nil ->
-        {:reply, {:error, %{reason: "document not found"}}, socket}
-
-      doc ->
+    case Docs.get_doc(doc_id, workspace_id) do
+      {:ok, doc} ->
         case Docs.update_doc(doc, %{title: title}) do
           {:ok, updated_doc} ->
             # Preload associations for broadcasting
@@ -77,6 +78,9 @@ defmodule BridgeWeb.DocChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "document not found"}}, socket}
     end
   end
 
@@ -128,12 +132,10 @@ defmodule BridgeWeb.DocChannel do
   @impl true
   def handle_in("toggle_starred", %{}, socket) do
     doc_id = socket.assigns.doc_id
+    workspace_id = socket.assigns.workspace_id
 
-    case Docs.get_doc(doc_id) do
-      nil ->
-        {:reply, {:error, %{reason: "document not found"}}, socket}
-
-      doc ->
+    case Docs.get_doc(doc_id, workspace_id) do
+      {:ok, doc} ->
         case Docs.update_doc(doc, %{starred: !doc.starred}) do
           {:ok, updated_doc} ->
             # Preload associations for broadcasting
@@ -151,6 +153,9 @@ defmodule BridgeWeb.DocChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "document not found"}}, socket}
     end
   end
 

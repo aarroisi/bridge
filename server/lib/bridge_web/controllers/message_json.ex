@@ -4,6 +4,17 @@ defmodule BridgeWeb.MessageJSON do
   @doc """
   Renders a list of messages.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(message <- page.entries, do: data(message)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{messages: messages}) do
     %{data: for(message <- messages, do: data(message))}
   end

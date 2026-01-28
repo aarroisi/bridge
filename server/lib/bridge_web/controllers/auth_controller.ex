@@ -79,21 +79,29 @@ defmodule BridgeWeb.AuthController do
         |> json(%{error: "Not authenticated"})
 
       user_id ->
-        user = Accounts.get_user!(user_id) |> Bridge.Repo.preload(:workspace)
+        case Accounts.get_user(user_id) do
+          {:ok, user} ->
+            user = Bridge.Repo.preload(user, :workspace)
 
-        json(conn, %{
-          user: %{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            workspace_id: user.workspace_id
-          },
-          workspace: %{
-            id: user.workspace.id,
-            name: user.workspace.name,
-            slug: user.workspace.slug
-          }
-        })
+            json(conn, %{
+              user: %{
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                workspace_id: user.workspace_id
+              },
+              workspace: %{
+                id: user.workspace.id,
+                name: user.workspace.name,
+                slug: user.workspace.slug
+              }
+            })
+
+          {:error, :not_found} ->
+            conn
+            |> put_status(:unauthorized)
+            |> json(%{error: "User not found"})
+        end
     end
   end
 

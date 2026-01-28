@@ -1,12 +1,14 @@
 import { create } from "zustand";
-import { Doc } from "@/types";
+import { Doc, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 
 interface DocState {
   docs: Doc[];
   isLoading: boolean;
+  hasMore: boolean;
+  afterCursor: string | null;
 
-  fetchDocs: () => Promise<void>;
+  fetchDocs: (loadMore?: boolean) => Promise<void>;
   getDoc: (id: string) => Promise<Doc>;
   createDoc: (
     title: string,
@@ -21,15 +23,32 @@ interface DocState {
 export const useDocStore = create<DocState>((set, get) => ({
   docs: [],
   isLoading: false,
+  hasMore: true,
+  afterCursor: null,
 
-  fetchDocs: async () => {
+  fetchDocs: async (loadMore = false) => {
+    const { afterCursor, isLoading } = get();
+
+    if (isLoading || (loadMore && !afterCursor)) return;
+
     set({ isLoading: true });
     try {
-      const docs = await api.get<Doc[]>("/docs");
-      set({ docs, isLoading: false });
+      const params: Record<string, string> = {};
+      if (loadMore && afterCursor) {
+        params.after = afterCursor;
+      }
+
+      const response = await api.get<PaginatedResponse<Doc>>("/docs", params);
+
+      set((state) => ({
+        docs: loadMore ? [...state.docs, ...response.data] : response.data,
+        afterCursor: response.metadata.after,
+        hasMore: response.metadata.after !== null,
+        isLoading: false,
+      }));
     } catch (error) {
       console.error("Failed to fetch docs:", error);
-      set({ docs: [], isLoading: false });
+      set({ docs: [], isLoading: false, hasMore: false });
     }
   },
 

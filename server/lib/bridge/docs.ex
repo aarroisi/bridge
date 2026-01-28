@@ -9,18 +9,20 @@ defmodule Bridge.Docs do
   alias Bridge.Docs.Doc
 
   @doc """
-  Returns the list of docs.
+  Returns the list of docs for a workspace.
 
   ## Examples
 
-      iex> list_docs()
+      iex> list_docs(workspace_id)
       [%Doc{}, ...]
 
   """
-  def list_docs do
+  def list_docs(workspace_id, opts \\ []) do
     Doc
+    |> where([d], d.workspace_id == ^workspace_id)
+    |> order_by([d], desc: d.id)
     |> preload([:project, :author])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -32,11 +34,12 @@ defmodule Bridge.Docs do
       [%Doc{}, ...]
 
   """
-  def list_docs_by_project(project_id) do
+  def list_docs_by_project(project_id, opts \\ []) do
     Doc
     |> where([d], d.project_id == ^project_id)
+    |> order_by([d], desc: d.id)
     |> preload([:project, :author])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -48,67 +51,53 @@ defmodule Bridge.Docs do
       [%Doc{}, ...]
 
   """
-  def list_docs_by_author(author_id) do
+  def list_docs_by_author(author_id, opts \\ []) do
     Doc
     |> where([d], d.author_id == ^author_id)
+    |> order_by([d], desc: d.id)
     |> preload([:project, :author])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred docs.
+  Returns the list of starred docs for a workspace.
 
   ## Examples
 
-      iex> list_starred_docs()
+      iex> list_starred_docs(workspace_id)
       [%Doc{}, ...]
 
   """
-  def list_starred_docs do
+  def list_starred_docs(workspace_id, opts \\ []) do
     Doc
-    |> where([d], d.starred == true)
+    |> where([d], d.starred == true and d.workspace_id == ^workspace_id)
+    |> order_by([d], desc: d.id)
     |> preload([:project, :author])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Gets a single doc.
+  Gets a single doc within a workspace.
 
   Returns `nil` if the Doc does not exist.
 
   ## Examples
 
-      iex> get_doc(123)
+      iex> get_doc(id, workspace_id)
       %Doc{}
 
-      iex> get_doc(456)
+      iex> get_doc(456, workspace_id)
       nil
 
   """
-  def get_doc(id) do
-    Doc
-    |> preload([:project, :author])
-    |> Repo.get(id)
-  end
-
-  @doc """
-  Gets a single doc.
-
-  Raises `Ecto.NoResultsError` if the Doc does not exist.
-
-  ## Examples
-
-      iex> get_doc!(123)
-      %Doc{}
-
-      iex> get_doc!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_doc!(id) do
-    Doc
-    |> preload([:project, :author])
-    |> Repo.get!(id)
+  def get_doc(id, workspace_id) do
+    case Doc
+         |> where([d], d.workspace_id == ^workspace_id)
+         |> preload([:project, :author])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      doc -> {:ok, doc}
+    end
   end
 
   @doc """

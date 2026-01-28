@@ -4,6 +4,17 @@ defmodule BridgeWeb.ChannelJSON do
   @doc """
   Renders a list of channels.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(channel <- page.entries, do: data(channel)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{channels: channels}) do
     %{data: for(channel <- channels, do: data(channel))}
   end

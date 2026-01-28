@@ -6,58 +6,47 @@ defmodule BridgeWeb.TaskController do
 
   action_fallback(BridgeWeb.FallbackController)
 
-  def index(conn, _params) do
-    tasks = Lists.list_tasks()
-    render(conn, :index, tasks: tasks)
+  def index(conn, params) do
+    case params["list_id"] do
+      list_id when is_binary(list_id) ->
+        opts = BridgeWeb.PaginationHelpers.build_pagination_opts(params)
+        page = Lists.list_tasks(list_id, opts)
+        render(conn, :index, page: page)
+
+      _ ->
+        # If no list_id provided, return empty result
+        render(conn, :index, tasks: [])
+    end
   end
 
   def create(conn, %{"task" => task_params}) do
     current_user = conn.assigns.current_user
     task_params_with_user = Map.put(task_params, "created_by_id", current_user.id)
 
-    case Lists.create_task(task_params_with_user) do
-      {:ok, task} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, task: task)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, task} <- Lists.create_task(task_params_with_user) do
+      conn
+      |> put_status(:created)
+      |> render(:show, task: task)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    task = Lists.get_task!(id)
-    render(conn, :show, task: task)
+    with {:ok, task} <- Lists.get_task(id) do
+      render(conn, :show, task: task)
+    end
   end
 
   def update(conn, %{"id" => id, "task" => task_params}) do
-    task = Lists.get_task!(id)
-
-    case Lists.update_task(task, task_params) do
-      {:ok, task} ->
-        render(conn, :show, task: task)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, task} <- Lists.get_task(id),
+         {:ok, task} <- Lists.update_task(task, task_params) do
+      render(conn, :show, task: task)
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    task = Lists.get_task!(id)
-
-    case Lists.delete_task(task) do
-      {:ok, _task} ->
-        send_resp(conn, :no_content, "")
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, task} <- Lists.get_task(id),
+         {:ok, _task} <- Lists.delete_task(task) do
+      send_resp(conn, :no_content, "")
     end
   end
 end

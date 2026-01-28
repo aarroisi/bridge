@@ -12,49 +12,30 @@ defmodule BridgeWeb.SubtaskController do
   end
 
   def create(conn, %{"subtask" => subtask_params}) do
-    case Lists.create_subtask(subtask_params) do
-      {:ok, subtask} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, subtask: subtask)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, subtask} <- Lists.create_subtask(subtask_params) do
+      conn
+      |> put_status(:created)
+      |> render(:show, subtask: subtask)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    subtask = Lists.get_subtask!(id)
-    render(conn, :show, subtask: subtask)
+    with {:ok, subtask} <- Lists.get_subtask(id) do
+      render(conn, :show, subtask: subtask)
+    end
   end
 
   def update(conn, %{"id" => id, "subtask" => subtask_params}) do
-    subtask = Lists.get_subtask!(id)
-
-    case Lists.update_subtask(subtask, subtask_params) do
-      {:ok, subtask} ->
-        render(conn, :show, subtask: subtask)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, subtask} <- Lists.get_subtask(id),
+         {:ok, subtask} <- Lists.update_subtask(subtask, subtask_params) do
+      render(conn, :show, subtask: subtask)
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    subtask = Lists.get_subtask!(id)
-
-    case Lists.delete_subtask(subtask) do
-      {:ok, _subtask} ->
-        send_resp(conn, :no_content, "")
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, subtask} <- Lists.get_subtask(id),
+         {:ok, _subtask} <- Lists.delete_subtask(subtask) do
+      send_resp(conn, :no_content, "")
     end
   end
 end

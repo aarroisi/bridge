@@ -9,6 +9,7 @@ interface UIState {
   selectedTaskId: string | null;
   openThreadId: string | null;
   collapsedSections: Record<string, boolean>;
+  navigationGuard: (() => Promise<boolean>) | null;
 
   setActiveCategory: (category: Category) => void;
   setActiveItem: (item: ActiveItem | null) => void;
@@ -18,6 +19,7 @@ interface UIState {
   setSelectedTask: (id: string | null) => void;
   setOpenThread: (id: string | null) => void;
   toggleSection: (section: string) => void;
+  setNavigationGuard: (guard: (() => Promise<boolean>) | null) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -28,6 +30,7 @@ export const useUIStore = create<UIState>((set) => ({
   selectedTaskId: null,
   openThreadId: null,
   collapsedSections: {},
+  navigationGuard: null,
 
   setActiveCategory: (category) => set({ activeCategory: category }),
 
@@ -50,4 +53,6 @@ export const useUIStore = create<UIState>((set) => ({
         [section]: !state.collapsedSections[section],
       },
     })),
+
+  setNavigationGuard: (guard) => set({ navigationGuard: guard }),
 }));

@@ -1,11 +1,13 @@
 import { create } from "zustand";
-import { Project } from "@/types";
+import { Project, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 
 interface ProjectState {
   projects: Project[];
   isLoading: boolean;
-  fetchProjects: () => Promise<void>;
+  hasMore: boolean;
+  afterCursor: string | null;
+  fetchProjects: (loadMore?: boolean) => Promise<void>;
   createProject: (name: string) => Promise<Project>;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
@@ -15,15 +17,37 @@ interface ProjectState {
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
   isLoading: false,
+  hasMore: true,
+  afterCursor: null,
 
-  fetchProjects: async () => {
+  fetchProjects: async (loadMore = false) => {
+    const { afterCursor, isLoading } = get();
+
+    if (isLoading || (loadMore && !afterCursor)) return;
+
     set({ isLoading: true });
     try {
-      const projects = await api.get<Project[]>("/projects");
-      set({ projects, isLoading: false });
+      const params: Record<string, string> = {};
+      if (loadMore && afterCursor) {
+        params.after = afterCursor;
+      }
+
+      const response = await api.get<PaginatedResponse<Project>>(
+        "/projects",
+        params,
+      );
+
+      set((state) => ({
+        projects: loadMore
+          ? [...state.projects, ...response.data]
+          : response.data,
+        afterCursor: response.metadata.after,
+        hasMore: response.metadata.after !== null,
+        isLoading: false,
+      }));
     } catch (error) {
       console.error("Failed to fetch projects:", error);
-      set({ projects: [], isLoading: false });
+      set({ projects: [], isLoading: false, hasMore: false });
     }
   },
 

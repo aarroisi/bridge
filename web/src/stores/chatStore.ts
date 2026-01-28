@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Channel, DirectMessage, Message } from "@/types";
+import { Channel, DirectMessage, Message, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 
 interface ChatState {
@@ -7,16 +7,20 @@ interface ChatState {
   directMessages: DirectMessage[];
   messages: Record<string, Message[]>;
   isLoading: boolean;
+  hasMoreChannels: boolean;
+  channelsAfterCursor: string | null;
+  hasMoreDMs: boolean;
+  dmsAfterCursor: string | null;
 
   // Channel operations
-  fetchChannels: () => Promise<void>;
+  fetchChannels: (loadMore?: boolean) => Promise<void>;
   createChannel: (name: string, projectId?: string) => Promise<Channel>;
   updateChannel: (id: string, data: Partial<Channel>) => Promise<void>;
   deleteChannel: (id: string) => Promise<void>;
   toggleChannelStar: (id: string) => Promise<void>;
 
   // DM operations
-  fetchDirectMessages: () => Promise<void>;
+  fetchDirectMessages: (loadMore?: boolean) => Promise<void>;
   createDirectMessage: (userId: string) => Promise<DirectMessage>;
   toggleDMStar: (id: string) => Promise<void>;
 
@@ -39,16 +43,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
   directMessages: [],
   messages: {},
   isLoading: false,
+  hasMoreChannels: true,
+  channelsAfterCursor: null,
+  hasMoreDMs: true,
+  dmsAfterCursor: null,
 
   // Channel operations
-  fetchChannels: async () => {
+  fetchChannels: async (loadMore = false) => {
+    const { channelsAfterCursor, isLoading } = get();
+
+    if (isLoading || (loadMore && !channelsAfterCursor)) return;
+
     set({ isLoading: true });
     try {
-      const channels = await api.get<Channel[]>("/channels");
-      set({ channels, isLoading: false });
+      const params: Record<string, string> = {};
+      if (loadMore && channelsAfterCursor) {
+        params.after = channelsAfterCursor;
+      }
+
+      const response = await api.get<PaginatedResponse<Channel>>(
+        "/channels",
+        params,
+      );
+
+      set((state) => ({
+        channels: loadMore
+          ? [...state.channels, ...response.data]
+          : response.data,
+        channelsAfterCursor: response.metadata.after,
+        hasMoreChannels: response.metadata.after !== null,
+        isLoading: false,
+      }));
     } catch (error) {
       console.error("Failed to fetch channels:", error);
-      set({ channels: [], isLoading: false });
+      set({ channels: [], isLoading: false, hasMoreChannels: false });
     }
   },
 
@@ -85,13 +113,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   // DM operations
-  fetchDirectMessages: async () => {
+  fetchDirectMessages: async (loadMore = false) => {
+    const { dmsAfterCursor, isLoading } = get();
+
+    if (isLoading || (loadMore && !dmsAfterCursor)) return;
+
+    set({ isLoading: true });
     try {
-      const directMessages = await api.get<DirectMessage[]>("/direct_messages");
-      set({ directMessages });
+      const params: Record<string, string> = {};
+      if (loadMore && dmsAfterCursor) {
+        params.after = dmsAfterCursor;
+      }
+
+      const response = await api.get<PaginatedResponse<DirectMessage>>(
+        "/direct_messages",
+        params,
+      );
+
+      set((state) => ({
+        directMessages: loadMore
+          ? [...state.directMessages, ...response.data]
+          : response.data,
+        dmsAfterCursor: response.metadata.after,
+        hasMoreDMs: response.metadata.after !== null,
+        isLoading: false,
+      }));
     } catch (error) {
       console.error("Failed to fetch DMs:", error);
-      set({ directMessages: [] });
+      set({ directMessages: [], isLoading: false, hasMoreDMs: false });
     }
   },
 

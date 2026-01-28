@@ -105,7 +105,10 @@ class ApiClient {
     const data = await response.json();
 
     // Convert snake_case keys to camelCase
-    return convertKeysToCamelCase(data.data || data) as T;
+    const converted = convertKeysToCamelCase(data);
+
+    // Return full response if it has metadata (paginated), otherwise just data
+    return (converted.metadata ? converted : converted.data || converted) as T;
   }
 
   get<T>(path: string, params?: Record<string, string>): Promise<T> {

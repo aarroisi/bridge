@@ -5,6 +5,11 @@ defmodule BridgeWeb.ErrorJSON do
   See config/config.exs.
   """
 
+  # Render changeset errors
+  def render("error.json", %{changeset: changeset}) do
+    %{errors: translate_errors(changeset)}
+  end
+
   # If you want to customize a particular status code,
   # you may add your own clauses, such as:
   #
@@ -17,5 +22,13 @@ defmodule BridgeWeb.ErrorJSON do
   # "Not Found".
   def render(template, _assigns) do
     %{errors: %{detail: Phoenix.Controller.status_message_from_template(template)}}
+  end
+
+  defp translate_errors(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+      Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
+        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
+      end)
+    end)
   end
 end

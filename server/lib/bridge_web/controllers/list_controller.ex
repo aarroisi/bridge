@@ -3,58 +3,53 @@ defmodule BridgeWeb.ListController do
 
   alias Bridge.Lists
   alias Bridge.Lists.List
+  import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)
 
-  def index(conn, _params) do
-    lists = Lists.list_lists()
-    render(conn, :index, lists: lists)
+  def index(conn, params) do
+    workspace_id = conn.assigns.workspace_id
+
+    opts = build_pagination_opts(params)
+    page = Lists.list_lists(workspace_id, opts)
+
+    render(conn, :index, page: page)
   end
 
   def create(conn, %{"list" => list_params}) do
-    case Lists.create_list(list_params) do
-      {:ok, list} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, list: list)
+    workspace_id = conn.assigns.workspace_id
+    list_params = Map.put(list_params, "workspace_id", workspace_id)
 
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, list} <- Lists.create_list(list_params) do
+      conn
+      |> put_status(:created)
+      |> render(:show, list: list)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    list = Lists.get_list!(id)
-    render(conn, :show, list: list)
+    workspace_id = conn.assigns.workspace_id
+
+    with {:ok, list} <- Lists.get_list(id, workspace_id) do
+      render(conn, :show, list: list)
+    end
   end
 
   def update(conn, %{"id" => id, "list" => list_params}) do
-    list = Lists.get_list!(id)
+    workspace_id = conn.assigns.workspace_id
 
-    case Lists.update_list(list, list_params) do
-      {:ok, list} ->
-        render(conn, :show, list: list)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, list} <- Lists.get_list(id, workspace_id),
+         {:ok, list} <- Lists.update_list(list, list_params) do
+      render(conn, :show, list: list)
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    list = Lists.get_list!(id)
+    workspace_id = conn.assigns.workspace_id
 
-    case Lists.delete_list(list) do
-      {:ok, _list} ->
-        send_resp(conn, :no_content, "")
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, list} <- Lists.get_list(id, workspace_id),
+         {:ok, _list} <- Lists.delete_list(list) do
+      send_resp(conn, :no_content, "")
     end
   end
 end

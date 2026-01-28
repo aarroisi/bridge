@@ -13,18 +13,20 @@ defmodule Bridge.Lists do
   # ============================================================================
 
   @doc """
-  Returns the list of lists.
+  Returns the list of lists for a workspace.
 
   ## Examples
 
-      iex> list_lists()
+      iex> list_lists(workspace_id)
       [%List{}, ...]
 
   """
-  def list_lists do
+  def list_lists(workspace_id, opts \\ []) do
     List
+    |> where([l], l.workspace_id == ^workspace_id)
+    |> order_by([l], desc: l.id)
     |> preload([:project])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -36,67 +38,53 @@ defmodule Bridge.Lists do
       [%List{}, ...]
 
   """
-  def list_lists_by_project(project_id) do
+  def list_lists_by_project(project_id, opts \\ []) do
     List
     |> where([l], l.project_id == ^project_id)
+    |> order_by([l], desc: l.id)
     |> preload([:project])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred lists.
+  Returns the list of starred lists for a workspace.
 
   ## Examples
 
-      iex> list_starred_lists()
+      iex> list_starred_lists(workspace_id)
       [%List{}, ...]
 
   """
-  def list_starred_lists do
+  def list_starred_lists(workspace_id, opts \\ []) do
     List
-    |> where([l], l.starred == true)
+    |> where([l], l.starred == true and l.workspace_id == ^workspace_id)
+    |> order_by([l], desc: l.id)
     |> preload([:project])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Gets a single list.
+  Gets a single list within a workspace.
 
-  Returns `nil` if the List does not exist.
-
-  ## Examples
-
-      iex> get_list(123)
-      %List{}
-
-      iex> get_list(456)
-      nil
-
-  """
-  def get_list(id) do
-    List
-    |> preload([:project, tasks: [:assignee, :created_by]])
-    |> Repo.get(id)
-  end
-
-  @doc """
-  Gets a single list.
-
-  Raises `Ecto.NoResultsError` if the List does not exist.
+  Returns `{:ok, list}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
-      iex> get_list!(123)
-      %List{}
+      iex> get_list(id, workspace_id)
+      {:ok, %List{}}
 
-      iex> get_list!(456)
-      ** (Ecto.NoResultsError)
+      iex> get_list(456, workspace_id)
+      {:error, :not_found}
 
   """
-  def get_list!(id) do
-    List
-    |> preload([:project, tasks: [:assignee, :created_by]])
-    |> Repo.get!(id)
+  def get_list(id, workspace_id) do
+    case List
+         |> where([l], l.workspace_id == ^workspace_id)
+         |> preload([:project, tasks: [:assignee, :created_by]])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      list -> {:ok, list}
+    end
   end
 
   @doc """
@@ -182,21 +170,6 @@ defmodule Bridge.Lists do
   # ============================================================================
 
   @doc """
-  Returns the list of tasks.
-
-  ## Examples
-
-      iex> list_tasks()
-      [%Task{}, ...]
-
-  """
-  def list_tasks do
-    Task
-    |> preload([:list, :assignee, :created_by, :subtasks])
-    |> Repo.all()
-  end
-
-  @doc """
   Returns the list of tasks for a specific list.
 
   ## Examples
@@ -205,11 +178,12 @@ defmodule Bridge.Lists do
       [%Task{}, ...]
 
   """
-  def list_tasks(list_id) do
+  def list_tasks(list_id, opts \\ []) when is_binary(list_id) do
     Task
     |> where([t], t.list_id == ^list_id)
+    |> order_by([t], desc: t.id)
     |> preload([:list, :assignee, :created_by, subtasks: [:assignee, :created_by]])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -264,41 +238,24 @@ defmodule Bridge.Lists do
   @doc """
   Gets a single task.
 
-  Returns `nil` if the Task does not exist.
+  Returns `{:ok, task}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
       iex> get_task(123)
-      %Task{}
+      {:ok, %Task{}}
 
       iex> get_task(456)
-      nil
+      {:error, :not_found}
 
   """
   def get_task(id) do
-    Task
-    |> preload([:list, :assignee, :created_by, subtasks: [:assignee, :created_by]])
-    |> Repo.get(id)
-  end
-
-  @doc """
-  Gets a single task.
-
-  Raises `Ecto.NoResultsError` if the Task does not exist.
-
-  ## Examples
-
-      iex> get_task!(123)
-      %Task{}
-
-      iex> get_task!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_task!(id) do
-    Task
-    |> preload([:list, :assignee, :created_by, subtasks: [:assignee, :created_by]])
-    |> Repo.get!(id)
+    case Task
+         |> preload([:list, :assignee, :created_by, subtasks: [:assignee, :created_by]])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      task -> {:ok, task}
+    end
   end
 
   @doc """
@@ -477,21 +434,24 @@ defmodule Bridge.Lists do
   @doc """
   Gets a single subtask.
 
-  Raises `Ecto.NoResultsError` if the Subtask does not exist.
+  Returns `{:ok, subtask}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
-      iex> get_subtask!(123)
-      %Subtask{}
+      iex> get_subtask(123)
+      {:ok, %Subtask{}}
 
-      iex> get_subtask!(456)
-      ** (Ecto.NoResultsError)
+      iex> get_subtask(456)
+      {:error, :not_found}
 
   """
-  def get_subtask!(id) do
-    Subtask
-    |> preload([:task, :assignee, :created_by])
-    |> Repo.get!(id)
+  def get_subtask(id) do
+    case Subtask
+         |> preload([:task, :assignee, :created_by])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      subtask -> {:ok, subtask}
+    end
   end
 
   @doc """

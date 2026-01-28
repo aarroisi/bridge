@@ -3,61 +3,59 @@ defmodule BridgeWeb.DirectMessageController do
 
   alias Bridge.Chat
   alias Bridge.Chat.DirectMessage
+  import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)
 
-  def index(conn, _params) do
-    direct_messages = Chat.list_direct_messages()
-    render(conn, :index, direct_messages: direct_messages)
+  def index(conn, params) do
+    workspace_id = conn.assigns.workspace_id
+
+    opts = build_pagination_opts(params)
+    page = Chat.list_direct_messages(workspace_id, opts)
+
+    render(conn, :index, page: page)
   end
 
   def create(conn, %{"direct_message" => direct_message_params}) do
     current_user = conn.assigns.current_user
-    direct_message_params_with_user = Map.put(direct_message_params, "user1_id", current_user.id)
+    workspace_id = conn.assigns.workspace_id
 
-    case Chat.create_direct_message(direct_message_params_with_user) do
-      {:ok, direct_message} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, direct_message: direct_message)
+    direct_message_params_with_user =
+      direct_message_params
+      |> Map.put("user1_id", current_user.id)
+      |> Map.put("workspace_id", workspace_id)
 
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, direct_message} <- Chat.create_direct_message(direct_message_params_with_user) do
+      conn
+      |> put_status(:created)
+      |> render(:show, direct_message: direct_message)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    direct_message = Chat.get_direct_message!(id)
-    render(conn, :show, direct_message: direct_message)
+    workspace_id = conn.assigns.workspace_id
+
+    with {:ok, direct_message} <- Chat.get_direct_message(id, workspace_id) do
+      render(conn, :show, direct_message: direct_message)
+    end
   end
 
   def update(conn, %{"id" => id, "direct_message" => direct_message_params}) do
-    direct_message = Chat.get_direct_message!(id)
+    workspace_id = conn.assigns.workspace_id
 
-    case Chat.update_direct_message(direct_message, direct_message_params) do
-      {:ok, direct_message} ->
-        render(conn, :show, direct_message: direct_message)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, direct_message} <- Chat.get_direct_message(id, workspace_id),
+         {:ok, direct_message} <-
+           Chat.update_direct_message(direct_message, direct_message_params) do
+      render(conn, :show, direct_message: direct_message)
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    direct_message = Chat.get_direct_message!(id)
+    workspace_id = conn.assigns.workspace_id
 
-    case Chat.delete_direct_message(direct_message) do
-      {:ok, _direct_message} ->
-        send_resp(conn, :no_content, "")
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, direct_message} <- Chat.get_direct_message(id, workspace_id),
+         {:ok, _direct_message} <- Chat.delete_direct_message(direct_message) do
+      send_resp(conn, :no_content, "")
     end
   end
 end

@@ -24,34 +24,23 @@ defmodule Bridge.Accounts do
   @doc """
   Gets a single user.
 
-  Returns `nil` if the User does not exist.
+  Returns `{:ok, user}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
       iex> get_user(123)
-      %User{}
+      {:ok, %User{}}
 
       iex> get_user(456)
-      nil
+      {:error, :not_found}
 
   """
-  def get_user(id), do: Repo.get(User, id)
-
-  @doc """
-  Gets a single user.
-
-  Raises `Ecto.NoResultsError` if the User does not exist.
-
-  ## Examples
-
-      iex> get_user!(123)
-      %User{}
-
-      iex> get_user!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_user!(id), do: Repo.get!(User, id)
+  def get_user(id) do
+    case Repo.get(User, id) do
+      nil -> {:error, :not_found}
+      user -> {:ok, user}
+    end
+  end
 
   @doc """
   Gets a single user by email.
@@ -166,8 +155,27 @@ defmodule Bridge.Accounts do
 
   # Workspace functions
 
-  def get_workspace(id), do: Repo.get(Workspace, id)
-  def get_workspace!(id), do: Repo.get!(Workspace, id)
+  @doc """
+  Gets a single workspace.
+
+  Returns `{:ok, workspace}` if found, `{:error, :not_found}` otherwise.
+
+  ## Examples
+
+      iex> get_workspace(123)
+      {:ok, %Workspace{}}
+
+      iex> get_workspace(456)
+      {:error, :not_found}
+
+  """
+  def get_workspace(id) do
+    case Repo.get(Workspace, id) do
+      nil -> {:error, :not_found}
+      workspace -> {:ok, workspace}
+    end
+  end
+
   def get_workspace_by_slug(slug), do: Repo.get_by(Workspace, slug: slug)
 
   def create_workspace(attrs) do

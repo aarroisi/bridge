@@ -114,6 +114,18 @@ export interface Message {
   updatedAt: string;
 }
 
+// Pagination types
+export interface PaginationMetadata {
+  after: string | null;
+  before: string | null;
+  limit: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  metadata: PaginationMetadata;
+}
+
 // View modes
 export type ViewMode = "board" | "list";
 

@@ -1,0 +1,189 @@
+import { useState, useRef, useEffect } from "react";
+import { Quote, ArrowDown } from "lucide-react";
+import { Message } from "./Message";
+import { DiscussionThread } from "./DiscussionThread";
+import { CommentEditor } from "./CommentEditor";
+import { Message as MessageType } from "@/types";
+
+interface DiscussionViewProps {
+  messages: MessageType[];
+  onSendMessage: (text: string, quoteId?: string) => Promise<void>;
+  onSendReply: (
+    parentId: string,
+    text: string,
+    quoteId?: string,
+  ) => Promise<void>;
+  placeholder?: string;
+  emptyStateTitle?: string;
+  emptyStateDescription?: string;
+  showJumpToBottom?: boolean;
+  className?: string;
+  openThread?: MessageType | null;
+  onOpenThread?: (message: MessageType | null) => void;
+}
+
+export function DiscussionView({
+  messages,
+  onSendMessage,
+  onSendReply,
+  placeholder = "Add a comment...",
+  emptyStateTitle = "No comments yet",
+  emptyStateDescription = "Be the first to add one below.",
+  showJumpToBottom = true,
+  className = "",
+  openThread: externalOpenThread,
+  onOpenThread,
+}: DiscussionViewProps) {
+  const [internalOpenThread, setInternalOpenThread] =
+    useState<MessageType | null>(null);
+  const openThread =
+    externalOpenThread !== undefined ? externalOpenThread : internalOpenThread;
+  const setOpenThread = onOpenThread || setInternalOpenThread;
+  const [quotingMessage, setQuotingMessage] = useState<MessageType | null>(
+    null,
+  );
+  const [newComment, setNewComment] = useState("");
+  const [showJumpButton, setShowJumpButton] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const topLevelMessages = messages.filter((m) => !m.parentId);
+  const threadMessages = messages.filter((m) => m.parentId);
+
+  const getThreadReplies = (messageId: string) => {
+    return threadMessages.filter((m) => m.parentId === messageId);
+  };
+
+  const handleQuotedClick = (messageId: string) => {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      messageElement.classList.add("ring-2", "ring-blue-500/50");
+      setTimeout(() => {
+        messageElement.classList.remove("ring-2", "ring-blue-500/50");
+      }, 2000);
+    }
+  };
+
+  const handleQuote = (message: MessageType) => {
+    setQuotingMessage(message);
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      await onSendMessage(newComment, quotingMessage?.id);
+      setNewComment("");
+      setQuotingMessage(null);
+
+      // Scroll to bottom after comment is added
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+    }
+  };
+
+  const handleJumpToBottom = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Monitor scroll position
+  useEffect(() => {
+    if (!showJumpToBottom) return;
+
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      setShowJumpButton(distanceFromBottom > 200);
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
+  }, [messages, showJumpToBottom]);
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto relative" ref={scrollContainerRef}>
+        <div className="px-8 py-6 max-w-7xl mx-auto w-full">
+          {topLevelMessages.length > 0 ? (
+            <div className="space-y-1">
+              {topLevelMessages.map((message) => {
+                const replies = getThreadReplies(message.id);
+                return (
+                  <div key={message.id} id={`message-${message.id}`}>
+                    <Message
+                      message={message}
+                      onReply={() => setOpenThread(message)}
+                      onQuote={() => handleQuote(message)}
+                      onQuotedClick={handleQuotedClick}
+                    />
+                    {replies.length > 0 && (
+                      <button
+                        onClick={() => setOpenThread(message)}
+                        className="ml-14 text-xs text-blue-400 hover:underline"
+                      >
+                        {replies.length}{" "}
+                        {replies.length === 1 ? "reply" : "replies"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-dark-surface flex items-center justify-center mb-4">
+                <Quote size={24} className="text-dark-text-muted" />
+              </div>
+              <p className="text-dark-text-muted text-sm font-medium mb-1">
+                {emptyStateTitle}
+              </p>
+              <p className="text-dark-text-muted text-sm">
+                {emptyStateDescription}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Jump to bottom button */}
+      {showJumpToBottom && showJumpButton && (
+        <button
+          onClick={handleJumpToBottom}
+          className="absolute right-8 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-all z-10"
+          style={{ bottom: quotingMessage ? "200px" : "140px" }}
+          title="Jump to bottom"
+        >
+          <ArrowDown size={20} />
+        </button>
+      )}
+
+      <div className="border-t border-dark-border bg-dark-bg p-4 max-w-7xl mx-auto w-full">
+        <CommentEditor
+          value={newComment}
+          onChange={setNewComment}
+          onSubmit={handleAddComment}
+          placeholder={placeholder}
+          quotingMessage={quotingMessage}
+          onCancelQuote={() => setQuotingMessage(null)}
+        />
+      </div>
+    </div>
+  );
+}

@@ -3,16 +3,22 @@ defmodule BridgeWeb.DocController do
 
   alias Bridge.Docs
   alias Bridge.Docs.Doc
+  import BridgeWeb.PaginationHelpers
 
   action_fallback(BridgeWeb.FallbackController)
 
-  def index(conn, _params) do
-    docs = Docs.list_docs()
-    render(conn, :index, docs: docs)
+  def index(conn, params) do
+    workspace_id = conn.assigns.workspace_id
+
+    opts = build_pagination_opts(params)
+    page = Docs.list_docs(workspace_id, opts)
+
+    render(conn, :index, page: page)
   end
 
   def create(conn, params) do
     current_user = conn.assigns.current_user
+    workspace_id = conn.assigns.workspace_id
 
     # Handle both nested and flat params
     doc_params =
@@ -21,30 +27,30 @@ defmodule BridgeWeb.DocController do
         flat_params -> flat_params
       end
 
-    # Add author_id
-    doc_params = Map.put(doc_params, "author_id", current_user.id)
+    # Add author_id and workspace_id
+    doc_params =
+      doc_params
+      |> Map.put("author_id", current_user.id)
+      |> Map.put("workspace_id", workspace_id)
 
-    case Docs.create_doc(doc_params) do
-      {:ok, doc} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, doc: doc)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, doc} <- Docs.create_doc(doc_params) do
+      conn
+      |> put_status(:created)
+      |> render(:show, doc: doc)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    doc = Docs.get_doc!(id)
-    render(conn, :show, doc: doc)
+    workspace_id = conn.assigns.workspace_id
+
+    with {:ok, doc} <- Docs.get_doc(id, workspace_id) do
+      render(conn, :show, doc: doc)
+    end
   end
 
   def update(conn, params) do
+    workspace_id = conn.assigns.workspace_id
     id = params["id"]
-    doc = Docs.get_doc!(id)
 
     # Handle both nested and flat params
     doc_params =
@@ -53,28 +59,18 @@ defmodule BridgeWeb.DocController do
         flat_params -> Map.drop(flat_params, ["id"])
       end
 
-    case Docs.update_doc(doc, doc_params) do
-      {:ok, doc} ->
-        render(conn, :show, doc: doc)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, doc} <- Docs.get_doc(id, workspace_id),
+         {:ok, doc} <- Docs.update_doc(doc, doc_params) do
+      render(conn, :show, doc: doc)
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    doc = Docs.get_doc!(id)
+    workspace_id = conn.assigns.workspace_id
 
-    case Docs.delete_doc(doc) do
-      {:ok, _doc} ->
-        send_resp(conn, :no_content, "")
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:error, changeset: changeset)
+    with {:ok, doc} <- Docs.get_doc(id, workspace_id),
+         {:ok, _doc} <- Docs.delete_doc(doc) do
+      send_resp(conn, :no_content, "")
     end
   end
 end

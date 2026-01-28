@@ -60,8 +60,13 @@ export function InnerSidebar() {
     }
   }, [location.pathname, setActiveItem]);
 
-  // Helper to navigate to an item
-  const navigateToItem = (type: string, id: string) => {
+  // Helper to navigate to an item with guard check
+  const navigateToItem = async (type: string, id: string) => {
+    const { navigationGuard } = useUIStore.getState();
+    if (navigationGuard) {
+      const canNavigate = await navigationGuard();
+      if (!canNavigate) return;
+    }
     setActiveItem({ type: type as any, id });
     navigate(`/${type}/${id}`);
   };
@@ -88,29 +93,34 @@ export function InnerSidebar() {
 
   const handleCreateItem = async () => {
     console.log("Creating item for category:", activeCategory);
+
+    // Check navigation guard before creating
+    const { navigationGuard } = useUIStore.getState();
+    if (navigationGuard) {
+      const canNavigate = await navigationGuard();
+      if (!canNavigate) return;
+    }
+
     try {
       switch (activeCategory) {
         case "projects":
           const project = await createProject("New Project");
           success("Project created successfully");
-          navigateToItem("projects", project.id);
+          await navigateToItem("projects", project.id);
           break;
         case "lists":
           const list = await createList("New List");
           success("List created successfully");
-          navigateToItem("lists", list.id);
+          await navigateToItem("lists", list.id);
           break;
         case "docs":
-          console.log("Creating doc...");
-          const doc = await createDoc("Untitled Document", "");
-          console.log("Doc created:", doc);
-          success("Document created successfully");
-          navigateToItem("docs", doc.id);
+          navigate("/docs/new");
+          setActiveItem({ type: "docs", id: "new" });
           break;
         case "channels":
           const channel = await createChannel("new-channel");
           success("Channel created successfully");
-          navigateToItem("channels", channel.id);
+          await navigateToItem("channels", channel.id);
           break;
       }
     } catch (err) {

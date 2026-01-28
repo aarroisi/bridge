@@ -1,5 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import {
+  useParams,
+  useSearchParams,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -19,21 +24,30 @@ import {
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
 import { Message } from "@/components/features/Message";
-import { ThreadPanel } from "@/components/features/ThreadPanel";
+import { DiscussionThread } from "@/components/features/DiscussionThread";
+import { CommentEditor } from "@/components/features/CommentEditor";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useToastStore } from "@/stores/toastStore";
-import { Message as MessageType } from "@/types";
+import { Message as MessageType, Doc } from "@/types";
 import { clsx } from "clsx";
 
 export function DocView() {
   const { id: docId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { docs, getDoc, updateDoc } = useDocStore();
+  const { docs, getDoc, updateDoc, createDoc } = useDocStore();
   const { messages, fetchMessages, sendMessage } = useChatStore();
+  const { setNavigationGuard } = useUIStore();
   const { success, error } = useToastStore();
-  const [isEditing, setIsEditing] = useState(false);
+  const isNewDoc = docId === "new";
+
+  // Get initial edit mode from URL
+  const editParam = searchParams.get("edit");
+  const [isEditing, setIsEditing] = useState(isNewDoc || editParam === "true");
   const [openThread, setOpenThread] = useState<MessageType | null>(null);
   const [newComment, setNewComment] = useState("");
   const [quotingMessage, setQuotingMessage] = useState<MessageType | null>(
@@ -42,10 +56,15 @@ export function DocView() {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedContent, setEditedContent] = useState("");
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
-  const commentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null,
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const doc = docs.find((d) => d.id === docId);
-  const docComments = docId ? messages[`doc:${docId}`] || [] : [];
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const doc = isNewDoc ? null : docs.find((d) => d.id === docId);
+  const docComments = docId && !isNewDoc ? messages[`doc:${docId}`] || [] : [];
   const topLevelComments = docComments.filter((c) => !c.parentId);
   const threadMessages = docComments.filter((c) => c.parentId);
 
@@ -65,13 +84,146 @@ export function DocView() {
     },
   });
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = () => {
+    if (!isEditing) return false;
+    if (isNewDoc) {
+      return editedTitle.trim() !== "" || editedContent.trim() !== "";
+    }
+    return (
+      editedTitle.trim() !== (doc?.title?.trim() || "") ||
+      editedContent !== (doc?.content || "")
+    );
+  };
+
+  // Set up navigation guard
   useEffect(() => {
-    if (docId) {
+    const guard = async (): Promise<boolean> => {
+      if (hasUnsavedChanges()) {
+        return new Promise((resolve) => {
+          setPendingNavigation(location.pathname);
+          setShowUnsavedModal(true);
+          // Store resolve function to be called by modal actions
+          (window as any).__navResolve = resolve;
+        });
+      }
+      return true;
+    };
+
+    setNavigationGuard(guard);
+    return () => setNavigationGuard(null);
+  }, [
+    isEditing,
+    editedTitle,
+    editedContent,
+    doc,
+    isNewDoc,
+    location.pathname,
+    setNavigationGuard,
+  ]);
+
+  // Warn before leaving page with unsaved changes (browser navigation)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isEditing, editedTitle, editedContent, doc, isNewDoc]);
+
+  const handleDiscardChanges = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+    if ((window as any).__navResolve) {
+      (window as any).__navResolve(true);
+      delete (window as any).__navResolve;
+    }
+  };
+
+  const handleCancelNavigation = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+    if ((window as any).__navResolve) {
+      (window as any).__navResolve(false);
+      delete (window as any).__navResolve;
+    }
+  };
+
+  const handleSaveAndNavigate = async () => {
+    try {
+      // Call the actual save logic directly without confirmation
+      // (user already confirmed via the unsaved changes modal)
+      await performSave();
+      setShowUnsavedModal(false);
+      setPendingNavigation(null);
+      if ((window as any).__navResolve) {
+        (window as any).__navResolve(true);
+        delete (window as any).__navResolve;
+      }
+    } catch (err) {
+      // Error is already handled in performSave
+      if ((window as any).__navResolve) {
+        (window as any).__navResolve(false);
+        delete (window as any).__navResolve;
+      }
+    }
+  };
+
+  const performSave = async () => {
+    if (!editedTitle.trim()) {
+      error("Document title cannot be empty");
+      throw new Error("Title is empty");
+    }
+
+    try {
+      if (isNewDoc) {
+        // Create new document
+        const newDoc = await createDoc(editedTitle.trim(), editedContent || "");
+        success("Document created successfully");
+        navigate(`/docs/${newDoc.id}`);
+      } else {
+        // Update existing document
+        if (!docId) return;
+
+        const updates: Partial<Doc> = {};
+
+        if (editedTitle.trim() !== doc?.title) {
+          updates.title = editedTitle.trim();
+        }
+
+        if (editedContent !== doc?.content) {
+          updates.content = editedContent;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await updateDoc(docId, updates);
+          success("Document saved successfully");
+        }
+
+        handleExitEditMode();
+      }
+    } catch (err) {
+      console.error("Failed to save doc:", err);
+      error("Error saving document: " + (err as Error).message);
+      throw err;
+    }
+  };
+
+  useEffect(() => {
+    if (docId && !isNewDoc) {
       getDoc(docId);
       fetchMessages("doc", docId);
       // Clear state when navigating to a different doc
       setQuotingMessage(null);
       setNewComment("");
+
+      // Exit edit mode unless URL says to edit
+      const editParam = searchParams.get("edit");
+      setIsEditing(editParam === "true");
 
       // Restore thread from URL if present
       const threadId = searchParams.get("thread");
@@ -81,8 +233,19 @@ export function DocView() {
       } else {
         setOpenThread(null);
       }
+    } else if (isNewDoc) {
+      // Clear state for new document
+      setEditedTitle("");
+      setEditedContent("");
+      setQuotingMessage(null);
+      setNewComment("");
+      setOpenThread(null);
+      setIsEditing(true); // Always in edit mode for new docs
+      if (editor) {
+        editor.commands.setContent("");
+      }
     }
-  }, [docId, getDoc, fetchMessages]);
+  }, [docId, isNewDoc, getDoc, fetchMessages, editor, searchParams]);
 
   useEffect(() => {
     if (editor && doc) {
@@ -91,6 +254,15 @@ export function DocView() {
       setEditedContent(doc.content);
     }
   }, [doc, editor]);
+
+  // Focus title input for new docs
+  useEffect(() => {
+    if (isNewDoc && titleInputRef.current) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isNewDoc]);
 
   // Restore thread from URL when messages are loaded
   useEffect(() => {
@@ -129,30 +301,42 @@ export function DocView() {
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [docComments]); // Re-check when comments change
 
+  const handleEnterEditMode = () => {
+    setIsEditing(true);
+    const params = new URLSearchParams(searchParams);
+    params.set("edit", "true");
+    setSearchParams(params);
+  };
+
+  const handleExitEditMode = () => {
+    setIsEditing(false);
+    const params = new URLSearchParams(searchParams);
+    params.delete("edit");
+    setSearchParams(params);
+  };
+
   const handleSave = async () => {
-    if (!docId) return;
-
-    try {
-      const updates: Partial<Doc> = {};
-
-      if (editedTitle !== doc?.title) {
-        updates.title = editedTitle;
-      }
-
-      if (editedContent !== doc?.content) {
-        updates.content = editedContent;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        await updateDoc(docId, updates);
-        success("Document saved successfully");
-      }
-
-      setIsEditing(false);
-    } catch (err) {
-      console.error("Failed to save doc:", err);
-      error("Error saving document: " + (err as Error).message);
+    // Validate title is not empty
+    if (!editedTitle.trim()) {
+      error("Document title cannot be empty");
+      return;
     }
+
+    // Show confirmation modal before saving
+    setShowSaveConfirmModal(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowSaveConfirmModal(false);
+    try {
+      await performSave();
+    } catch (err) {
+      // Error already handled in performSave
+    }
+  };
+
+  const handleCancelSave = () => {
+    setShowSaveConfirmModal(false);
   };
 
   const handleJumpToBottom = () => {
@@ -228,7 +412,7 @@ export function DocView() {
     }
   };
 
-  if (!doc) {
+  if (!doc && !isNewDoc) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <p className="text-dark-text-muted">Select a doc to view</p>
@@ -244,53 +428,95 @@ export function DocView() {
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div className="px-8 py-6 border-b border-dark-border max-w-7xl mx-auto w-full">
-          <div className="flex items-start justify-between mb-4">
+          <div
+            className={clsx(
+              "flex items-center justify-between",
+              !isNewDoc && doc && "mb-3",
+            )}
+          >
             <input
+              ref={titleInputRef}
               type="text"
-              value={isEditing ? editedTitle : doc.title}
+              value={isEditing ? editedTitle : doc?.title || ""}
               onChange={(e) => setEditedTitle(e.target.value)}
               disabled={!isEditing}
               className={clsx(
-                "text-3xl font-bold text-dark-text bg-transparent border-none outline-none flex-1",
+                "text-3xl font-bold text-dark-text bg-transparent border-none outline-none flex-1 min-w-0",
                 !isEditing && "cursor-default",
               )}
-              placeholder="Untitled Document"
+              placeholder="Add a title..."
             />
-            <button
-              onClick={isEditing ? handleSave : () => setIsEditing(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-            >
-              {isEditing ? (
+            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+              {isEditing && hasUnsavedChanges() && (
                 <>
-                  <Check size={16} />
-                  <span>Done</span>
-                </>
-              ) : (
-                <>
-                  <Edit3 size={16} />
-                  <span>Edit</span>
+                  <span className="hidden lg:flex text-sm text-amber-500 items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    Unsaved changes
+                  </span>
+                  <span
+                    className="lg:hidden w-2 h-2 min-w-[0.5rem] min-h-[0.5rem] rounded-full bg-amber-500 animate-pulse ml-2"
+                    title="Unsaved changes"
+                  ></span>
                 </>
               )}
-            </button>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-dark-text-muted">
-            <div className="flex items-center gap-2">
-              <Avatar name={doc.authorName} size="xs" />
-              <span>{doc.authorName}</span>
+              {isNewDoc ? (
+                <button
+                  onClick={handleSave}
+                  disabled={!editedTitle.trim()}
+                  className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  title="Save"
+                >
+                  <Check size={16} className="flex-shrink-0" />
+                  <span className="hidden lg:inline whitespace-nowrap">
+                    Save
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={isEditing ? handleSave : handleEnterEditMode}
+                  disabled={isEditing && !editedTitle.trim()}
+                  className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  title={isEditing ? "Save" : "Edit"}
+                >
+                  {isEditing ? (
+                    <>
+                      <Check size={16} className="flex-shrink-0" />
+                      <span className="hidden lg:inline whitespace-nowrap">
+                        Save
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 size={16} className="flex-shrink-0" />
+                      <span className="hidden lg:inline whitespace-nowrap">
+                        Edit
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-            <span>•</span>
-            <span>
-              Created {format(new Date(doc.insertedAt), "MMM d, yyyy")}
-            </span>
-            {doc.updatedAt !== doc.insertedAt && (
-              <>
-                <span>•</span>
-                <span>
-                  Updated {format(new Date(doc.updatedAt), "MMM d, yyyy")}
-                </span>
-              </>
-            )}
           </div>
+          {!isNewDoc && doc && (
+            <div className="flex items-center gap-3 text-sm text-dark-text-muted">
+              <div className="flex items-center gap-2">
+                <Avatar name={doc.authorName} size="xs" />
+                <span>{doc.authorName}</span>
+              </div>
+              <span>•</span>
+              <span>
+                Created {format(new Date(doc.insertedAt), "MMM d, yyyy")}
+              </span>
+              {doc.updatedAt !== doc.insertedAt && (
+                <>
+                  <span>•</span>
+                  <span>
+                    Updated {format(new Date(doc.updatedAt), "MMM d, yyyy")}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {isEditing && editor && (
@@ -466,118 +692,53 @@ export function DocView() {
 
         {!isEditing && (
           <div className="border-t border-dark-border bg-dark-bg p-4 max-w-7xl mx-auto w-full">
-            <div className="border border-dark-border rounded-lg bg-dark-surface hover:border-gray-600 focus-within:border-blue-500 transition-colors">
-              <div className="flex items-center gap-1 px-3 py-2 border-b border-dark-border">
-                <button
-                  className="p-1.5 rounded hover:bg-dark-bg transition-colors text-dark-text-muted hover:text-dark-text"
-                  title="Bold"
-                >
-                  <Bold size={18} />
-                </button>
-                <button
-                  className="p-1.5 rounded hover:bg-dark-bg transition-colors text-dark-text-muted hover:text-dark-text"
-                  title="Italic"
-                >
-                  <Italic size={18} />
-                </button>
-                <div className="w-px h-5 bg-dark-border mx-1" />
-                <button
-                  className="p-1.5 rounded hover:bg-dark-bg transition-colors text-dark-text-muted hover:text-dark-text"
-                  title="Bullet List"
-                >
-                  <List size={18} />
-                </button>
-                <button
-                  className="p-1.5 rounded hover:bg-dark-bg transition-colors text-dark-text-muted hover:text-dark-text"
-                  title="Numbered List"
-                >
-                  <ListOrdered size={18} />
-                </button>
-                <button
-                  className="p-1.5 rounded hover:bg-dark-bg transition-colors text-dark-text-muted hover:text-dark-text"
-                  title="Quote"
-                >
-                  <Quote size={18} />
-                </button>
-              </div>
-              {quotingMessage && (
-                <div className="px-3 py-2 border-b border-dark-border bg-dark-bg">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 text-sm">
-                      <div className="flex items-center gap-2 text-dark-text-muted mb-1">
-                        <Quote size={14} />
-                        <span>Quoting {quotingMessage.userName}</span>
-                      </div>
-                      <p className="text-dark-text-muted truncate">
-                        {quotingMessage.text}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setQuotingMessage(null)}
-                      className="p-1 rounded hover:bg-dark-surface transition-colors text-dark-text-muted hover:text-dark-text"
-                      title="Cancel quote"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center gap-2 px-3 py-3">
-                <textarea
-                  ref={commentTextareaRef}
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAddComment();
-                    }
-                  }}
-                  placeholder="Add a comment..."
-                  rows={1}
-                  className="flex-1 bg-transparent text-dark-text placeholder:text-dark-text-muted focus:outline-none resize-none leading-6 text-base"
-                  style={{ minHeight: "24px", maxHeight: "200px" }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = "24px";
-                    target.style.height = target.scrollHeight + "px";
-                  }}
-                />
-                <button
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                  title="Send"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    className="transform rotate-45"
-                  >
-                    <path
-                      d="M2 14L14 2M14 2H6M14 2V10"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <CommentEditor
+              value={newComment}
+              onChange={setNewComment}
+              onSubmit={handleAddComment}
+              placeholder="Add a comment..."
+              quotingMessage={quotingMessage}
+              onCancelQuote={() => setQuotingMessage(null)}
+            />
           </div>
         )}
       </div>
 
       {openThread && (
-        <ThreadPanel
+        <DiscussionThread
           parentMessage={openThread}
           threadMessages={threadMessages}
           onClose={handleCloseThread}
+          onSendReply={async (parentId, text, quoteId) => {
+            if (!docId) return;
+            await sendMessage("doc", docId, text, parentId, quoteId);
+          }}
         />
       )}
+
+      <ConfirmModal
+        isOpen={showUnsavedModal}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Do you want to save them before leaving?"
+        confirmText="Save & Leave"
+        cancelText="Stay"
+        discardText="Discard Changes"
+        confirmVariant="primary"
+        onConfirm={handleSaveAndNavigate}
+        onCancel={handleCancelNavigation}
+        onDiscard={handleDiscardChanges}
+      />
+
+      <ConfirmModal
+        isOpen={showSaveConfirmModal}
+        title="Confirm Save"
+        message={`Are you sure you want to save ${isNewDoc ? "this new document" : "changes to this document"}?`}
+        confirmText="Save"
+        cancelText="Cancel"
+        confirmVariant="primary"
+        onConfirm={handleConfirmSave}
+        onCancel={handleCancelSave}
+      />
     </div>
   );
 }

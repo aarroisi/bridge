@@ -4,6 +4,17 @@ defmodule BridgeWeb.ListJSON do
   @doc """
   Renders a list of lists.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(list <- page.entries, do: data(list)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{lists: lists}) do
     %{data: for(list <- lists, do: data(list))}
   end

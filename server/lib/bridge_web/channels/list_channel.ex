@@ -7,15 +7,17 @@ defmodule BridgeWeb.ListChannel do
   @impl true
   def join("list:" <> list_id, _payload, socket) do
     # Verify that the list exists and user has access
-    case Lists.get_list(list_id) do
-      nil ->
-        {:error, %{reason: "list not found"}}
+    workspace_id = socket.assigns.workspace_id
 
-      _list ->
+    case Lists.get_list(list_id, workspace_id) do
+      {:ok, _list} ->
         # You could add additional authorization checks here
         # For now, we allow any authenticated user to join
         socket = assign(socket, :list_id, list_id)
         {:ok, socket}
+
+      {:error, :not_found} ->
+        {:error, %{reason: "list not found"}}
     end
   end
 
@@ -47,10 +49,7 @@ defmodule BridgeWeb.ListChannel do
   @impl true
   def handle_in("update_task", %{"task_id" => task_id, "updates" => updates}, socket) do
     case Lists.get_task(task_id) do
-      nil ->
-        {:reply, {:error, %{reason: "task not found"}}, socket}
-
-      task ->
+      {:ok, task} ->
         case Lists.update_task(task, updates) do
           {:ok, updated_task} ->
             # Preload associations for broadcasting
@@ -63,16 +62,16 @@ defmodule BridgeWeb.ListChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "task not found"}}, socket}
     end
   end
 
   @impl true
   def handle_in("delete_task", %{"task_id" => task_id}, socket) do
     case Lists.get_task(task_id) do
-      nil ->
-        {:reply, {:error, %{reason: "task not found"}}, socket}
-
-      task ->
+      {:ok, task} ->
         case Lists.delete_task(task) do
           {:ok, _deleted_task} ->
             # Broadcast the deletion to all subscribers
@@ -82,6 +81,9 @@ defmodule BridgeWeb.ListChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "task not found"}}, socket}
     end
   end
 

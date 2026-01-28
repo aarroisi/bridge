@@ -4,6 +4,17 @@ defmodule BridgeWeb.DocJSON do
   @doc """
   Renders a list of docs.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(doc <- page.entries, do: data(doc)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{docs: docs}) do
     %{data: for(doc <- docs, do: data(doc))}
   end

@@ -19,4 +19,12 @@ defmodule BridgeWeb.FallbackController do
     |> put_view(json: BridgeWeb.ErrorJSON)
     |> render(:"404")
   end
+
+  # Handle Ecto.NoResultsError (raised by get! functions)
+  def call(conn, {:error, %Ecto.NoResultsError{}}) do
+    conn
+    |> put_status(:not_found)
+    |> put_view(json: BridgeWeb.ErrorJSON)
+    |> render(:"404")
+  end
 end

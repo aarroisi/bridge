@@ -13,18 +13,20 @@ defmodule Bridge.Chat do
   # ============================================================================
 
   @doc """
-  Returns the list of channels.
+  Returns the list of channels for a workspace.
 
   ## Examples
 
-      iex> list_channels()
+      iex> list_channels(workspace_id)
       [%Channel{}, ...]
 
   """
-  def list_channels do
+  def list_channels(workspace_id, opts \\ []) do
     Channel
+    |> where([c], c.workspace_id == ^workspace_id)
+    |> order_by([c], desc: c.id)
     |> preload([:project])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -36,67 +38,53 @@ defmodule Bridge.Chat do
       [%Channel{}, ...]
 
   """
-  def list_channels_by_project(project_id) do
+  def list_channels_by_project(project_id, opts \\ []) do
     Channel
     |> where([c], c.project_id == ^project_id)
+    |> order_by([c], desc: c.id)
     |> preload([:project])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred channels.
+  Returns the list of starred channels for a workspace.
 
   ## Examples
 
-      iex> list_starred_channels()
+      iex> list_starred_channels(workspace_id)
       [%Channel{}, ...]
 
   """
-  def list_starred_channels do
+  def list_starred_channels(workspace_id, opts \\ []) do
     Channel
-    |> where([c], c.starred == true)
+    |> where([c], c.starred == true and c.workspace_id == ^workspace_id)
+    |> order_by([c], desc: c.id)
     |> preload([:project])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Gets a single channel.
+  Gets a single channel within a workspace.
 
-  Returns `nil` if the Channel does not exist.
-
-  ## Examples
-
-      iex> get_channel(123)
-      %Channel{}
-
-      iex> get_channel(456)
-      nil
-
-  """
-  def get_channel(id) do
-    Channel
-    |> preload([:project])
-    |> Repo.get(id)
-  end
-
-  @doc """
-  Gets a single channel.
-
-  Raises `Ecto.NoResultsError` if the Channel does not exist.
+  Returns `{:ok, channel}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
-      iex> get_channel!(123)
-      %Channel{}
+      iex> get_channel(id, workspace_id)
+      {:ok, %Channel{}}
 
-      iex> get_channel!(456)
-      ** (Ecto.NoResultsError)
+      iex> get_channel(456, workspace_id)
+      {:error, :not_found}
 
   """
-  def get_channel!(id) do
-    Channel
-    |> preload([:project])
-    |> Repo.get!(id)
+  def get_channel(id, workspace_id) do
+    case Channel
+         |> where([c], c.workspace_id == ^workspace_id)
+         |> preload([:project])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      channel -> {:ok, channel}
+    end
   end
 
   @doc """
@@ -182,18 +170,20 @@ defmodule Bridge.Chat do
   # ============================================================================
 
   @doc """
-  Returns the list of direct messages.
+  Returns the list of direct messages for a workspace.
 
   ## Examples
 
-      iex> list_direct_messages()
+      iex> list_direct_messages(workspace_id)
       [%DirectMessage{}, ...]
 
   """
-  def list_direct_messages do
+  def list_direct_messages(workspace_id, opts \\ []) do
     DirectMessage
+    |> where([dm], dm.workspace_id == ^workspace_id)
+    |> order_by([dm], desc: dm.id)
     |> preload([:user1, :user2])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -205,67 +195,53 @@ defmodule Bridge.Chat do
       [%DirectMessage{}, ...]
 
   """
-  def list_direct_messages_by_user(user_id) do
+  def list_direct_messages_by_user(user_id, opts \\ []) do
     DirectMessage
     |> where([dm], dm.user1_id == ^user_id or dm.user2_id == ^user_id)
+    |> order_by([dm], desc: dm.id)
     |> preload([:user1, :user2])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred direct messages for a specific user.
+  Returns the list of starred direct messages for a workspace.
 
   ## Examples
 
-      iex> list_starred_direct_messages()
+      iex> list_starred_direct_messages(workspace_id)
       [%DirectMessage{}, ...]
 
   """
-  def list_starred_direct_messages do
+  def list_starred_direct_messages(workspace_id, opts \\ []) do
     DirectMessage
-    |> where([dm], dm.starred == true)
+    |> where([dm], dm.starred == true and dm.workspace_id == ^workspace_id)
+    |> order_by([dm], desc: dm.id)
     |> preload([:user1, :user2])
-    |> Repo.all()
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Gets a single direct message.
+  Gets a single direct message within a workspace.
 
-  Returns `nil` if the Direct message does not exist.
-
-  ## Examples
-
-      iex> get_direct_message(123)
-      %DirectMessage{}
-
-      iex> get_direct_message(456)
-      nil
-
-  """
-  def get_direct_message(id) do
-    DirectMessage
-    |> preload([:user1, :user2])
-    |> Repo.get(id)
-  end
-
-  @doc """
-  Gets a single direct message.
-
-  Raises `Ecto.NoResultsError` if the Direct message does not exist.
+  Returns `{:ok, direct_message}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
-      iex> get_direct_message!(123)
-      %DirectMessage{}
+      iex> get_direct_message(id, workspace_id)
+      {:ok, %DirectMessage{}}
 
-      iex> get_direct_message!(456)
-      ** (Ecto.NoResultsError)
+      iex> get_direct_message(456, workspace_id)
+      {:error, :not_found}
 
   """
-  def get_direct_message!(id) do
-    DirectMessage
-    |> preload([:user1, :user2])
-    |> Repo.get!(id)
+  def get_direct_message(id, workspace_id) do
+    case DirectMessage
+         |> where([dm], dm.workspace_id == ^workspace_id)
+         |> preload([:user1, :user2])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      direct_message -> {:ok, direct_message}
+    end
   end
 
   @doc """
@@ -400,11 +376,11 @@ defmodule Bridge.Chat do
       [%Message{}, ...]
 
   """
-  def list_messages do
+  def list_messages(opts \\ []) do
     Message
     |> preload([:user, :parent, quote: [:user]])
-    |> order_by([m], asc: m.inserted_at)
-    |> Repo.all()
+    |> order_by([m], desc: m.id)
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -416,12 +392,12 @@ defmodule Bridge.Chat do
       [%Message{}, ...]
 
   """
-  def list_messages_by_entity(entity_type, entity_id) do
+  def list_messages_by_entity(entity_type, entity_id, opts \\ []) do
     Message
     |> where([m], m.entity_type == ^entity_type and m.entity_id == ^entity_id)
     |> preload([:user, :parent, quote: [:user]])
-    |> order_by([m], asc: m.inserted_at)
-    |> Repo.all()
+    |> order_by([m], desc: m.id)
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -433,12 +409,12 @@ defmodule Bridge.Chat do
       [%Message{}, ...]
 
   """
-  def list_messages_by_user(user_id) do
+  def list_messages_by_user(user_id, opts \\ []) do
     Message
     |> where([m], m.user_id == ^user_id)
     |> preload([:user, :parent, quote: [:user]])
-    |> order_by([m], desc: m.inserted_at)
-    |> Repo.all()
+    |> order_by([m], desc: m.id)
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
@@ -450,52 +426,35 @@ defmodule Bridge.Chat do
       [%Message{}, ...]
 
   """
-  def list_message_replies(parent_id) do
+  def list_message_replies(parent_id, opts \\ []) do
     Message
     |> where([m], m.parent_id == ^parent_id)
     |> preload([:user, :parent, quote: [:user]])
-    |> order_by([m], asc: m.inserted_at)
-    |> Repo.all()
+    |> order_by([m], desc: m.id)
+    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
   Gets a single message.
 
-  Returns `nil` if the Message does not exist.
+  Returns `{:ok, message}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
       iex> get_message(123)
-      %Message{}
+      {:ok, %Message{}}
 
       iex> get_message(456)
-      nil
+      {:error, :not_found}
 
   """
   def get_message(id) do
-    Message
-    |> preload([:user, :parent, quote: [:user]])
-    |> Repo.get(id)
-  end
-
-  @doc """
-  Gets a single message.
-
-  Raises `Ecto.NoResultsError` if the Message does not exist.
-
-  ## Examples
-
-      iex> get_message!(123)
-      %Message{}
-
-      iex> get_message!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_message!(id) do
-    Message
-    |> preload([:user, :parent, quote: [:user]])
-    |> Repo.get!(id)
+    case Message
+         |> preload([:user, :parent, quote: [:user]])
+         |> Repo.get(id) do
+      nil -> {:error, :not_found}
+      message -> {:ok, message}
+    end
   end
 
   @doc """

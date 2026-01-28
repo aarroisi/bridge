@@ -4,6 +4,17 @@ defmodule BridgeWeb.DirectMessageJSON do
   @doc """
   Renders a list of direct_messages.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(dm <- page.entries, do: data(dm)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{direct_messages: direct_messages}) do
     %{data: for(direct_message <- direct_messages, do: data(direct_message))}
   end

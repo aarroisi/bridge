@@ -70,9 +70,7 @@ export function EmptyState() {
           description: "Write and collaborate on documents",
           actionText: "Create Document",
           action: async () => {
-            const doc = await createDoc("Untitled Document", "");
-            success("Document created successfully");
-            navigate(`/docs/${doc.id}`);
+            navigate("/docs/new");
           },
         };
       case "channels":

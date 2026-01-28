@@ -4,6 +4,17 @@ defmodule BridgeWeb.TaskJSON do
   @doc """
   Renders a list of tasks.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(task <- page.entries, do: data(task)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{tasks: tasks}) do
     %{data: for(task <- tasks, do: data(task))}
   end

@@ -26,7 +26,7 @@ export function Message({
   return (
     <div
       className={clsx(
-        "flex gap-3 px-4 py-3 hover:bg-dark-surface/50 group",
+        "flex gap-3 px-4 py-3 hover:bg-dark-surface/50 group relative",
         className,
       )}
     >
@@ -62,26 +62,29 @@ export function Message({
           {message.text}
         </p>
 
-        <div className="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onReply && (
-            <button
-              onClick={onReply}
-              className="text-xs text-dark-text-muted hover:text-blue-400 flex items-center gap-1"
-            >
-              <Reply size={12} />
-              Reply
-            </button>
-          )}
-          {onQuote && (
-            <button
-              onClick={onQuote}
-              className="text-xs text-dark-text-muted hover:text-blue-400 flex items-center gap-1"
-            >
-              <Quote size={12} />
-              Quote
-            </button>
-          )}
-        </div>
+        {/* Action buttons - absolutely positioned to not take up space */}
+        {(onReply || onQuote) && (
+          <div className="absolute top-2 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-dark-bg border border-dark-border rounded-lg shadow-lg">
+            {onReply && (
+              <button
+                onClick={onReply}
+                className="p-2 text-dark-text-muted hover:text-blue-400 hover:bg-dark-surface transition-colors rounded-l-lg"
+                title="Reply"
+              >
+                <Reply size={16} />
+              </button>
+            )}
+            {onQuote && (
+              <button
+                onClick={onQuote}
+                className="p-2 text-dark-text-muted hover:text-blue-400 hover:bg-dark-surface transition-colors rounded-r-lg"
+                title="Quote"
+              >
+                <Quote size={16} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

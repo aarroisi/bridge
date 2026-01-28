@@ -4,6 +4,17 @@ defmodule BridgeWeb.ProjectJSON do
   @doc """
   Renders a list of projects.
   """
+  def index(%{page: page}) do
+    %{
+      data: for(project <- page.entries, do: data(project)),
+      metadata: %{
+        after: page.metadata.after,
+        before: page.metadata.before,
+        limit: page.metadata.limit
+      }
+    }
+  end
+
   def index(%{projects: projects}) do
     %{data: for(project <- projects, do: data(project))}
   end

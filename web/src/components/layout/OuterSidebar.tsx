@@ -25,7 +25,14 @@ export function OuterSidebar() {
   const location = useLocation();
   const { setActiveCategory, setSidebarOpen } = useUIStore();
 
-  const handleCategoryClick = (category: Category) => {
+  const handleCategoryClick = async (category: Category) => {
+    // Check navigation guard before navigating
+    const { navigationGuard } = useUIStore.getState();
+    if (navigationGuard) {
+      const canNavigate = await navigationGuard();
+      if (!canNavigate) return;
+    }
+
     setActiveCategory(category);
     setSidebarOpen(true);
 

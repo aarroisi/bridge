@@ -34,6 +34,16 @@ export function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle validation errors from backend
+        if (data.errors) {
+          const errorMessages = Object.entries(data.errors)
+            .map(
+              ([field, messages]) =>
+                `${field}: ${(messages as string[]).join(", ")}`,
+            )
+            .join("; ");
+          throw new Error(errorMessages);
+        }
         throw new Error(data.error || "Registration failed");
       }
 

@@ -52,7 +52,11 @@ defmodule Bridge.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:cors_plug, "~> 3.0"}
+      {:cors_plug, "~> 3.0"},
+      {:uuidv7, "~> 1.0"},
+      {:paginator, "~> 1.2"},
+      {:ex_machina, "~> 2.7", only: :test},
+      {:faker, "~> 0.18", only: :test}
     ]
   end
 

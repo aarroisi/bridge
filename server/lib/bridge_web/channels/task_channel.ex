@@ -9,14 +9,14 @@ defmodule BridgeWeb.TaskChannel do
   def join("task:" <> task_id, _payload, socket) do
     # Verify that the task exists and user has access
     case Lists.get_task(task_id) do
-      nil ->
-        {:error, %{reason: "task not found"}}
-
-      _task ->
+      {:ok, _task} ->
         # You could add additional authorization checks here
         # For now, we allow any authenticated user to join
         socket = assign(socket, :task_id, task_id)
         {:ok, socket}
+
+      {:error, :not_found} ->
+        {:error, %{reason: "task not found"}}
     end
   end
 
@@ -25,10 +25,7 @@ defmodule BridgeWeb.TaskChannel do
     task_id = socket.assigns.task_id
 
     case Lists.get_task(task_id) do
-      nil ->
-        {:reply, {:error, %{reason: "task not found"}}, socket}
-
-      task ->
+      {:ok, task} ->
         case Lists.update_task(task, %{status: status}) do
           {:ok, updated_task} ->
             # Preload associations for broadcasting
@@ -46,6 +43,9 @@ defmodule BridgeWeb.TaskChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "task not found"}}, socket}
     end
   end
 
@@ -54,10 +54,7 @@ defmodule BridgeWeb.TaskChannel do
     task_id = socket.assigns.task_id
 
     case Lists.get_task(task_id) do
-      nil ->
-        {:reply, {:error, %{reason: "task not found"}}, socket}
-
-      task ->
+      {:ok, task} ->
         case Lists.update_task(task, updates) do
           {:ok, updated_task} ->
             # Preload associations for broadcasting
@@ -70,6 +67,9 @@ defmodule BridgeWeb.TaskChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "task not found"}}, socket}
     end
   end
 
@@ -137,10 +137,7 @@ defmodule BridgeWeb.TaskChannel do
     task_id = socket.assigns.task_id
 
     case Lists.get_task(task_id) do
-      nil ->
-        {:reply, {:error, %{reason: "task not found"}}, socket}
-
-      task ->
+      {:ok, task} ->
         case Lists.update_task(task, %{assignee_id: assignee_id}) do
           {:ok, updated_task} ->
             # Preload associations for broadcasting
@@ -158,6 +155,9 @@ defmodule BridgeWeb.TaskChannel do
           {:error, changeset} ->
             {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "task not found"}}, socket}
     end
   end
 

@@ -9,11 +9,10 @@ defmodule BridgeWeb.ChatChannel do
   @impl true
   def join("channel:" <> channel_id, _payload, socket) do
     # Verify that the channel exists and user has access
-    case Chat.get_channel(channel_id) do
-      nil ->
-        {:error, %{reason: "channel not found"}}
+    workspace_id = socket.assigns.workspace_id
 
-      _channel ->
+    case Chat.get_channel(channel_id, workspace_id) do
+      {:ok, _channel} ->
         socket =
           socket
           |> assign(:channel_id, channel_id)
@@ -21,17 +20,19 @@ defmodule BridgeWeb.ChatChannel do
 
         send(self(), :after_join)
         {:ok, socket}
+
+      {:error, :not_found} ->
+        {:error, %{reason: "channel not found"}}
     end
   end
 
   @impl true
   def join("dm:" <> dm_id, _payload, socket) do
     # Verify that the direct message conversation exists and user has access
-    case Chat.get_direct_message(dm_id) do
-      nil ->
-        {:error, %{reason: "direct message not found"}}
+    workspace_id = socket.assigns.workspace_id
 
-      dm ->
+    case Chat.get_direct_message(dm_id, workspace_id) do
+      {:ok, dm} ->
         # Verify user is part of this DM
         user_id = socket.assigns.user_id
 
@@ -46,6 +47,9 @@ defmodule BridgeWeb.ChatChannel do
         else
           {:error, %{reason: "unauthorized"}}
         end
+
+      {:error, :not_found} ->
+        {:error, %{reason: "direct message not found"}}
     end
   end
 
@@ -55,10 +59,7 @@ defmodule BridgeWeb.ChatChannel do
 
     # Get user information
     case Accounts.get_user(user_id) do
-      nil ->
-        {:noreply, socket}
-
-      user ->
+      {:ok, user} ->
         # Track presence for this user in the channel/DM
         topic = get_topic(socket)
 
@@ -72,6 +73,9 @@ defmodule BridgeWeb.ChatChannel do
 
         # Push presence state to the client
         push(socket, "presence_state", Presence.list(topic))
+        {:noreply, socket}
+
+      {:error, :not_found} ->
         {:noreply, socket}
     end
   end
@@ -140,10 +144,7 @@ defmodule BridgeWeb.ChatChannel do
   @impl true
   def handle_in("delete_message", %{"message_id" => message_id}, socket) do
     case Chat.get_message(message_id) do
-      nil ->
-        {:reply, {:error, %{reason: "message not found"}}, socket}
-
-      message ->
+      {:ok, message} ->
         # Verify the user owns this message
         if message.user_id == socket.assigns.user_id do
           case Chat.delete_message(message) do
@@ -161,16 +162,16 @@ defmodule BridgeWeb.ChatChannel do
         else
           {:reply, {:error, %{reason: "unauthorized"}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "message not found"}}, socket}
     end
   end
 
   @impl true
   def handle_in("update_message", %{"message_id" => message_id, "text" => text}, socket) do
     case Chat.get_message(message_id) do
-      nil ->
-        {:reply, {:error, %{reason: "message not found"}}, socket}
-
-      message ->
+      {:ok, message} ->
         # Verify the user owns this message
         if message.user_id == socket.assigns.user_id do
           case Chat.update_message(message, %{text: text}) do
@@ -191,6 +192,9 @@ defmodule BridgeWeb.ChatChannel do
         else
           {:reply, {:error, %{reason: "unauthorized"}}, socket}
         end
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "message not found"}}, socket}
     end
   end
 

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { List, Task, Subtask } from "@/types";
+import { List, Task, Subtask, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 
 interface ListState {
@@ -7,9 +7,11 @@ interface ListState {
   tasks: Record<string, Task[]>;
   subtasks: Record<string, Subtask[]>;
   isLoading: boolean;
+  hasMore: boolean;
+  afterCursor: string | null;
 
   // List operations
-  fetchLists: () => Promise<void>;
+  fetchLists: (loadMore?: boolean) => Promise<void>;
   createList: (name: string, projectId?: string) => Promise<List>;
   updateList: (id: string, data: Partial<List>) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
@@ -33,16 +35,33 @@ export const useListStore = create<ListState>((set, get) => ({
   tasks: {},
   subtasks: {},
   isLoading: false,
+  hasMore: true,
+  afterCursor: null,
 
   // List operations
-  fetchLists: async () => {
+  fetchLists: async (loadMore = false) => {
+    const { afterCursor, isLoading } = get();
+
+    if (isLoading || (loadMore && !afterCursor)) return;
+
     set({ isLoading: true });
     try {
-      const lists = await api.get<List[]>("/lists");
-      set({ lists, isLoading: false });
+      const params: Record<string, string> = {};
+      if (loadMore && afterCursor) {
+        params.after = afterCursor;
+      }
+
+      const response = await api.get<PaginatedResponse<List>>("/lists", params);
+
+      set((state) => ({
+        lists: loadMore ? [...state.lists, ...response.data] : response.data,
+        afterCursor: response.metadata.after,
+        hasMore: response.metadata.after !== null,
+        isLoading: false,
+      }));
     } catch (error) {
       console.error("Failed to fetch lists:", error);
-      set({ lists: [], isLoading: false });
+      set({ lists: [], isLoading: false, hasMore: false });
     }
   },
 

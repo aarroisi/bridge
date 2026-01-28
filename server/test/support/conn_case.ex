@@ -28,6 +28,7 @@ defmodule BridgeWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import BridgeWeb.ConnCase
+      import Bridge.Factory
     end
   end
 

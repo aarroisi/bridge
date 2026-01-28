@@ -26,8 +26,9 @@ export function TaskDetailPanel({
   const [openThread, setOpenThread] = useState<MessageType | null>(null);
   const [newComment, setNewComment] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { updateTask, updateSubtask, createSubtask } = useListStore();
-  const { sendMessage } = useChatStore();
+  const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
 
   const handleStatusChange = async (status: "todo" | "doing" | "done") => {
     await updateTask(task.id, { status });
@@ -52,11 +53,23 @@ export function TaskDetailPanel({
     setNewComment("");
   };
 
-  const topLevelComments = comments.filter((c) => !c.parentId);
-  const threadMessages = comments.filter((c) => c.parentId);
+  // Backend returns messages in desc order (newest first), reverse for chat display (oldest first)
+  const sortedComments = [...comments].reverse();
+  const topLevelComments = sortedComments.filter((c) => !c.parentId);
+  const threadMessages = sortedComments.filter((c) => c.parentId);
 
   const getThreadReplies = (messageId: string) => {
     return threadMessages.filter((m) => m.parentId === messageId);
+  };
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      await fetchMessages("task", task.id, true);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   return (
@@ -191,6 +204,17 @@ export function TaskDetailPanel({
             <h3 className="text-sm font-medium text-dark-text mb-3">
               Comments ({topLevelComments.length})
             </h3>
+            {hasMoreMessages("task", task.id) && (
+              <div className="mb-4 flex justify-center">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="px-4 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-dark-surface rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingMore ? "Loading..." : "Load older comments"}
+                </button>
+              </div>
+            )}
             <div className="space-y-1 mb-4">
               {topLevelComments.map((comment) => {
                 const replies = getThreadReplies(comment.id);

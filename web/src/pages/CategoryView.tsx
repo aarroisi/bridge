@@ -16,27 +16,34 @@ import { InfiniteScrollList } from "@/components/common/InfiniteScrollList";
 export function CategoryView() {
   const location = useLocation();
 
-  const projects = useProjectStore((state) => state.projects) || [];
+  const rawProjects = useProjectStore((state) => state.projects);
+  const projects = Array.isArray(rawProjects) ? rawProjects : [];
   const projectsHasMore = useProjectStore((state) => state.hasMore);
   const projectsLoading = useProjectStore((state) => state.isLoading);
   const fetchProjects = useProjectStore((state) => state.fetchProjects);
 
-  const lists = useListStore((state) => state.lists) || [];
+  const rawLists = useListStore((state) => state.lists);
+  const lists = Array.isArray(rawLists) ? rawLists : [];
   const listsHasMore = useListStore((state) => state.hasMore);
   const listsLoading = useListStore((state) => state.isLoading);
   const fetchLists = useListStore((state) => state.fetchLists);
 
-  const docs = useDocStore((state) => state.docs) || [];
+  const rawDocs = useDocStore((state) => state.docs);
+  const docs = Array.isArray(rawDocs) ? rawDocs : [];
   const docsHasMore = useDocStore((state) => state.hasMore);
   const docsLoading = useDocStore((state) => state.isLoading);
   const fetchDocs = useDocStore((state) => state.fetchDocs);
 
-  const channels = useChatStore((state) => state.channels) || [];
+  const rawChannels = useChatStore((state) => state.channels);
+  const channels = Array.isArray(rawChannels) ? rawChannels : [];
   const channelsHasMore = useChatStore((state) => state.hasMoreChannels);
   const channelsLoading = useChatStore((state) => state.isLoading);
   const fetchChannels = useChatStore((state) => state.fetchChannels);
 
-  const directMessages = useChatStore((state) => state.directMessages) || [];
+  const rawDirectMessages = useChatStore((state) => state.directMessages);
+  const directMessages = Array.isArray(rawDirectMessages)
+    ? rawDirectMessages
+    : [];
   const dmsHasMore = useChatStore((state) => state.hasMoreDMs);
   const dmsLoading = useChatStore((state) => state.isLoading);
   const fetchDirectMessages = useChatStore(

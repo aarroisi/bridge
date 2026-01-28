@@ -40,7 +40,9 @@ export function DocView() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { docs, getDoc, updateDoc, createDoc } = useDocStore();
-  const { messages, fetchMessages, sendMessage } = useChatStore();
+  const { messages, fetchMessages, sendMessage, hasMoreMessages } =
+    useChatStore();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { setNavigationGuard } = useUIStore();
   const { success, error } = useToastStore();
   const isNewDoc = docId === "new";
@@ -64,7 +66,12 @@ export function DocView() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const doc = isNewDoc ? null : docs.find((d) => d.id === docId);
-  const docComments = docId && !isNewDoc ? messages[`doc:${docId}`] || [] : [];
+  const rawDocComments =
+    docId && !isNewDoc && Array.isArray(messages[`doc:${docId}`])
+      ? messages[`doc:${docId}`]
+      : [];
+  // Backend returns messages in desc order (newest first), reverse for chat display (oldest first)
+  const docComments = [...rawDocComments].reverse();
   const topLevelComments = docComments.filter((c) => !c.parentId);
   const threadMessages = docComments.filter((c) => c.parentId);
 
@@ -424,6 +431,16 @@ export function DocView() {
     return threadMessages.filter((m) => m.parentId === messageId);
   };
 
+  const handleLoadMore = async () => {
+    if (!docId || isNewDoc || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      await fetchMessages("doc", docId, true);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -639,6 +656,17 @@ export function DocView() {
                   <h3 className="text-sm font-medium text-dark-text mb-4">
                     Comments ({topLevelComments.length})
                   </h3>
+                  {docId && !isNewDoc && hasMoreMessages("doc", docId) && (
+                    <div className="mb-4 flex justify-center">
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={isLoadingMore}
+                        className="px-4 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-dark-surface rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoadingMore ? "Loading..." : "Load older comments"}
+                      </button>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     {topLevelComments.map((comment) => {
                       const replies = getThreadReplies(comment.id);

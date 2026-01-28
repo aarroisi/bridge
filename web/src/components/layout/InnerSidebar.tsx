@@ -45,17 +45,29 @@ export function InnerSidebar() {
 
   const activeCategory = getCurrentCategory();
 
-  // Clear activeItem when on index pages (no ID in URL)
+  // Sync activeItem with current URL
   useEffect(() => {
     const path = location.pathname;
-    const isIndexPage =
-      path === "/projects" ||
-      path === "/lists" ||
-      path === "/docs" ||
-      path === "/channels" ||
-      path === "/dms";
 
-    if (isIndexPage) {
+    // Extract ID from path like /docs/123 or /lists/456
+    const pathParts = path.split("/").filter(Boolean);
+
+    if (pathParts.length >= 2) {
+      const category = pathParts[0]; // e.g., "docs", "lists", "projects"
+      const id = pathParts[1]; // e.g., "123"
+
+      // Set activeItem when viewing a specific item
+      if (id && id !== "new") {
+        setActiveItem({
+          type: category as Category,
+          id: id,
+        });
+      } else if (id === "new") {
+        // Clear activeItem when creating new item
+        setActiveItem(null);
+      }
+    } else {
+      // Clear activeItem when on index pages
       setActiveItem(null);
     }
   }, [location.pathname, setActiveItem]);

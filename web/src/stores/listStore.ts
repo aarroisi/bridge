@@ -98,9 +98,11 @@ export const useListStore = create<ListState>((set, get) => ({
   // Task operations
   fetchTasks: async (listId: string) => {
     try {
-      const tasks = await api.get<Task[]>(`/lists/${listId}/tasks`);
+      const response = await api.get<PaginatedResponse<Task>>(
+        `/tasks?list_id=${listId}`,
+      );
       set((state) => ({
-        tasks: { ...state.tasks, [listId]: tasks },
+        tasks: { ...state.tasks, [listId]: response.data },
       }));
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
@@ -108,11 +110,14 @@ export const useListStore = create<ListState>((set, get) => ({
   },
 
   createTask: async (listId: string, data: Partial<Task>) => {
-    const task = await api.post<Task>(`/lists/${listId}/tasks`, data);
+    const task = await api.post<Task>(`/tasks`, { ...data, listId });
     set((state) => ({
       tasks: {
         ...state.tasks,
-        [listId]: [...(state.tasks[listId] || []), task],
+        [listId]: [
+          ...(Array.isArray(state.tasks[listId]) ? state.tasks[listId] : []),
+          task,
+        ],
       },
     }));
     return task;
@@ -122,12 +127,13 @@ export const useListStore = create<ListState>((set, get) => ({
     const task = await api.patch<Task>(`/tasks/${id}`, data);
     set((state) => {
       const listId = task.listId;
+      const existingTasks = Array.isArray(state.tasks[listId])
+        ? state.tasks[listId]
+        : [];
       return {
         tasks: {
           ...state.tasks,
-          [listId]: (state.tasks[listId] || []).map((t) =>
-            t.id === id ? task : t,
-          ),
+          [listId]: existingTasks.map((t) => (t.id === id ? task : t)),
         },
       };
     });
@@ -138,7 +144,9 @@ export const useListStore = create<ListState>((set, get) => ({
     set((state) => {
       const newTasks = { ...state.tasks };
       Object.keys(newTasks).forEach((listId) => {
-        newTasks[listId] = newTasks[listId].filter((t) => t.id !== id);
+        if (Array.isArray(newTasks[listId])) {
+          newTasks[listId] = newTasks[listId].filter((t) => t.id !== id);
+        }
       });
       return { tasks: newTasks };
     });
@@ -147,21 +155,31 @@ export const useListStore = create<ListState>((set, get) => ({
   // Subtask operations
   fetchSubtasks: async (taskId: string) => {
     try {
-      const subtasks = await api.get<Subtask[]>(`/tasks/${taskId}/subtasks`);
+      const response = await api.get<Subtask[]>(`/subtasks?task_id=${taskId}`);
+      // Ensure response is an array
+      const subtasks = Array.isArray(response) ? response : [];
       set((state) => ({
         subtasks: { ...state.subtasks, [taskId]: subtasks },
       }));
     } catch (error) {
       console.error("Failed to fetch subtasks:", error);
+      set((state) => ({
+        subtasks: { ...state.subtasks, [taskId]: [] },
+      }));
     }
   },
 
   createSubtask: async (taskId: string, data: Partial<Subtask>) => {
-    const subtask = await api.post<Subtask>(`/tasks/${taskId}/subtasks`, data);
+    const subtask = await api.post<Subtask>(`/subtasks`, { ...data, taskId });
     set((state) => ({
       subtasks: {
         ...state.subtasks,
-        [taskId]: [...(state.subtasks[taskId] || []), subtask],
+        [taskId]: [
+          ...(Array.isArray(state.subtasks[taskId])
+            ? state.subtasks[taskId]
+            : []),
+          subtask,
+        ],
       },
     }));
     return subtask;
@@ -171,12 +189,13 @@ export const useListStore = create<ListState>((set, get) => ({
     const subtask = await api.patch<Subtask>(`/subtasks/${id}`, data);
     set((state) => {
       const taskId = subtask.taskId;
+      const existingSubtasks = Array.isArray(state.subtasks[taskId])
+        ? state.subtasks[taskId]
+        : [];
       return {
         subtasks: {
           ...state.subtasks,
-          [taskId]: (state.subtasks[taskId] || []).map((s) =>
-            s.id === id ? subtask : s,
-          ),
+          [taskId]: existingSubtasks.map((s) => (s.id === id ? subtask : s)),
         },
       };
     });
@@ -187,7 +206,9 @@ export const useListStore = create<ListState>((set, get) => ({
     set((state) => {
       const newSubtasks = { ...state.subtasks };
       Object.keys(newSubtasks).forEach((taskId) => {
-        newSubtasks[taskId] = newSubtasks[taskId].filter((s) => s.id !== id);
+        if (Array.isArray(newSubtasks[taskId])) {
+          newSubtasks[taskId] = newSubtasks[taskId].filter((s) => s.id !== id);
+        }
       });
       return { subtasks: newSubtasks };
     });

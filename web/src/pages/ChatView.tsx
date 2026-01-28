@@ -19,7 +19,9 @@ export function ChatView() {
     fetchMessages,
     sendMessage,
     addMessage,
+    hasMoreMessages,
   } = useChatStore();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Determine entity type from URL path
   const entityType = location.pathname.startsWith("/channels")
@@ -28,8 +30,12 @@ export function ChatView() {
   const entityId = id;
   const item =
     entityType === "channel"
-      ? channels.find((c) => c.id === entityId)
-      : directMessages.find((d) => d.id === entityId);
+      ? Array.isArray(channels)
+        ? channels.find((c) => c.id === entityId)
+        : undefined
+      : Array.isArray(directMessages)
+        ? directMessages.find((d) => d.id === entityId)
+        : undefined;
 
   // Set active item when component mounts or ID changes
   useEffect(() => {
@@ -41,9 +47,12 @@ export function ChatView() {
     }
   }, [entityId, entityType, item, setActiveItem]);
 
-  const chatMessages = entityId
-    ? messages[`${entityType}:${entityId}`] || []
-    : [];
+  const rawChatMessages = entityId
+    ? messages[`${entityType}:${entityId}`]
+    : undefined;
+  const validMessages = Array.isArray(rawChatMessages) ? rawChatMessages : [];
+  // Backend returns messages in desc order (newest first), reverse for chat display (oldest first)
+  const chatMessages = [...validMessages].reverse();
 
   // Subscribe to channel for real-time updates
   const channel = useChannel(
@@ -73,6 +82,16 @@ export function ChatView() {
   ) => {
     if (!entityId) return;
     await sendMessage(entityType, entityId, text, parentId, quoteId);
+  };
+
+  const handleLoadMore = async () => {
+    if (!entityId || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      await fetchMessages(entityType, entityId, true);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   if (!item) {
@@ -106,6 +125,11 @@ export function ChatView() {
           emptyStateDescription="Be the first to send a message."
           openThread={openThread}
           onOpenThread={setOpenThread}
+          hasMoreMessages={
+            entityId ? hasMoreMessages(entityType, entityId) : false
+          }
+          onLoadMore={handleLoadMore}
+          isLoadingMore={isLoadingMore}
         />
       </div>
 

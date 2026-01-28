@@ -6,6 +6,10 @@ interface ChatState {
   channels: Channel[];
   directMessages: DirectMessage[];
   messages: Record<string, Message[]>;
+  messagesMetadata: Record<
+    string,
+    { before: string | null; after: string | null; limit: number }
+  >;
   isLoading: boolean;
   hasMoreChannels: boolean;
   channelsAfterCursor: string | null;
@@ -25,7 +29,11 @@ interface ChatState {
   toggleDMStar: (id: string) => Promise<void>;
 
   // Message operations
-  fetchMessages: (entityType: string, entityId: string) => Promise<void>;
+  fetchMessages: (
+    entityType: string,
+    entityId: string,
+    loadMore?: boolean,
+  ) => Promise<void>;
   sendMessage: (
     entityType: string,
     entityId: string,
@@ -36,12 +44,14 @@ interface ChatState {
   updateMessage: (id: string, text: string) => Promise<void>;
   deleteMessage: (id: string) => Promise<void>;
   addMessage: (message: Message) => void;
+  hasMoreMessages: (entityType: string, entityId: string) => boolean;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
   channels: [],
   directMessages: [],
   messages: {},
+  messagesMetadata: {},
   isLoading: false,
   hasMoreChannels: true,
   channelsAfterCursor: null,
@@ -165,18 +175,53 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   // Message operations
-  fetchMessages: async (entityType: string, entityId: string) => {
+  fetchMessages: async (
+    entityType: string,
+    entityId: string,
+    loadMore = false,
+  ) => {
     try {
-      const messages = await api.get<Message[]>(
-        `/messages?entity_type=${entityType}&entity_id=${entityId}`,
-      );
       const key = `${entityType}:${entityId}`;
+      const { messagesMetadata } = get();
+
+      const params: Record<string, string> = {
+        entity_type: entityType,
+        entity_id: entityId,
+      };
+
+      // When loading more (older messages), use the 'after' cursor
+      if (loadMore && messagesMetadata[key]?.after) {
+        params.after = messagesMetadata[key].after;
+      }
+
+      const response = await api.get<PaginatedResponse<Message>>(
+        `/messages`,
+        params,
+      );
+
       set((state) => ({
-        messages: { ...state.messages, [key]: messages },
+        messages: {
+          ...state.messages,
+          // For loadMore, prepend older messages; otherwise replace
+          [key]:
+            loadMore && state.messages[key]
+              ? [...response.data, ...state.messages[key]]
+              : response.data,
+        },
+        messagesMetadata: {
+          ...state.messagesMetadata,
+          [key]: response.metadata,
+        },
       }));
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
+  },
+
+  hasMoreMessages: (entityType: string, entityId: string) => {
+    const key = `${entityType}:${entityId}`;
+    const metadata = get().messagesMetadata[key];
+    return metadata?.after !== null;
   },
 
   sendMessage: async (
@@ -196,10 +241,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
     });
     const key = `${entityType}:${entityId}`;
+    // Prepend new message since backend stores in desc order (newest first)
     set((state) => ({
       messages: {
         ...state.messages,
-        [key]: [...(state.messages[key] || []), message],
+        [key]: [message, ...(state.messages[key] || [])],
       },
     }));
     return message;
@@ -222,10 +268,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   addMessage: (message: Message) => {
     const key = `${message.entityType}:${message.entityId}`;
+    // Prepend new message since backend stores in desc order (newest first)
     set((state) => ({
       messages: {
         ...state.messages,
-        [key]: [...(state.messages[key] || []), message],
+        [key]: [message, ...(state.messages[key] || [])],
       },
     }));
   },

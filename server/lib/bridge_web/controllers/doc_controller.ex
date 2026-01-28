@@ -42,8 +42,16 @@ defmodule BridgeWeb.DocController do
     render(conn, :show, doc: doc)
   end
 
-  def update(conn, %{"id" => id, "doc" => doc_params}) do
+  def update(conn, params) do
+    id = params["id"]
     doc = Docs.get_doc!(id)
+
+    # Handle both nested and flat params
+    doc_params =
+      case params do
+        %{"doc" => nested_params} -> nested_params
+        flat_params -> Map.drop(flat_params, ["id"])
+      end
 
     case Docs.update_doc(doc, doc_params) do
       {:ok, doc} ->

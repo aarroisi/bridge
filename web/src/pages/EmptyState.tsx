@@ -1,14 +1,23 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, ListTodo, FileText, Hash, MessageSquare, Plus } from "lucide-react";
+import {
+  FolderKanban,
+  ListTodo,
+  FileText,
+  Hash,
+  MessageSquare,
+  Plus,
+} from "lucide-react";
 import { Category } from "@/types";
 import { useProjectStore } from "@/stores/projectStore";
 import { useListStore } from "@/stores/listStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useToastStore } from "@/stores/toastStore";
 
 export function EmptyState() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { success, error } = useToastStore();
 
   const createProject = useProjectStore((state) => state.createProject);
   const createList = useListStore((state) => state.createList);
@@ -38,6 +47,7 @@ export function EmptyState() {
           actionText: "Create Project",
           action: async () => {
             const project = await createProject("New Project");
+            success("Project created successfully");
             navigate(`/projects/${project.id}`);
           },
         };
@@ -49,6 +59,7 @@ export function EmptyState() {
           actionText: "Create List",
           action: async () => {
             const list = await createList("New List");
+            success("List created successfully");
             navigate(`/lists/${list.id}`);
           },
         };
@@ -60,6 +71,7 @@ export function EmptyState() {
           actionText: "Create Document",
           action: async () => {
             const doc = await createDoc("Untitled Document", "");
+            success("Document created successfully");
             navigate(`/docs/${doc.id}`);
           },
         };
@@ -71,6 +83,7 @@ export function EmptyState() {
           actionText: "Create Channel",
           action: async () => {
             const channel = await createChannel("new-channel");
+            success("Channel created successfully");
             navigate(`/channels/${channel.id}`);
           },
         };
@@ -93,15 +106,21 @@ export function EmptyState() {
     }
   };
 
-  const { title, icon: Icon, description, actionText, action } = getCategoryInfo();
+  const {
+    title,
+    icon: Icon,
+    description,
+    actionText,
+    action,
+  } = getCategoryInfo();
 
   const handleCreate = async () => {
     if (action) {
       try {
         await action();
-      } catch (error) {
-        console.error("Failed to create item:", error);
-        alert("Error: " + (error as Error).message);
+      } catch (err) {
+        console.error("Failed to create item:", err);
+        error("Error: " + (err as Error).message);
       }
     }
   };

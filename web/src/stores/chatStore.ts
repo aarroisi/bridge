@@ -138,11 +138,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     quoteId?: string,
   ) => {
     const message = await api.post<Message>("/messages", {
-      entityType,
-      entityId,
-      text,
-      parentId,
-      quoteId,
+      message: {
+        entityType,
+        entityId,
+        text,
+        parentId,
+        quoteId,
+      },
     });
     const key = `${entityType}:${entityId}`;
     set((state) => ({

@@ -12,7 +12,10 @@ defmodule BridgeWeb.TaskController do
   end
 
   def create(conn, %{"task" => task_params}) do
-    case Lists.create_task(task_params) do
+    current_user = conn.assigns.current_user
+    task_params_with_user = Map.put(task_params, "created_by_id", current_user.id)
+
+    case Lists.create_task(task_params_with_user) do
       {:ok, task} ->
         conn
         |> put_status(:created)

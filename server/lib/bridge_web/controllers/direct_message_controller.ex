@@ -12,7 +12,10 @@ defmodule BridgeWeb.DirectMessageController do
   end
 
   def create(conn, %{"direct_message" => direct_message_params}) do
-    case Chat.create_direct_message(direct_message_params) do
+    current_user = conn.assigns.current_user
+    direct_message_params_with_user = Map.put(direct_message_params, "user1_id", current_user.id)
+
+    case Chat.create_direct_message(direct_message_params_with_user) do
       {:ok, direct_message} ->
         conn
         |> put_status(:created)

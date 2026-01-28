@@ -1,62 +1,72 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/authStore'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
+import { useToastStore } from "@/stores/toastStore";
 
 export function RegisterPage() {
-  const navigate = useNavigate()
-  const [workspaceName, setWorkspaceName] = useState('')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const { success, error: showError } = useToastStore();
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           workspace_name: workspaceName,
           name,
           email,
           password,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed')
+        throw new Error(data.error || "Registration failed");
       }
 
       // Update auth store
       useAuthStore.setState({
         user: data.user,
         isAuthenticated: true,
-        isLoading: false
-      })
+        isLoading: false,
+      });
+
+      success("Workspace created successfully!");
 
       // Navigate to home
-      navigate('/')
+      navigate("/");
     } catch (err) {
-      setError((err as Error).message)
+      const errorMessage = (err as Error).message;
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-bg px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-dark-text mb-2">Welcome to Bridge</h1>
-          <p className="text-dark-text-muted">Create your workspace to get started</p>
+          <h1 className="text-3xl font-bold text-dark-text mb-2">
+            Welcome to Bridge
+          </h1>
+          <p className="text-dark-text-muted">
+            Create your workspace to get started
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,7 +89,10 @@ export function RegisterPage() {
               className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder:text-dark-text-muted focus:outline-none focus:border-blue-500"
             />
             <p className="mt-1 text-xs text-dark-text-muted">
-              This will be your workspace URL: {workspaceName.toLowerCase().replace(/\s+/g, '-') || 'your-workspace'}.bridgework.com
+              This will be your workspace URL:{" "}
+              {workspaceName.toLowerCase().replace(/\s+/g, "-") ||
+                "your-workspace"}
+              .bridgework.com
             </p>
           </div>
 
@@ -134,14 +147,14 @@ export function RegisterPage() {
             disabled={loading}
             className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Creating workspace...' : 'Create Workspace'}
+            {loading ? "Creating workspace..." : "Create Workspace"}
           </button>
 
           <p className="text-center text-sm text-dark-text-muted">
-            Already have an account?{' '}
+            Already have an account?{" "}
             <button
               type="button"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
               className="text-blue-400 hover:underline"
             >
               Sign in
@@ -150,5 +163,5 @@ export function RegisterPage() {
         </form>
       </div>
     </div>
-  )
+  );
 }

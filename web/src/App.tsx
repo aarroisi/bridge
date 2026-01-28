@@ -14,6 +14,7 @@ import { DocView } from "./pages/DocView";
 import { ChatView } from "./pages/ChatView";
 import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ToastContainer } from "./components/ui/Toast";
 import { useAuthStore } from "./stores/authStore";
 import { useProjectStore } from "./stores/projectStore";
 import { useListStore } from "./stores/listStore";
@@ -54,114 +55,123 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-dark-bg">
-        <div className="text-dark-text">Loading...</div>
-      </div>
+      <>
+        <div className="flex h-screen w-screen items-center justify-center bg-dark-bg">
+          <div className="text-dark-text">Loading...</div>
+        </div>
+        <ToastContainer />
+      </>
     );
   }
 
   // Show auth pages without layout
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<RegisterPage />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<RegisterPage />} />
+        </Routes>
+        <ToastContainer />
+      </>
     );
   }
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <MainLayout>
-            <HomePage />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/projects"
-        element={
-          <MainLayout>
-            <EmptyState />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/projects/:id"
-        element={
-          <MainLayout>
-            <HomePage />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/lists"
-        element={
-          <MainLayout>
-            <EmptyState />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/lists/:id"
-        element={
-          <MainLayout>
-            <ListView />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/docs"
-        element={
-          <MainLayout>
-            <EmptyState />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/docs/:id"
-        element={
-          <MainLayout>
-            <DocView />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/channels"
-        element={
-          <MainLayout>
-            <EmptyState />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/channels/:id"
-        element={
-          <MainLayout>
-            <ChatView />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/dms"
-        element={
-          <MainLayout>
-            <EmptyState />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/dms/:id"
-        element={
-          <MainLayout>
-            <ChatView />
-          </MainLayout>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/projects"
+          element={
+            <MainLayout>
+              <EmptyState />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/projects/:id"
+          element={
+            <MainLayout>
+              <HomePage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/lists"
+          element={
+            <MainLayout>
+              <EmptyState />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/lists/:id"
+          element={
+            <MainLayout>
+              <ListView />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/docs"
+          element={
+            <MainLayout>
+              <EmptyState />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/docs/:id"
+          element={
+            <MainLayout>
+              <DocView />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/channels"
+          element={
+            <MainLayout>
+              <EmptyState />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/channels/:id"
+          element={
+            <MainLayout>
+              <ChatView />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/dms"
+          element={
+            <MainLayout>
+              <EmptyState />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/dms/:id"
+          element={
+            <MainLayout>
+              <ChatView />
+            </MainLayout>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <ToastContainer />
+    </>
   );
 }
 

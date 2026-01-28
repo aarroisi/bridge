@@ -9,11 +9,13 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { useUIStore } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useListStore } from "@/stores/listStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useToastStore } from "@/stores/toastStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { Category } from "@/types";
 
@@ -27,6 +29,7 @@ export function InnerSidebar() {
     collapsedSections,
     toggleSection,
   } = useUIStore();
+  const { success, error } = useToastStore();
 
   // Determine active category from URL
   const getCurrentCategory = (): Category => {
@@ -41,6 +44,21 @@ export function InnerSidebar() {
   };
 
   const activeCategory = getCurrentCategory();
+
+  // Clear activeItem when on index pages (no ID in URL)
+  useEffect(() => {
+    const path = location.pathname;
+    const isIndexPage =
+      path === "/projects" ||
+      path === "/lists" ||
+      path === "/docs" ||
+      path === "/channels" ||
+      path === "/dms";
+
+    if (isIndexPage) {
+      setActiveItem(null);
+    }
+  }, [location.pathname, setActiveItem]);
 
   // Helper to navigate to an item
   const navigateToItem = (type: string, id: string) => {
@@ -74,27 +92,36 @@ export function InnerSidebar() {
       switch (activeCategory) {
         case "projects":
           const project = await createProject("New Project");
+          success("Project created successfully");
           navigateToItem("projects", project.id);
           break;
         case "lists":
           const list = await createList("New List");
+          success("List created successfully");
           navigateToItem("lists", list.id);
           break;
         case "docs":
           console.log("Creating doc...");
           const doc = await createDoc("Untitled Document", "");
           console.log("Doc created:", doc);
+          success("Document created successfully");
           navigateToItem("docs", doc.id);
           break;
         case "channels":
           const channel = await createChannel("new-channel");
+          success("Channel created successfully");
           navigateToItem("channels", channel.id);
           break;
       }
-    } catch (error) {
-      console.error("Failed to create item:", error);
-      alert("Error: " + (error as Error).message);
+    } catch (err) {
+      console.error("Failed to create item:", err);
+      error("Error: " + (err as Error).message);
     }
+  };
+
+  const getItemName = (item: any, type: string) => {
+    if (type === "docs") return item.title;
+    return item.name;
   };
 
   const renderStarred = (items: any[], type: string) => {
@@ -121,16 +148,14 @@ export function InnerSidebar() {
             {starred.map((item) => (
               <button
                 key={item.id}
-                onClick={() =>
-                  setActiveItem({ type: type as any, id: item.id })
-                }
+                onClick={() => navigateToItem(type, item.id)}
                 className={clsx(
                   "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
                   activeItem?.id === item.id && "bg-dark-surface text-blue-400",
                 )}
               >
                 {getItemIcon(type)}
-                <span className="truncate">{item.name}</span>
+                <span className="truncate">{getItemName(item, type)}</span>
               </button>
             ))}
           </div>
@@ -355,7 +380,7 @@ export function InnerSidebar() {
   };
 
   return (
-    <div className="w-52 bg-dark-surface border-r border-dark-border overflow-y-auto flex-shrink-0">
+    <div className="w-52 bg-dark-surface border-r border-dark-border overflow-y-auto flex-shrink-0 pt-4">
       {renderContent()}
     </div>
   );

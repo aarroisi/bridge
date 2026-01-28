@@ -9,6 +9,11 @@ function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 
+// Helper to convert camelCase to snake_case
+function toSnakeCase(str: string): string {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
 // Recursively convert object keys from snake_case to camelCase
 function convertKeysToCamelCase(obj: any): any {
   if (Array.isArray(obj)) {
@@ -17,6 +22,20 @@ function convertKeysToCamelCase(obj: any): any {
     return Object.keys(obj).reduce((acc, key) => {
       const camelKey = toCamelCase(key);
       acc[camelKey] = convertKeysToCamelCase(obj[key]);
+      return acc;
+    }, {} as any);
+  }
+  return obj;
+}
+
+// Recursively convert object keys from camelCase to snake_case
+function convertKeysToSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(convertKeysToSnakeCase);
+  } else if (obj !== null && typeof obj === "object") {
+    return Object.keys(obj).reduce((acc, key) => {
+      const snakeKey = toSnakeCase(key);
+      acc[snakeKey] = convertKeysToSnakeCase(obj[key]);
       return acc;
     }, {} as any);
   }
@@ -96,21 +115,21 @@ class ApiClient {
   post<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(convertKeysToSnakeCase(data)),
     });
   }
 
   put<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSON.stringify(convertKeysToSnakeCase(data)),
     });
   }
 
   patch<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify(convertKeysToSnakeCase(data)),
     });
   }
 

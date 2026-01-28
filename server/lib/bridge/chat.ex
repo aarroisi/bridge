@@ -402,7 +402,7 @@ defmodule Bridge.Chat do
   """
   def list_messages do
     Message
-    |> preload([:user, :parent, :quote])
+    |> preload([:user, :parent, quote: [:user]])
     |> order_by([m], asc: m.inserted_at)
     |> Repo.all()
   end
@@ -419,7 +419,7 @@ defmodule Bridge.Chat do
   def list_messages_by_entity(entity_type, entity_id) do
     Message
     |> where([m], m.entity_type == ^entity_type and m.entity_id == ^entity_id)
-    |> preload([:user, :parent, :quote])
+    |> preload([:user, :parent, quote: [:user]])
     |> order_by([m], asc: m.inserted_at)
     |> Repo.all()
   end
@@ -436,7 +436,7 @@ defmodule Bridge.Chat do
   def list_messages_by_user(user_id) do
     Message
     |> where([m], m.user_id == ^user_id)
-    |> preload([:user, :parent, :quote])
+    |> preload([:user, :parent, quote: [:user]])
     |> order_by([m], desc: m.inserted_at)
     |> Repo.all()
   end
@@ -453,7 +453,7 @@ defmodule Bridge.Chat do
   def list_message_replies(parent_id) do
     Message
     |> where([m], m.parent_id == ^parent_id)
-    |> preload([:user, :parent, :quote])
+    |> preload([:user, :parent, quote: [:user]])
     |> order_by([m], asc: m.inserted_at)
     |> Repo.all()
   end
@@ -474,7 +474,7 @@ defmodule Bridge.Chat do
   """
   def get_message(id) do
     Message
-    |> preload([:user, :parent, :quote])
+    |> preload([:user, :parent, quote: [:user]])
     |> Repo.get(id)
   end
 
@@ -494,7 +494,7 @@ defmodule Bridge.Chat do
   """
   def get_message!(id) do
     Message
-    |> preload([:user, :parent, :quote])
+    |> preload([:user, :parent, quote: [:user]])
     |> Repo.get!(id)
   end
 

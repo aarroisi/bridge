@@ -23,14 +23,31 @@ defmodule BridgeWeb.MessageJSON do
   end
 
   defp data(%Message{} = message) do
+    quote_data =
+      if Ecto.assoc_loaded?(message.quote) and message.quote do
+        %{
+          id: message.quote.id,
+          text: message.quote.text,
+          user_name:
+            if(Ecto.assoc_loaded?(message.quote.user), do: message.quote.user.name, else: nil),
+          inserted_at: message.quote.inserted_at
+        }
+      else
+        nil
+      end
+
     %{
       id: message.id,
       text: message.text,
       entity_type: message.entity_type,
       entity_id: message.entity_id,
       user_id: message.user_id,
+      user_name: if(Ecto.assoc_loaded?(message.user), do: message.user.name, else: nil),
+      # TODO: Add avatar support
+      avatar: "",
       parent_id: message.parent_id,
       quote_id: message.quote_id,
+      quote: quote_data,
       inserted_at: message.inserted_at,
       updated_at: message.updated_at
     }

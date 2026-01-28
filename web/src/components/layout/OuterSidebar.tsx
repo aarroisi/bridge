@@ -10,6 +10,7 @@ import { clsx } from "clsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUIStore } from "@/stores/uiStore";
 import { Category } from "@/types";
+import { ProfileMenu } from "@/components/features/ProfileMenu";
 
 const categories: { id: Category; icon: any; label: string }[] = [
   { id: "home", icon: Home, label: "Home" },
@@ -59,22 +60,28 @@ export function OuterSidebar() {
   const currentCategory = getCurrentCategory();
 
   return (
-    <div className="w-14 bg-dark-bg border-r border-dark-border flex flex-col items-center py-4 gap-2">
-      {categories.map(({ id, icon: Icon, label }) => (
-        <button
-          key={id}
-          onClick={() => handleCategoryClick(id)}
-          className={clsx(
-            "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-            currentCategory === id
-              ? "bg-blue-600 text-white"
-              : "text-dark-text-muted hover:bg-dark-surface hover:text-dark-text",
-          )}
-          title={label}
-        >
-          <Icon size={20} />
-        </button>
-      ))}
+    <div className="w-14 bg-dark-bg border-r border-dark-border flex flex-col items-center py-4">
+      <div className="flex flex-col gap-2">
+        {categories.map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            onClick={() => handleCategoryClick(id)}
+            className={clsx(
+              "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
+              currentCategory === id
+                ? "bg-blue-600 text-white"
+                : "text-dark-text-muted hover:bg-dark-surface hover:text-dark-text",
+            )}
+            title={label}
+          >
+            <Icon size={20} />
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1" />
+
+      <ProfileMenu />
     </div>
   );
 }

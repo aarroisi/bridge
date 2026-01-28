@@ -7,8 +7,9 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  updateProfile: (data: { name?: string; email?: string }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -33,9 +34,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  logout: () => {
-    api.clearToken();
-    set({ user: null, isAuthenticated: false });
+  logout: async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout request failed:", error);
+    } finally {
+      api.clearToken();
+      set({ user: null, isAuthenticated: false });
+    }
   },
 
   checkAuth: async () => {
@@ -53,5 +60,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
+  },
+
+  updateProfile: async (data: { name?: string; email?: string }) => {
+    const response = await api.put<{ user: User }>("/auth/me", { user: data });
+    set({ user: response.user });
   },
 }));

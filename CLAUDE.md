@@ -18,6 +18,7 @@ cd server && mix test           cd web && npx playwright test
 2. **Tuple Returns**: Use `{:ok, result}` / `{:error, reason}` - never bang functions
 3. **Test-Driven**: Always use TDD for both backend and frontend - write tests first, then implement
 4. **E2E Testing**: Use `keyboard.insertText()` for React inputs, NOT `fill()`
+5. **Toast Notifications**: Always show toast after successful backend mutations (create, update, delete) using `useToastStore`
 
 ## Documentation
 

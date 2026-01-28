@@ -23,6 +23,9 @@ defmodule BridgeWeb.Router do
   scope "/api", BridgeWeb do
     pipe_through([:api, :authenticated])
 
+    # Auth routes (authentication required)
+    put("/auth/me", AuthController, :update_me)
+
     # Resource routes (authentication required)
     resources("/projects", ProjectController, except: [:new, :edit])
     resources("/lists", ListController, except: [:new, :edit])

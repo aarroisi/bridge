@@ -105,6 +105,37 @@ defmodule BridgeWeb.AuthController do
     end
   end
 
+  def update_me(conn, %{"user" => user_params}) do
+    current_user = conn.assigns.current_user
+
+    # Only allow updating name and email
+    allowed_params = Map.take(user_params, ["name", "email"])
+
+    case Accounts.update_user(current_user, allowed_params) do
+      {:ok, user} ->
+        user = Bridge.Repo.preload(user, :workspace)
+
+        json(conn, %{
+          user: %{
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            workspace_id: user.workspace_id
+          },
+          workspace: %{
+            id: user.workspace.id,
+            name: user.workspace.name,
+            slug: user.workspace.slug
+          }
+        })
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: translate_errors(changeset)})
+    end
+  end
+
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
       Regex.replace(~r"%{(\w+)}", msg, fn _, key ->

@@ -29,6 +29,8 @@ export interface Project {
   name: string;
   description?: string;
   starred: boolean;
+  startDate?: string;
+  endDate?: string;
   items?: ProjectItem[];
   insertedAt: string;
   updatedAt: string;

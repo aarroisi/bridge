@@ -299,31 +299,12 @@ export function TaskDetailModal({
                 {task.title}
               </h2>
             )}
-            <div className="flex items-center gap-4 flex-wrap">
-              {currentStatus && (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: currentStatus.color }}
-                  />
-                  <span className="text-sm text-dark-text-muted">
-                    {currentStatus.name}
-                  </span>
-                </div>
-              )}
-              {task.assignee && (
-                <div className="flex items-center gap-2 text-sm text-dark-text-muted">
-                  <Avatar name={task.assignee.name} size="xs" />
-                  <span>{task.assignee.name}</span>
-                </div>
-              )}
-              {task.dueOn && (
-                <div className="flex items-center gap-1 text-sm text-dark-text-muted">
-                  <Calendar size={14} />
-                  <span>{format(new Date(task.dueOn), "MMM d, yyyy")}</span>
-                </div>
-              )}
-            </div>
+            {task.createdBy && (
+              <div className="text-sm text-dark-text-muted">
+                Added by {task.createdBy.name} on{" "}
+                {format(new Date(task.insertedAt), "MMM d, yyyy")}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <button

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Quote, Trash2, Check, CheckSquare, Square } from "lucide-react";
+import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
 import { Message } from "./Message";
 import { DiscussionThread } from "./DiscussionThread";
@@ -247,10 +248,10 @@ export function SubtaskDetailModal({
                   {subtask.title}
                 </h2>
               )}
-              {subtask.assignee && (
-                <div className="flex items-center gap-2 text-sm text-dark-text-muted mt-2">
-                  <Avatar name={subtask.assignee.name} size="xs" />
-                  <span>{subtask.assignee.name}</span>
+              {subtask.createdBy && (
+                <div className="text-sm text-dark-text-muted mt-2">
+                  Added by {subtask.createdBy.name} on{" "}
+                  {format(new Date(subtask.insertedAt), "MMM d, yyyy")}
                 </div>
               )}
             </div>

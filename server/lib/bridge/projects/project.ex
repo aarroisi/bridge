@@ -9,6 +9,8 @@ defmodule Bridge.Projects.Project do
     field(:name, :string)
     field(:description, :string)
     field(:starred, :boolean, default: false)
+    field(:start_date, :date)
+    field(:end_date, :date)
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
     has_many(:project_items, Bridge.Projects.ProjectItem)
@@ -21,7 +23,19 @@ defmodule Bridge.Projects.Project do
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :description, :starred, :workspace_id])
+    |> cast(attrs, [:name, :description, :starred, :start_date, :end_date, :workspace_id])
     |> validate_required([:name, :workspace_id])
+    |> validate_dates()
+  end
+
+  defp validate_dates(changeset) do
+    start_date = get_field(changeset, :start_date)
+    end_date = get_field(changeset, :end_date)
+
+    if start_date && end_date && Date.compare(start_date, end_date) == :gt do
+      add_error(changeset, :end_date, "must be after start date")
+    else
+      changeset
+    end
   end
 end

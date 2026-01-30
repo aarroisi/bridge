@@ -45,6 +45,7 @@ defmodule BridgeWeb.TaskJSON do
       assignee_id: task.assignee_id,
       assignee: get_assignee(task),
       created_by_id: task.created_by_id,
+      created_by: get_created_by(task),
       inserted_at: task.inserted_at,
       updated_at: task.updated_at
     }
@@ -66,6 +67,11 @@ defmodule BridgeWeb.TaskJSON do
     do: %{id: id, name: name, email: email}
 
   defp get_assignee(_), do: nil
+
+  defp get_created_by(%Task{created_by: %{id: id, name: name, email: email}}),
+    do: %{id: id, name: name, email: email}
+
+  defp get_created_by(_), do: nil
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

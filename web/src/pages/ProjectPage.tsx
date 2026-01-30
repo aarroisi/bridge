@@ -8,6 +8,9 @@ import {
   MoreHorizontal,
   Star,
   Trash2,
+  Pencil,
+  Calendar,
+  X,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useListStore } from "@/stores/listStore";
@@ -60,6 +63,152 @@ function AddItemMenu({ onAdd, onClose }: AddItemMenuProps) {
   );
 }
 
+interface EditProjectModalProps {
+  project: {
+    id: string;
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+  };
+  onSave: (data: {
+    name: string;
+    description: string;
+    startDate: string | null;
+    endDate: string | null;
+  }) => Promise<void>;
+  onClose: () => void;
+}
+
+function EditProjectModal({ project, onSave, onClose }: EditProjectModalProps) {
+  const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description || "");
+  const [startDate, setStartDate] = useState(project.startDate || "");
+  const [endDate, setEndDate] = useState(project.endDate || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      setError("End date must be after start date");
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+
+    try {
+      await onSave({
+        name: name.trim(),
+        description: description.trim(),
+        startDate: startDate || null,
+        endDate: endDate || null,
+      });
+      onClose();
+    } catch (err) {
+      setError("Failed to save project");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-dark-surface border border-dark-border rounded-lg w-full max-w-md">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
+          <h3 className="font-semibold text-dark-text">Edit Project</h3>
+          <button
+            onClick={onClose}
+            className="text-dark-text-muted hover:text-dark-text"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {error && (
+            <div className="text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-dark-text-muted mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Project name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-text-muted mb-1">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Project description (optional)"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-text-muted mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-text-muted mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-dark-border">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-dark-text-muted hover:text-dark-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -67,6 +216,7 @@ export function ProjectPage() {
 
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showProjectMenu, setShowProjectMenu] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const projects = useProjectStore((state) => state.projects);
   const updateProject = useProjectStore((state) => state.updateProject);
@@ -167,6 +317,30 @@ export function ProjectPage() {
     }
   };
 
+  const handleSaveProject = async (data: {
+    name: string;
+    description: string;
+    startDate: string | null;
+    endDate: string | null;
+  }) => {
+    if (!project) return;
+    await updateProject(project.id, {
+      name: data.name,
+      description: data.description || undefined,
+      startDate: data.startDate || undefined,
+      endDate: data.endDate || undefined,
+    });
+    success("Project updated");
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   if (!project) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -198,11 +372,8 @@ export function ProjectPage() {
         className="flex items-center gap-3 p-3 rounded-lg bg-dark-surface border border-dark-border hover:border-dark-hover transition-colors text-left w-full"
       >
         <div className="text-dark-text-muted">{icon}</div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-dark-text truncate">
-            {name}
-          </div>
-          <div className="text-xs text-dark-text-muted capitalize">{type}</div>
+        <div className="text-sm font-medium text-dark-text truncate">
+          {name}
         </div>
       </button>
     );
@@ -211,17 +382,8 @@ export function ProjectPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-dark-border">
-        <div>
-          <h1 className="text-xl font-semibold text-dark-text">
-            {project.name}
-          </h1>
-          {project.description && (
-            <p className="text-sm text-dark-text-muted mt-1">
-              {project.description}
-            </p>
-          )}
-        </div>
+      <div className="px-6 py-4 border-b border-dark-border flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-dark-text">{project.name}</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
@@ -247,6 +409,16 @@ export function ProjectPage() {
             </button>
             {showProjectMenu && (
               <div className="absolute top-full right-0 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-10 min-w-[160px]">
+                <button
+                  onClick={() => {
+                    setShowEditModal(true);
+                    setShowProjectMenu(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
+                >
+                  <Pencil size={16} />
+                  Edit Project
+                </button>
                 <button
                   onClick={() => {
                     handleToggleStar();
@@ -275,6 +447,32 @@ export function ProjectPage() {
           </div>
         </div>
       </div>
+
+      {/* Project Info */}
+      {(project.description || project.startDate || project.endDate) && (
+        <div className="px-6 py-3">
+          {project.description && (
+            <p className="text-sm text-dark-text-muted">
+              {project.description}
+            </p>
+          )}
+          {(project.startDate || project.endDate) && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-dark-text-muted">
+              <Calendar size={12} />
+              {project.startDate && project.endDate ? (
+                <span>
+                  {formatDate(project.startDate)} -{" "}
+                  {formatDate(project.endDate)}
+                </span>
+              ) : project.startDate ? (
+                <span>Starts {formatDate(project.startDate)}</span>
+              ) : (
+                <span>Ends {formatDate(project.endDate!)}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -355,6 +553,15 @@ export function ProjectPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Project Modal */}
+      {showEditModal && (
+        <EditProjectModal
+          project={project}
+          onSave={handleSaveProject}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
     </div>
   );
 }

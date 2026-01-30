@@ -39,6 +39,8 @@ defmodule BridgeWeb.ProjectJSON do
       name: project.name,
       description: project.description,
       starred: project.starred,
+      start_date: project.start_date,
+      end_date: project.end_date,
       inserted_at: project.inserted_at,
       updated_at: project.updated_at
     }

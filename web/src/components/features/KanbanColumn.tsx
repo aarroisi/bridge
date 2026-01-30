@@ -16,6 +16,7 @@ interface KanbanColumnProps {
   onTaskClick: (taskId: string) => void;
   onAddTask: (statusId: string) => void;
   selectedTaskId: string | null;
+  isHighlighted?: boolean;
 }
 
 export function KanbanColumn({
@@ -26,12 +27,17 @@ export function KanbanColumn({
   onTaskClick,
   onAddTask,
   selectedTaskId,
+  isHighlighted = false,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id });
+  const { setNodeRef } = useDroppable({ id });
 
   return (
     <div
-      className="flex-shrink-0 w-80 flex flex-col"
+      ref={setNodeRef}
+      className={clsx(
+        "flex-shrink-0 w-80 flex flex-col border-r border-dark-border px-5 py-5 first:pl-6 transition-colors",
+        isHighlighted && "bg-blue-500/10",
+      )}
       data-testid={`column-${title}`}
     >
       <div className="flex items-center justify-between mb-4">
@@ -55,13 +61,7 @@ export function KanbanColumn({
         </button>
       </div>
 
-      <div
-        ref={setNodeRef}
-        className={clsx(
-          "flex-1 overflow-y-auto space-y-2 p-1 rounded-lg transition-colors min-h-[200px]",
-          isOver && "bg-blue-500/10",
-        )}
-      >
+      <div className="flex-1 overflow-y-auto space-y-2 p-1">
         <SortableContext
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}

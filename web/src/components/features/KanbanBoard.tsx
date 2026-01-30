@@ -2,13 +2,16 @@ import { useState, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragStartEvent,
   DragEndEvent,
+  DragOverEvent,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
@@ -32,6 +35,7 @@ export function KanbanBoard({
   selectedTaskId,
 }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [overStatusId, setOverStatusId] = useState<string | null>(null);
   const { reorderTask } = useListStore();
 
   const sensors = useSensors(
@@ -62,14 +66,79 @@ export function KanbanBoard({
     return groups;
   }, [tasks, sortedStatuses]);
 
+  // Custom collision detection that works better for kanban columns
+  const collisionDetection: CollisionDetection = (args) => {
+    // First, check for pointer collisions with droppable columns
+    const pointerCollisions = pointerWithin(args);
+
+    if (pointerCollisions.length > 0) {
+      // Prioritize column collisions over task collisions
+      const columnCollision = pointerCollisions.find((collision) =>
+        sortedStatuses.some((s) => s.id === collision.id),
+      );
+      if (columnCollision) {
+        return [columnCollision];
+      }
+      return pointerCollisions;
+    }
+
+    // Fallback to rect intersection
+    return rectIntersection(args);
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find((t) => t.id === event.active.id);
     setActiveTask(task || null);
+    setOverStatusId(null);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || !active) {
+      setOverStatusId(null);
+      return;
+    }
+
+    const activeTask = tasks.find((t) => t.id === active.id);
+    if (!activeTask) {
+      setOverStatusId(null);
+      return;
+    }
+
+    const overId = over.id as string;
+    let targetStatusId: string | null = null;
+
+    // Check if over a column directly
+    const isColumnDrop = sortedStatuses.some((s) => s.id === overId);
+    if (isColumnDrop) {
+      targetStatusId = overId;
+    } else {
+      // Over a task - find which column it belongs to
+      const overTask = tasks.find((t) => t.id === overId);
+      if (overTask) {
+        targetStatusId = overTask.statusId;
+      } else {
+        // Task not found - might be hovering over empty space or self
+        // Try to get the droppable container from the over data
+        const containerId = over.data?.current?.sortable?.containerId;
+        if (containerId && sortedStatuses.some((s) => s.id === containerId)) {
+          targetStatusId = containerId;
+        }
+      }
+    }
+
+    // Only highlight if moving to a different status
+    if (targetStatusId && targetStatusId !== activeTask.statusId) {
+      setOverStatusId(targetStatusId);
+    } else {
+      setOverStatusId(null);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
+    setOverStatusId(null);
 
     if (!over) return;
 
@@ -118,11 +187,12 @@ export function KanbanBoard({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 p-6 h-full overflow-x-auto">
+      <div className="flex h-full overflow-x-auto">
         {sortedStatuses.map((status) => (
           <KanbanColumn
             key={status.id}
@@ -133,6 +203,7 @@ export function KanbanBoard({
             onTaskClick={onTaskClick}
             onAddTask={onAddTask}
             selectedTaskId={selectedTaskId}
+            isHighlighted={overStatusId === status.id}
           />
         ))}
       </div>

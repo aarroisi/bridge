@@ -257,10 +257,30 @@ export const useListStore = create<ListState>((set, get) => ({
 
     const listTasks = state.tasks[listId] || [];
 
-    // Optimistic update: immediately update the UI
-    const updatedTasks = listTasks.map((t) =>
-      t.id === taskId ? { ...t, statusId: newStatusId } : t,
+    // Optimistic update: reorder tasks locally
+    // 1. Remove task from its current position
+    const tasksWithoutMoved = listTasks.filter((t) => t.id !== taskId);
+
+    // 2. Get tasks in the target status, sorted by position
+    const targetStatusTasks = tasksWithoutMoved
+      .filter((t) => t.statusId === newStatusId)
+      .sort((a, b) => a.position - b.position);
+
+    // 3. Insert the moved task at the new index
+    const movedTask = { ...task, statusId: newStatusId };
+
+    // 4. Calculate new positions for the target status
+    const updatedTargetTasks = [
+      ...targetStatusTasks.slice(0, newIndex),
+      movedTask,
+      ...targetStatusTasks.slice(newIndex),
+    ].map((t, idx) => ({ ...t, position: idx }));
+
+    // 5. Combine with tasks from other statuses
+    const otherTasks = tasksWithoutMoved.filter(
+      (t) => t.statusId !== newStatusId,
     );
+    const updatedTasks = [...otherTasks, ...updatedTargetTasks];
 
     set((state) => ({
       tasks: { ...state.tasks, [listId!]: updatedTasks },

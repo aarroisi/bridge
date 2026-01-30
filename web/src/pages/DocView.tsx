@@ -509,25 +509,34 @@ export function DocView() {
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        <div className="px-8 py-6 border-b border-dark-border max-w-7xl mx-auto w-full">
-          <div
-            className={clsx(
-              "flex items-center justify-between",
-              !isNewDoc && doc && "mb-3",
-            )}
-          >
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={isEditing ? editedTitle : doc?.title || ""}
-              onChange={(e) => setEditedTitle(e.target.value)}
-              disabled={!isEditing}
-              className={clsx(
-                "text-3xl font-bold text-dark-text bg-transparent border-none outline-none flex-1 min-w-0",
-                !isEditing && "cursor-default",
+        <div className="px-6 py-4 border-b border-dark-border max-w-7xl mx-auto w-full">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={isEditing ? editedTitle : doc?.title || ""}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                disabled={!isEditing}
+                className={clsx(
+                  "text-2xl font-bold text-dark-text bg-transparent border-none outline-none w-full",
+                  !isEditing && "cursor-default",
+                )}
+                placeholder="Add a title..."
+              />
+              {!isNewDoc && doc && doc.createdBy && (
+                <div className="text-sm text-dark-text-muted mt-1">
+                  Added by {doc.createdBy.name} on{" "}
+                  {format(new Date(doc.insertedAt), "MMM d, yyyy")}
+                  {doc.updatedAt !== doc.insertedAt && (
+                    <span>
+                      {" "}
+                      · Updated {format(new Date(doc.updatedAt), "MMM d, yyyy")}
+                    </span>
+                  )}
+                </div>
               )}
-              placeholder="Add a title..."
-            />
+            </div>
             <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
               {isEditing && !isNewDoc && hasUnsavedChanges() && (
                 <>
@@ -607,26 +616,6 @@ export function DocView() {
               )}
             </div>
           </div>
-          {!isNewDoc && doc && (
-            <div className="flex items-center gap-3 text-sm text-dark-text-muted">
-              <div className="flex items-center gap-2">
-                <Avatar name={doc.authorName} size="xs" />
-                <span>{doc.authorName}</span>
-              </div>
-              <span>•</span>
-              <span>
-                Created {format(new Date(doc.insertedAt), "MMM d, yyyy")}
-              </span>
-              {doc.updatedAt !== doc.insertedAt && (
-                <>
-                  <span>•</span>
-                  <span>
-                    Updated {format(new Date(doc.updatedAt), "MMM d, yyyy")}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
         </div>
 
         {isEditing && editor && (

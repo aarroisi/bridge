@@ -38,6 +38,8 @@ defmodule BridgeWeb.ListJSON do
       id: list.id,
       name: list.name,
       starred: list.starred,
+      created_by_id: list.created_by_id,
+      created_by: get_created_by(list),
       inserted_at: list.inserted_at,
       updated_at: list.updated_at
     }
@@ -49,6 +51,11 @@ defmodule BridgeWeb.ListJSON do
       base
     end
   end
+
+  defp get_created_by(%List{created_by: %{id: id, name: name, email: email}}),
+    do: %{id: id, name: name, email: email}
+
+  defp get_created_by(_), do: nil
 
   defp status_data(status) do
     %{

@@ -56,6 +56,8 @@ export interface List {
   name: string;
   starred: boolean;
   statuses?: ListStatus[];
+  createdById: string;
+  createdBy?: EmbeddedUser | null;
   insertedAt: string;
   updatedAt: string;
 }
@@ -104,8 +106,7 @@ export interface Doc {
   id: string;
   title: string;
   content: string;
-  authorId: string;
-  authorName: string;
+  createdBy?: EmbeddedUser | null;
   starred: boolean;
   insertedAt: string;
   updatedAt: string;

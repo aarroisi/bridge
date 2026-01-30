@@ -1,4 +1,4 @@
-import { Calendar } from "lucide-react";
+import { Calendar, StickyNote } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
 import { Task } from "@/types";
@@ -41,6 +41,10 @@ export function TaskCard({
             <Calendar size={12} />
             <span>{format(new Date(task.dueOn), "MMM d")}</span>
           </div>
+        )}
+
+        {task.notes && task.notes.replace(/<[^>]*>/g, "").trim() && (
+          <StickyNote size={12} title="Has notes" />
         )}
 
         {task.createdBy && (

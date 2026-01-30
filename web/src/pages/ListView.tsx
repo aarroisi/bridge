@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { format } from "date-fns";
 import {
   LayoutGrid,
   List,
@@ -610,13 +611,21 @@ export function ListView() {
             </button>
           </div>
         ) : (
-          <h1
-            onClick={handleStartEditingTitle}
-            className="text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors"
-            title="Click to edit"
-          >
-            {list.name}
-          </h1>
+          <div>
+            <h1
+              onClick={handleStartEditingTitle}
+              className="text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors"
+              title="Click to edit"
+            >
+              {list.name}
+            </h1>
+            {list.createdBy && (
+              <div className="text-sm text-dark-text-muted mt-1">
+                Added by {list.createdBy.name} on{" "}
+                {format(new Date(list.insertedAt), "MMM d, yyyy")}
+              </div>
+            )}
+          </div>
         )}
         <div className="flex items-center gap-2">
           <button

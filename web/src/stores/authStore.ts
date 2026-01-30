@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 
 interface ItemWithCreator {
   createdById?: string;
-  authorId?: string;
+  createdBy?: { id: string } | null;
 }
 
 interface AuthState {
@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!user) return false;
     if (user.role === "owner") return true;
     // Members and guests can only edit their own items
-    const creatorId = item.authorId || item.createdById;
+    const creatorId = item.createdBy?.id || item.createdById;
     return creatorId === user.id;
   },
 
@@ -95,7 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!user) return false;
     if (user.role === "owner") return true;
     // Members and guests can only delete their own items
-    const creatorId = item.authorId || item.createdById;
+    const creatorId = item.createdBy?.id || item.createdById;
     return creatorId === user.id;
   },
 }));

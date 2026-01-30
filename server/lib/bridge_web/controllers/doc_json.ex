@@ -39,13 +39,16 @@ defmodule BridgeWeb.DocJSON do
       title: doc.title,
       content: doc.content,
       starred: doc.starred,
-      author_id: doc.author_id,
-      # TODO: Load from author relationship
-      author_name: "User",
+      created_by: get_created_by(doc),
       inserted_at: DateTime.to_iso8601(doc.inserted_at),
       updated_at: DateTime.to_iso8601(doc.updated_at)
     }
   end
+
+  defp get_created_by(%Doc{author: %{id: id, name: name, email: email}}),
+    do: %{id: id, name: name, email: email}
+
+  defp get_created_by(_), do: nil
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

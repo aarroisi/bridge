@@ -27,8 +27,10 @@ test.describe("Project Items", () => {
     // Should redirect to project page with nested URL
     await page.waitForURL(/\/projects\/[a-f0-9-]+$/);
 
-    // Verify project name is visible
-    await expect(page.getByText("Test Project")).toBeVisible();
+    // Verify project name is visible in the heading
+    await expect(
+      page.getByRole("heading", { name: "Test Project" }),
+    ).toBeVisible();
 
     // Click "Add Doc" to create a doc for this project
     await page.getByRole("button", { name: /add doc/i }).click();
@@ -60,8 +62,8 @@ test.describe("Project Items", () => {
     // Should redirect to doc view with nested project URL
     await page.waitForURL(/\/projects\/[a-f0-9-]+\/docs\/[a-f0-9-]+$/);
 
-    // Verify doc title is visible
-    await expect(page.getByDisplayValue("Project Doc")).toBeVisible();
+    // Verify doc title is visible in the input
+    await expect(page.locator('input[value="Project Doc"]')).toBeVisible();
   });
 
   test("should show doc under project in sidebar and highlight when clicked", async ({
@@ -99,8 +101,12 @@ test.describe("Project Items", () => {
     await page.click('[title="Projects"]');
     await page.waitForURL("/projects");
 
-    // Verify doc is visible under project in sidebar
+    // Click on the project in sidebar to expand it and show items
     const sidebar = page.locator('[class*="w-52"]');
+    await sidebar.getByText("Sidebar Test Project").click();
+    await page.waitForURL(/\/projects\/[a-f0-9-]+$/);
+
+    // Verify doc is visible under project in sidebar
     await expect(sidebar.getByText("Sidebar Test Doc")).toBeVisible();
 
     // Click on the doc in the sidebar
@@ -187,16 +193,18 @@ test.describe("Project Items", () => {
     await page.waitForURL(/\/projects\/[a-f0-9-]+$/);
 
     // Verify list is shown in project page
-    await expect(page.getByText("New List")).toBeVisible();
+    await expect(page.getByText("New List").first()).toBeVisible();
 
-    // Add a channel via the dropdown menu
-    await page.getByRole("button", { name: /add item/i }).click();
+    // Add a channel via the dropdown menu (use exact match for the main Add Item button)
+    await page.getByRole("button", { name: "Add Item", exact: true }).click();
+    // Wait for menu to appear
+    await expect(
+      page.getByRole("button", { name: /new channel/i }),
+    ).toBeVisible();
     await page.getByRole("button", { name: /new channel/i }).click();
 
     // Should redirect to the new channel with nested URL
-    await expect(page).toHaveURL(
-      /\/projects\/[a-f0-9-]+\/channels\/[a-f0-9-]+/,
-    );
+    await page.waitForURL(/\/projects\/[a-f0-9-]+\/channels\/[a-f0-9-]+/);
 
     // Projects icon should still be highlighted
     projectsButton = page.locator('[title="Projects"]');

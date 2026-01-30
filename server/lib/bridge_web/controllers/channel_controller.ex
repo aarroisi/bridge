@@ -60,11 +60,12 @@ defmodule BridgeWeb.ChannelController do
   end
 
   def create(conn, params) do
+    channel_params = params["channel"] || params
     workspace_id = conn.assigns.workspace_id
     user = conn.assigns.current_user
 
     channel_params =
-      params
+      channel_params
       |> Map.put("workspace_id", workspace_id)
       |> Map.put("created_by_id", user.id)
 
@@ -80,7 +81,7 @@ defmodule BridgeWeb.ChannelController do
   end
 
   def update(conn, params) do
-    channel_params = Map.drop(params, ["id"])
+    channel_params = params["channel"] || params
 
     with {:ok, channel} <- Chat.update_channel(conn.assigns.channel, channel_params) do
       render(conn, :show, channel: channel)

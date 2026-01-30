@@ -6,34 +6,34 @@ test.describe("Kanban Board", () => {
     await registerTestUser(page);
   });
 
-  test("should create a list and add tasks", async ({ page }) => {
-    // Expand the Lists section in sidebar and click the + button next to "Lists"
-    await page.getByText("Lists").first().click();
+  async function createList(page: any) {
+    // Click on Lists category in outer sidebar
+    await page.getByTitle("Lists").click();
 
-    // Click the + button next to the Lists header to create a new list
-    const listsSection = page
+    // Wait for inner sidebar to show lists
+    await expect(page.getByText("All Lists")).toBeVisible();
+
+    // Click the + button next to "All Lists" to create a new list
+    await page
       .locator("div")
-      .filter({ hasText: /^Lists/ })
-      .first();
-    await listsSection
+      .filter({ hasText: /^All Lists$/ })
       .locator("button")
-      .filter({ has: page.locator("svg") })
       .click();
 
     // Wait for the new list to be created and navigate to it
     await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+  }
+
+  test("should create a list and add tasks", async ({ page }) => {
+    await createList(page);
 
     // Verify kanban columns are visible (default statuses: todo, doing, done)
-    await expect(page.getByText("todo")).toBeVisible();
-    await expect(page.getByText("doing")).toBeVisible();
-    await expect(page.getByText("done")).toBeVisible();
+    await expect(page.getByTestId("column-todo")).toBeVisible();
+    await expect(page.getByTestId("column-doing")).toBeVisible();
+    await expect(page.getByTestId("column-done")).toBeVisible();
 
     // Add a task to todo column by clicking + button in that column
-    await page
-      .locator("div")
-      .filter({ hasText: /^todo/ })
-      .getByRole("button")
-      .click();
+    await page.getByTestId("column-todo").getByRole("button").click();
 
     // Fill in task title in modal
     const taskInput = page.getByPlaceholder(/task title/i);
@@ -48,67 +48,37 @@ test.describe("Kanban Board", () => {
   test("should display tasks in correct columns based on status", async ({
     page,
   }) => {
-    // Navigate to lists and create a list
-    await page.getByRole("button", { name: /lists/i }).click();
-    await page.getByRole("button", { name: /\+/ }).first().click();
-    const listNameInput = page.getByPlaceholder(/name/i);
-    await listNameInput.focus();
-    await page.keyboard.insertText("Status Test Board");
-    await page.getByRole("button", { name: /create/i }).click();
-    await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+    await createList(page);
 
-    // Add a task to To Do
-    await page
-      .locator("div")
-      .filter({ hasText: /^To Do/ })
-      .getByRole("button")
-      .click();
+    // Add a task to todo
+    await page.getByTestId("column-todo").getByRole("button").click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Todo Task");
     await page.getByRole("button", { name: /add task/i }).click();
 
-    // Verify task is in To Do column
-    const todoColumn = page
-      .locator("div")
-      .filter({ hasText: /^To Do/ })
-      .first();
-    await expect(todoColumn.getByText("Todo Task")).toBeVisible();
+    // Verify task is in todo column
+    await expect(
+      page.getByTestId("column-todo").getByText("Todo Task"),
+    ).toBeVisible();
 
-    // Add a task to Doing
-    await page
-      .locator("div")
-      .filter({ hasText: /^Doing/ })
-      .getByRole("button")
-      .click();
+    // Add a task to doing
+    await page.getByTestId("column-doing").getByRole("button").click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Doing Task");
     await page.getByRole("button", { name: /add task/i }).click();
 
-    // Verify task is in Doing column
-    const doingColumn = page
-      .locator("div")
-      .filter({ hasText: /^Doing/ })
-      .first();
-    await expect(doingColumn.getByText("Doing Task")).toBeVisible();
+    // Verify task is in doing column
+    await expect(
+      page.getByTestId("column-doing").getByText("Doing Task"),
+    ).toBeVisible();
   });
 
   test("should persist task order after page reload", async ({ page }) => {
-    // Navigate to lists and create a list
-    await page.getByRole("button", { name: /lists/i }).click();
-    await page.getByRole("button", { name: /\+/ }).first().click();
-    const listNameInput = page.getByPlaceholder(/name/i);
-    await listNameInput.focus();
-    await page.keyboard.insertText("Persistence Test Board");
-    await page.getByRole("button", { name: /create/i }).click();
-    await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+    await createList(page);
 
     // Add multiple tasks
     for (const taskName of ["Task 1", "Task 2", "Task 3"]) {
-      await page
-        .locator("div")
-        .filter({ hasText: /^To Do/ })
-        .getByRole("button")
-        .click();
+      await page.getByTestId("column-todo").getByRole("button").first().click();
       await page.getByPlaceholder(/task title/i).focus();
       await page.keyboard.insertText(taskName);
       await page.getByRole("button", { name: /add task/i }).click();
@@ -129,102 +99,80 @@ test.describe("Kanban Board", () => {
     await expect(page.getByText("Task 3")).toBeVisible();
   });
 
-  test("should open task detail panel when clicking a task", async ({
+  test("should open task detail modal when clicking a task", async ({
     page,
   }) => {
-    // Navigate to lists and create a list
-    await page.getByRole("button", { name: /lists/i }).click();
-    await page.getByRole("button", { name: /\+/ }).first().click();
-    const listNameInput = page.getByPlaceholder(/name/i);
-    await listNameInput.focus();
-    await page.keyboard.insertText("Detail Panel Test");
-    await page.getByRole("button", { name: /create/i }).click();
-    await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+    await createList(page);
 
     // Add a task
-    await page
-      .locator("div")
-      .filter({ hasText: /^To Do/ })
-      .getByRole("button")
-      .click();
+    await page.getByTestId("column-todo").getByRole("button").click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Click Me Task");
     await page.getByRole("button", { name: /add task/i }).click();
 
-    // Click the task
+    // Click the task to open modal
     await page.getByText("Click Me Task").click();
 
-    // Verify detail panel opens with task title
-    const detailPanel = page.locator('[class*="border-l"]').last();
-    await expect(detailPanel.getByText("Click Me Task")).toBeVisible();
+    // Verify modal opens with task title (modal has fixed positioning)
+    const modal = page.locator(".fixed").filter({ hasText: "Click Me Task" });
+    await expect(modal).toBeVisible();
+
+    // Verify URL contains task parameter
+    await expect(page).toHaveURL(/task=/);
   });
 
-  test("should change task status via detail panel buttons", async ({
+  test("should change task status via detail modal dropdown", async ({
     page,
   }) => {
-    // Navigate to lists and create a list
-    await page.getByRole("button", { name: /lists/i }).click();
-    await page.getByRole("button", { name: /\+/ }).first().click();
-    const listNameInput = page.getByPlaceholder(/name/i);
-    await listNameInput.focus();
-    await page.keyboard.insertText("Status Change Test");
-    await page.getByRole("button", { name: /create/i }).click();
-    await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+    await createList(page);
 
-    // Add a task to To Do
-    await page
-      .locator("div")
-      .filter({ hasText: /^To Do/ })
-      .getByRole("button")
-      .click();
+    // Add a task to todo
+    await page.getByTestId("column-todo").getByRole("button").click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Status Test Task");
     await page.getByRole("button", { name: /add task/i }).click();
 
-    // Click the task to open detail panel
+    // Click the task to open modal
     await page.getByText("Status Test Task").click();
 
-    // Click "Doing" status button in detail panel
-    await page.getByRole("button", { name: /^doing$/i }).click();
+    // Click the status dropdown to open it
+    await page
+      .locator("button")
+      .filter({ hasText: /^todo$/ })
+      .first()
+      .click();
+
+    // Select "doing" status
+    await page
+      .locator("button")
+      .filter({ hasText: /^doing$/ })
+      .click();
 
     // Wait for status update
     await page.waitForTimeout(500);
 
-    // Close the panel
+    // Close the modal by pressing Escape
     await page.keyboard.press("Escape");
 
-    // Verify task moved to Doing column
-    const doingColumn = page
-      .locator("div")
-      .filter({ hasText: /^Doing/ })
-      .first();
-    await expect(doingColumn.getByText("Status Test Task")).toBeVisible();
+    // Verify task moved to doing column
+    await expect(
+      page.getByTestId("column-doing").getByText("Status Test Task"),
+    ).toBeVisible();
   });
 
   test("should switch between board and list view", async ({ page }) => {
-    // Navigate to lists and create a list
-    await page.getByRole("button", { name: /lists/i }).click();
-    await page.getByRole("button", { name: /\+/ }).first().click();
-    const listNameInput = page.getByPlaceholder(/name/i);
-    await listNameInput.focus();
-    await page.keyboard.insertText("View Toggle Test");
-    await page.getByRole("button", { name: /create/i }).click();
-    await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+    await createList(page);
 
     // Add a task
-    await page
-      .locator("div")
-      .filter({ hasText: /^To Do/ })
-      .getByRole("button")
-      .click();
+    await page.getByTestId("column-todo").getByRole("button").click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("View Test Task");
     await page.getByRole("button", { name: /add task/i }).click();
 
     // Verify we're in board view (columns visible)
-    await expect(page.getByText("To Do")).toBeVisible();
-    await expect(page.getByText("Doing")).toBeVisible();
-    await expect(page.getByText("Done")).toBeVisible();
+    await expect(page.getByTestId("column-todo")).toBeVisible();
+    await expect(page.getByTestId("column-doing")).toBeVisible();
+    await expect(page.getByTestId("column-done")).toBeVisible();
 
     // Switch to list view
     await page.getByTitle("List view").click();
@@ -236,6 +184,6 @@ test.describe("Kanban Board", () => {
     await page.getByTitle("Board view").click();
 
     // Verify board columns are visible again
-    await expect(page.getByText("To Do")).toBeVisible();
+    await expect(page.getByTestId("column-todo")).toBeVisible();
   });
 });

@@ -60,7 +60,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
     end
 
     test "creates a new member", %{conn: conn} do
-      user_params = %{
+      member_params = %{
         name: "New User",
         email: "newuser@example.com",
         password: "password123",
@@ -69,7 +69,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
 
       response =
         conn
-        |> post(~p"/api/workspace/members", user: user_params)
+        |> post(~p"/api/workspace/members", member: member_params)
         |> json_response(201)
 
       assert response["data"]["name"] == "New User"
@@ -78,7 +78,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
     end
 
     test "creates a new guest", %{conn: conn} do
-      user_params = %{
+      member_params = %{
         name: "Guest User",
         email: "guest@example.com",
         password: "password123",
@@ -87,33 +87,33 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
 
       response =
         conn
-        |> post(~p"/api/workspace/members", user: user_params)
+        |> post(~p"/api/workspace/members", member: member_params)
         |> json_response(201)
 
       assert response["data"]["role"] == "guest"
     end
 
     test "returns error for invalid data", %{conn: conn} do
-      user_params = %{name: "", email: "invalid"}
+      member_params = %{name: "", email: "invalid"}
 
       response =
         conn
-        |> post(~p"/api/workspace/members", user: user_params)
+        |> post(~p"/api/workspace/members", member: member_params)
         |> json_response(422)
 
       assert response["errors"]["name"]
     end
 
     test "returns 403 for non-owners", %{conn: conn, workspace: workspace} do
-      member = insert(:user, workspace_id: workspace.id, role: "member")
+      existing_member = insert(:user, workspace_id: workspace.id, role: "member")
 
       conn =
         conn
-        |> put_session(:user_id, member.id)
+        |> put_session(:user_id, existing_member.id)
 
       conn
       |> post(~p"/api/workspace/members",
-        user: %{name: "Test", email: "test@test.com", password: "pass123"}
+        member: %{name: "Test", email: "test@test.com", password: "pass123"}
       )
       |> json_response(403)
     end
@@ -137,7 +137,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
     test "updates member role", %{conn: conn, member: member} do
       response =
         conn
-        |> put(~p"/api/workspace/members/#{member.id}", user: %{role: "guest"})
+        |> put(~p"/api/workspace/members/#{member.id}", member: %{role: "guest"})
         |> json_response(200)
 
       assert response["data"]["role"] == "guest"
@@ -148,7 +148,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
       other_user = insert(:user, workspace_id: other_workspace.id)
 
       conn
-      |> put(~p"/api/workspace/members/#{other_user.id}", user: %{role: "guest"})
+      |> put(~p"/api/workspace/members/#{other_user.id}", member: %{role: "guest"})
       |> json_response(404)
     end
 
@@ -158,7 +158,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
         |> put_session(:user_id, member.id)
 
       conn
-      |> put(~p"/api/workspace/members/#{member.id}", user: %{role: "guest"})
+      |> put(~p"/api/workspace/members/#{member.id}", member: %{role: "guest"})
       |> json_response(403)
     end
   end

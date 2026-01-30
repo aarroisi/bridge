@@ -30,7 +30,10 @@ export function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
-    <div className="flex-shrink-0 w-80 flex flex-col">
+    <div
+      className="flex-shrink-0 w-80 flex flex-col"
+      data-testid={`column-${title}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div

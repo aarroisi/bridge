@@ -34,12 +34,28 @@ defmodule BridgeWeb.ProjectJSON do
   end
 
   defp data(%Project{} = project) do
-    %{
+    base = %{
       id: project.id,
       name: project.name,
+      description: project.description,
       starred: project.starred,
       inserted_at: project.inserted_at,
       updated_at: project.updated_at
+    }
+
+    # Include items if preloaded
+    if Ecto.assoc_loaded?(project.project_items) do
+      Map.put(base, :items, Enum.map(project.project_items, &item_data/1))
+    else
+      base
+    end
+  end
+
+  defp item_data(item) do
+    %{
+      id: item.id,
+      item_type: item.item_type,
+      item_id: item.item_id
     }
   end
 

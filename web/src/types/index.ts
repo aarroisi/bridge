@@ -27,23 +27,23 @@ export interface ProjectMember {
 export interface Project {
   id: string;
   name: string;
+  description?: string;
   starred: boolean;
-  items: ProjectItem[];
+  items?: ProjectItem[];
   insertedAt: string;
   updatedAt: string;
 }
 
 export interface ProjectItem {
-  type: "list" | "doc" | "channel";
   id: string;
-  name: string;
+  itemType: "list" | "doc" | "channel";
+  itemId: string;
 }
 
 // List types
 export interface List {
   id: string;
   name: string;
-  projectId?: string;
   starred: boolean;
   insertedAt: string;
   updatedAt: string;
@@ -83,7 +83,6 @@ export interface Doc {
   id: string;
   title: string;
   content: string;
-  projectId?: string;
   authorId: string;
   authorName: string;
   starred: boolean;
@@ -95,7 +94,6 @@ export interface Doc {
 export interface Channel {
   id: string;
   name: string;
-  projectId?: string;
   starred: boolean;
   insertedAt: string;
   updatedAt: string;

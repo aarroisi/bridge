@@ -5,7 +5,7 @@ defmodule BridgeWeb.TaskControllerTest do
     workspace = insert(:workspace)
     user = insert(:user, workspace_id: workspace.id)
     project = insert(:project, workspace_id: workspace.id)
-    list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+    list = insert(:list, workspace_id: workspace.id)
 
     conn =
       build_conn()
@@ -35,10 +35,9 @@ defmodule BridgeWeb.TaskControllerTest do
       conn: conn,
       user: user,
       workspace: workspace,
-      project: project,
       list: list
     } do
-      other_list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+      other_list = insert(:list, workspace_id: workspace.id)
       _task_in_list = insert(:task, list_id: list.id, created_by_id: user.id)
       other_task = insert(:task, list_id: other_list.id, created_by_id: user.id)
 

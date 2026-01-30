@@ -2,6 +2,7 @@ defmodule BridgeWeb.TaskController do
   use BridgeWeb, :controller
 
   alias Bridge.Lists
+  alias Bridge.Projects
   alias Bridge.Authorization.Policy
   import Plug.Conn
 
@@ -41,15 +42,12 @@ defmodule BridgeWeb.TaskController do
   end
 
   defp get_authorization_resource(conn, :create_item) do
-    # For create, we need to get the list's project_id
+    # For create, we need to get the list's project_id via project_items
     params = conn.params["task"] || conn.params
     list_id = params["list_id"]
 
     if list_id do
-      case Lists.get_list(list_id, conn.assigns.workspace_id) do
-        {:ok, list} -> list.project_id
-        _ -> nil
-      end
+      Projects.get_item_project_id("list", list_id)
     else
       nil
     end

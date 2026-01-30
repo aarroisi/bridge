@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useUIStore } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useListStore } from "@/stores/listStore";
@@ -18,23 +18,65 @@ import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { Category } from "@/types";
+import { CreateProjectModal } from "@/components/features/CreateProjectModal";
 
 export function InnerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    sidebarOpen,
-    activeItem,
-    setActiveItem,
-    collapsedSections,
-    toggleSection,
-  } = useUIStore();
+  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const setActiveItem = useUIStore((state) => state.setActiveItem);
+  const collapsedSections = useUIStore((state) => state.collapsedSections);
+  const toggleSection = useUIStore((state) => state.toggleSection);
   const { success, error } = useToastStore();
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [addItemDropdownProjectId, setAddItemDropdownProjectId] = useState<
+    string | null
+  >(null);
+  const addItemDropdownRef = useRef<HTMLDivElement>(null);
+
+  const projects = useProjectStore((state) => state.projects) || [];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        addItemDropdownRef.current &&
+        !addItemDropdownRef.current.contains(event.target as Node)
+      ) {
+        setAddItemDropdownProjectId(null);
+      }
+    };
+
+    if (addItemDropdownProjectId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [addItemDropdownProjectId]);
+
+  // Get all item IDs that belong to projects (for determining category)
+  const projectItemIds = useMemo(() => {
+    const listIds = new Set<string>();
+    const docIds = new Set<string>();
+    const channelIds = new Set<string>();
+
+    projects.forEach((p) => {
+      (p.items || []).forEach((item) => {
+        if (item.itemType === "list") listIds.add(item.itemId);
+        if (item.itemType === "doc") docIds.add(item.itemId);
+        if (item.itemType === "channel") channelIds.add(item.itemId);
+      });
+    });
+
+    return { listIds, docIds, channelIds };
+  }, [projects]);
 
   // Determine active category from URL
   const getCurrentCategory = (): Category => {
     const path = location.pathname;
+
     if (path === "/") return "home";
+    // All /projects/* routes (including nested /projects/:id/docs/:docId) are projects
     if (path.startsWith("/projects")) return "projects";
     if (path.startsWith("/lists")) return "lists";
     if (path.startsWith("/docs")) return "docs";
@@ -45,51 +87,154 @@ export function InnerSidebar() {
 
   const activeCategory = getCurrentCategory();
 
-  // Sync activeItem with current URL
-  useEffect(() => {
+  // Compute active item and project directly from URL for immediate highlighting
+  const { activeItemId, activeItemType, activeProjectId } = useMemo(() => {
     const path = location.pathname;
-
-    // Extract ID from path like /docs/123 or /lists/456
     const pathParts = path.split("/").filter(Boolean);
 
-    if (pathParts.length >= 2) {
-      const category = pathParts[0]; // e.g., "docs", "lists", "projects"
-      const id = pathParts[1]; // e.g., "123"
+    // Handle nested project routes: /projects/:projectId/docs/:docId
+    if (pathParts[0] === "projects" && pathParts.length >= 4) {
+      const projectId = pathParts[1];
+      const itemType = pathParts[2]; // "docs", "lists", "channels"
+      const itemId = pathParts[3];
+      if (itemId && itemId !== "new") {
+        return {
+          activeItemId: itemId,
+          activeItemType: itemType,
+          activeProjectId: projectId,
+        };
+      }
+      return {
+        activeItemId: null,
+        activeItemType: null,
+        activeProjectId: projectId,
+      };
+    }
 
-      // Set activeItem when viewing a specific item
+    // Handle project routes: /projects/:id
+    if (pathParts[0] === "projects" && pathParts.length >= 2) {
+      const projectId = pathParts[1];
+      return {
+        activeItemId: projectId,
+        activeItemType: "projects",
+        activeProjectId: projectId,
+      };
+    }
+
+    // Handle regular routes: /docs/:id, /lists/:id, etc.
+    if (pathParts.length >= 2) {
+      const category = pathParts[0];
+      const id = pathParts[1];
       if (id && id !== "new") {
-        setActiveItem({
-          type: category as Category,
-          id: id,
-        });
-      } else if (id === "new") {
-        // Clear activeItem when creating new item
+        return {
+          activeItemId: id,
+          activeItemType: category,
+          activeProjectId: null,
+        };
+      }
+    }
+    return { activeItemId: null, activeItemType: null, activeProjectId: null };
+  }, [location.pathname]);
+
+  // Sync activeItem store with current URL (for other components that need it)
+  useEffect(() => {
+    const path = location.pathname;
+    const pathParts = path.split("/").filter(Boolean);
+
+    // Handle nested project routes: /projects/:projectId/docs/:docId
+    if (pathParts[0] === "projects" && pathParts.length >= 4) {
+      const itemType = pathParts[2]; // "docs", "lists", "channels"
+      const itemId = pathParts[3];
+      if (itemId && itemId !== "new") {
+        setActiveItem({ type: itemType as Category, id: itemId });
+      } else {
+        setActiveItem(null);
+      }
+      return;
+    }
+
+    // Handle regular routes: /docs/:id, /lists/:id, etc.
+    if (pathParts.length >= 2) {
+      const category = pathParts[0];
+      const id = pathParts[1];
+
+      if (id && id !== "new") {
+        setActiveItem({ type: category as Category, id });
+      } else {
         setActiveItem(null);
       }
     } else {
-      // Clear activeItem when on index pages
       setActiveItem(null);
     }
   }, [location.pathname, setActiveItem]);
 
   // Helper to navigate to an item with guard check
-  const navigateToItem = async (type: string, id: string) => {
+  // For project items, use nested URL: /projects/:projectId/docs/:docId
+  const navigateToItem = async (
+    type: string,
+    id: string,
+    projectId?: string,
+  ) => {
     const { navigationGuard } = useUIStore.getState();
     if (navigationGuard) {
       const canNavigate = await navigationGuard();
       if (!canNavigate) return;
     }
     setActiveItem({ type: type as any, id });
-    navigate(`/${type}/${id}`);
+
+    if (projectId) {
+      // Nested project route
+      navigate(`/projects/${projectId}/${type}/${id}`);
+    } else {
+      // Regular route
+      navigate(`/${type}/${id}`);
+    }
   };
-  const projects = useProjectStore((state) => state.projects) || [];
+
   const createProject = useProjectStore((state) => state.createProject);
+  const addItemToProject = useProjectStore((state) => state.addItem);
   const lists = useListStore((state) => state.lists) || [];
   const createList = useListStore((state) => state.createList);
   const docs = useDocStore((state) => state.docs) || [];
   const channels = useChatStore((state) => state.channels) || [];
   const directMessages = useChatStore((state) => state.directMessages) || [];
   const createChannel = useChatStore((state) => state.createChannel);
+
+  // Handler to add item to a specific project
+  const handleAddItemToProject = async (
+    projectId: string,
+    itemType: "list" | "doc" | "channel",
+  ) => {
+    setAddItemDropdownProjectId(null);
+
+    const { navigationGuard } = useUIStore.getState();
+    if (navigationGuard) {
+      const canNavigate = await navigationGuard();
+      if (!canNavigate) return;
+    }
+
+    try {
+      if (itemType === "doc") {
+        // Navigate to new doc page
+        navigate(`/projects/${projectId}/docs/new`);
+      } else if (itemType === "list") {
+        // Create list and add to project
+        const list = await createList("New List");
+        await addItemToProject(projectId, "list", list.id);
+        success("List created successfully");
+        navigate(`/projects/${projectId}/lists/${list.id}`);
+      } else if (itemType === "channel") {
+        // Create channel and add to project
+        const channel = await createChannel("new-channel");
+        await addItemToProject(projectId, "channel", channel.id);
+        success("Channel created successfully");
+        navigate(`/projects/${projectId}/channels/${channel.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to create item:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
 
   // Ensure all are arrays
   const safeProjects = Array.isArray(projects) ? projects : [];
@@ -99,6 +244,40 @@ export function InnerSidebar() {
   const safeDirectMessages = Array.isArray(directMessages)
     ? directMessages
     : [];
+
+  // Filter items without project for main views (use projectItemIds from above)
+  const workspaceLists = safeLists.filter(
+    (l) => !projectItemIds.listIds.has(l.id),
+  );
+  const workspaceDocs = safeDocs.filter(
+    (d) => !projectItemIds.docIds.has(d.id),
+  );
+  const workspaceChannels = safeChannels.filter(
+    (c) => !projectItemIds.channelIds.has(c.id),
+  );
+
+  // Helper to get items for a specific project
+  const getProjectLists = (projectId: string) => {
+    const project = safeProjects.find((p) => p.id === projectId);
+    const listIds = (project?.items || [])
+      .filter((i) => i.itemType === "list")
+      .map((i) => i.itemId);
+    return safeLists.filter((l) => listIds.includes(l.id));
+  };
+  const getProjectDocs = (projectId: string) => {
+    const project = safeProjects.find((p) => p.id === projectId);
+    const docIds = (project?.items || [])
+      .filter((i) => i.itemType === "doc")
+      .map((i) => i.itemId);
+    return safeDocs.filter((d) => docIds.includes(d.id));
+  };
+  const getProjectChannels = (projectId: string) => {
+    const project = safeProjects.find((p) => p.id === projectId);
+    const channelIds = (project?.items || [])
+      .filter((i) => i.itemType === "channel")
+      .map((i) => i.itemId);
+    return safeChannels.filter((c) => channelIds.includes(c.id));
+  };
 
   if (!sidebarOpen) return null;
 
@@ -115,10 +294,8 @@ export function InnerSidebar() {
     try {
       switch (activeCategory) {
         case "projects":
-          const project = await createProject("New Project");
-          success("Project created successfully");
-          await navigateToItem("projects", project.id);
-          break;
+          setShowCreateProjectModal(true);
+          return;
         case "lists":
           const list = await createList("New List");
           success("List created successfully");
@@ -136,6 +313,26 @@ export function InnerSidebar() {
       }
     } catch (err) {
       console.error("Failed to create item:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
+
+  const handleCreateProject = async (data: {
+    name: string;
+    description?: string;
+    memberIds: string[];
+  }) => {
+    try {
+      const project = await createProject({
+        name: data.name,
+        description: data.description,
+        memberIds: data.memberIds,
+      });
+      success("Project created successfully");
+      setShowCreateProjectModal(false);
+      await navigateToItem("projects", project.id);
+    } catch (err) {
+      console.error("Failed to create project:", err);
       error("Error: " + (err as Error).message);
     }
   };
@@ -172,7 +369,7 @@ export function InnerSidebar() {
                 onClick={() => navigateToItem(type, item.id)}
                 className={clsx(
                   "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                  activeItem?.id === item.id && "bg-dark-surface text-blue-400",
+                  activeItemId === item.id && "bg-dark-surface text-blue-400",
                 )}
               >
                 {getItemIcon(type)}
@@ -224,45 +421,164 @@ export function InnerSidebar() {
               </button>
             </div>
             <div className="mt-1">
-              {safeProjects.map((project) => (
-                <div key={project.id}>
-                  <button
-                    onClick={() => toggleSection(`project-${project.id}`)}
-                    className={clsx(
-                      "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                      activeItem?.id === project.id &&
-                        "bg-dark-surface text-blue-400",
-                    )}
-                  >
-                    {collapsedSections[`project-${project.id}`] ? (
-                      <ChevronRight size={14} />
-                    ) : (
-                      <ChevronDown size={14} />
-                    )}
-                    <span className="truncate flex-1">{project.name}</span>
-                  </button>
-                  {!collapsedSections[`project-${project.id}`] &&
-                    project.items && (
-                      <div className="ml-4">
-                        {project.items.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() =>
-                              setActiveItem({
-                                type: item.type as any,
-                                id: item.id,
-                              })
-                            }
-                            className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors text-dark-text-muted"
+              {safeProjects.map((project) => {
+                const projectLists = getProjectLists(project.id);
+                const projectDocs = getProjectDocs(project.id);
+                const projectChannels = getProjectChannels(project.id);
+                const hasItems =
+                  projectLists.length > 0 ||
+                  projectDocs.length > 0 ||
+                  projectChannels.length > 0;
+                const isProjectActive = activeProjectId === project.id;
+
+                return (
+                  <div key={project.id} className="group">
+                    <div className="flex items-center pr-3">
+                      <span className="p-1">
+                        {isProjectActive ? (
+                          <ChevronDown size={14} />
+                        ) : (
+                          <ChevronRight size={14} />
+                        )}
+                      </span>
+                      <button
+                        onClick={() => navigateToItem("projects", project.id)}
+                        className={clsx(
+                          "flex-1 px-2 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors rounded",
+                          activeItemId === project.id &&
+                            activeItemType === "projects" &&
+                            "bg-dark-surface text-blue-400",
+                        )}
+                      >
+                        <span className="truncate flex-1">{project.name}</span>
+                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAddItemDropdownProjectId(
+                              addItemDropdownProjectId === project.id
+                                ? null
+                                : project.id,
+                            );
+                          }}
+                          className={clsx(
+                            "hover:text-dark-text text-dark-text-muted transition-all",
+                            addItemDropdownProjectId === project.id
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100",
+                          )}
+                          title="Add item to project"
+                        >
+                          <Plus size={14} />
+                        </button>
+                        {addItemDropdownProjectId === project.id && (
+                          <div
+                            ref={addItemDropdownRef}
+                            className="absolute right-0 top-6 z-50 w-40 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1"
                           >
-                            {getItemIcon(item.type)}
-                            <span className="truncate">{item.name}</span>
-                          </button>
-                        ))}
+                            <button
+                              onClick={() =>
+                                handleAddItemToProject(project.id, "list")
+                              }
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
+                            >
+                              <ListTodo size={14} />
+                              New List
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleAddItemToProject(project.id, "doc")
+                              }
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
+                            >
+                              <FileText size={14} />
+                              New Doc
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleAddItemToProject(project.id, "channel")
+                              }
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
+                            >
+                              <Hash size={14} />
+                              New Channel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {hasItems && isProjectActive && (
+                      <div className="ml-6 border-l border-dark-border">
+                        {projectLists.map((list) => {
+                          const isActive = activeItemId === list.id;
+                          return (
+                            <button
+                              key={list.id}
+                              onClick={() =>
+                                navigateToItem("lists", list.id, project.id)
+                              }
+                              className={clsx(
+                                "w-full pl-3 pr-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                                isActive
+                                  ? "bg-dark-surface text-blue-400"
+                                  : "text-dark-text-muted",
+                              )}
+                            >
+                              <ListTodo size={14} />
+                              <span className="truncate">{list.name}</span>
+                            </button>
+                          );
+                        })}
+                        {projectDocs.map((doc) => {
+                          const isActive = activeItemId === doc.id;
+                          return (
+                            <button
+                              key={doc.id}
+                              onClick={() =>
+                                navigateToItem("docs", doc.id, project.id)
+                              }
+                              className={clsx(
+                                "w-full pl-3 pr-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                                isActive
+                                  ? "bg-dark-surface text-blue-400"
+                                  : "text-dark-text-muted",
+                              )}
+                            >
+                              <FileText size={14} />
+                              <span className="truncate">{doc.title}</span>
+                            </button>
+                          );
+                        })}
+                        {projectChannels.map((channel) => {
+                          const isActive = activeItemId === channel.id;
+                          return (
+                            <button
+                              key={channel.id}
+                              onClick={() =>
+                                navigateToItem(
+                                  "channels",
+                                  channel.id,
+                                  project.id,
+                                )
+                              }
+                              className={clsx(
+                                "w-full pl-3 pr-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
+                                isActive
+                                  ? "bg-dark-surface text-blue-400"
+                                  : "text-dark-text-muted",
+                              )}
+                            >
+                              <Hash size={14} />
+                              <span className="truncate">{channel.name}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -270,7 +586,7 @@ export function InnerSidebar() {
       case "lists":
         return (
           <div>
-            {renderStarred(safeLists, "lists")}
+            {renderStarred(workspaceLists, "lists")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Lists
               <button
@@ -281,14 +597,13 @@ export function InnerSidebar() {
               </button>
             </div>
             <div className="mt-1">
-              {safeLists.map((list) => (
+              {workspaceLists.map((list) => (
                 <button
                   key={list.id}
                   onClick={() => navigateToItem("lists", list.id)}
                   className={clsx(
                     "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                    activeItem?.id === list.id &&
-                      "bg-dark-surface text-blue-400",
+                    activeItemId === list.id && "bg-dark-surface text-blue-400",
                   )}
                 >
                   <ListTodo size={16} />
@@ -302,7 +617,7 @@ export function InnerSidebar() {
       case "docs":
         return (
           <div>
-            {renderStarred(safeDocs, "docs")}
+            {renderStarred(workspaceDocs, "docs")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Docs
               <button
@@ -313,14 +628,13 @@ export function InnerSidebar() {
               </button>
             </div>
             <div className="mt-1">
-              {safeDocs.map((doc) => (
+              {workspaceDocs.map((doc) => (
                 <button
                   key={doc.id}
                   onClick={() => navigateToItem("docs", doc.id)}
                   className={clsx(
                     "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                    activeItem?.id === doc.id &&
-                      "bg-dark-surface text-blue-400",
+                    activeItemId === doc.id && "bg-dark-surface text-blue-400",
                   )}
                 >
                   <FileText size={16} />
@@ -334,7 +648,7 @@ export function InnerSidebar() {
       case "channels":
         return (
           <div>
-            {renderStarred(safeChannels, "channels")}
+            {renderStarred(workspaceChannels, "channels")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
               All Channels
               <button
@@ -345,13 +659,13 @@ export function InnerSidebar() {
               </button>
             </div>
             <div className="mt-1">
-              {safeChannels.map((channel) => (
+              {workspaceChannels.map((channel) => (
                 <button
                   key={channel.id}
                   onClick={() => navigateToItem("channels", channel.id)}
                   className={clsx(
                     "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                    activeItem?.id === channel.id &&
+                    activeItemId === channel.id &&
                       "bg-dark-surface text-blue-400",
                   )}
                 >
@@ -384,7 +698,7 @@ export function InnerSidebar() {
                   onClick={() => navigateToItem("dms", dm.id)}
                   className={clsx(
                     "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                    activeItem?.id === dm.id && "bg-dark-surface text-blue-400",
+                    activeItemId === dm.id && "bg-dark-surface text-blue-400",
                   )}
                 >
                   <Avatar name={dm.name} size="xs" online={dm.online} />
@@ -401,8 +715,16 @@ export function InnerSidebar() {
   };
 
   return (
-    <div className="w-52 bg-dark-surface border-r border-dark-border overflow-y-auto flex-shrink-0 pt-4">
-      {renderContent()}
-    </div>
+    <>
+      <div className="w-52 bg-dark-surface border-r border-dark-border overflow-y-auto flex-shrink-0 pt-4">
+        {renderContent()}
+      </div>
+
+      <CreateProjectModal
+        isOpen={showCreateProjectModal}
+        onClose={() => setShowCreateProjectModal(false)}
+        onSubmit={handleCreateProject}
+      />
+    </>
   );
 }

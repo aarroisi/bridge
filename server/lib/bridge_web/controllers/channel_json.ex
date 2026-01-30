@@ -38,7 +38,6 @@ defmodule BridgeWeb.ChannelJSON do
       id: channel.id,
       name: channel.name,
       starred: channel.starred,
-      project_id: channel.project_id,
       inserted_at: channel.inserted_at,
       updated_at: channel.updated_at
     }

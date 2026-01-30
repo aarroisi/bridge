@@ -18,11 +18,10 @@ defmodule BridgeWeb.ChannelControllerTest do
   describe "index" do
     test "returns all channels in workspace", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      channel1 = insert(:channel, workspace_id: workspace.id, project_id: project.id)
-      channel2 = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+      channel1 = insert(:channel, workspace_id: workspace.id)
+      channel2 = insert(:channel, workspace_id: workspace.id)
 
       response =
         conn
@@ -36,15 +35,13 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "does not return channels from other workspaces", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
-      _channel_in_workspace = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+      _channel_in_workspace = insert(:channel, workspace_id: workspace.id)
 
       other_channel =
-        insert(:channel, workspace_id: other_workspace.id, project_id: other_project.id)
+        insert(:channel, workspace_id: other_workspace.id)
 
       response =
         conn
@@ -66,12 +63,11 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "returns paginated results with correct metadata", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       # Create 5 channels
       for _ <- 1..5 do
-        insert(:channel, workspace_id: workspace.id, project_id: project.id)
+        insert(:channel, workspace_id: workspace.id)
       end
 
       response =
@@ -87,11 +83,10 @@ defmodule BridgeWeb.ChannelControllerTest do
   end
 
   describe "create" do
-    test "creates channel with valid attributes", %{conn: conn, project: project} do
+    test "creates channel with valid attributes", %{conn: conn} do
       channel_params = %{
         name: "New Channel",
-        starred: false,
-        project_id: project.id
+        starred: false
       }
 
       response =
@@ -101,28 +96,12 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       assert response["data"]["name"] == "New Channel"
       assert response["data"]["starred"] == false
-      assert response["data"]["project_id"] == project.id
       assert response["data"]["id"]
     end
 
-    test "creates channel without project", %{conn: conn} do
+    test "created channel appears in index", %{conn: conn} do
       channel_params = %{
-        name: "General Channel"
-      }
-
-      response =
-        conn
-        |> post(~p"/api/channels", channel: channel_params)
-        |> json_response(201)
-
-      assert response["data"]["name"] == "General Channel"
-      assert response["data"]["id"]
-    end
-
-    test "created channel appears in index", %{conn: conn, project: project} do
-      channel_params = %{
-        name: "Test Channel",
-        project_id: project.id
+        name: "Test Channel"
       }
 
       create_response =
@@ -156,14 +135,12 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "sets workspace to current user's workspace", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       other_workspace = insert(:workspace)
 
       channel_params = %{
-        name: "Test Channel",
-        project_id: project.id
+        name: "Test Channel"
       }
 
       create_response =
@@ -190,8 +167,8 @@ defmodule BridgeWeb.ChannelControllerTest do
   end
 
   describe "show" do
-    test "returns channel by id", %{conn: conn, workspace: workspace, project: project} do
-      channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+    test "returns channel by id", %{conn: conn, workspace: workspace} do
+      channel = insert(:channel, workspace_id: workspace.id)
 
       response =
         conn
@@ -201,7 +178,6 @@ defmodule BridgeWeb.ChannelControllerTest do
       assert response["data"]["id"] == channel.id
       assert response["data"]["name"] == channel.name
       assert response["data"]["starred"] == channel.starred
-      assert response["data"]["project_id"] == project.id
     end
 
     test "returns 404 for non-existent channel", %{conn: conn} do
@@ -212,10 +188,9 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "returns 404 for channel from another workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       other_channel =
-        insert(:channel, workspace_id: other_workspace.id, project_id: other_project.id)
+        insert(:channel, workspace_id: other_workspace.id)
 
       conn
       |> get(~p"/api/channels/#{other_channel.id}")
@@ -226,13 +201,11 @@ defmodule BridgeWeb.ChannelControllerTest do
   describe "update" do
     test "updates channel with valid attributes", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       channel =
         insert(:channel,
           workspace_id: workspace.id,
-          project_id: project.id,
           name: "Old Name",
           starred: false
         )
@@ -253,11 +226,10 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "updated channel reflects changes in show", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       channel =
-        insert(:channel, workspace_id: workspace.id, project_id: project.id, name: "Old Name")
+        insert(:channel, workspace_id: workspace.id, name: "Old Name")
 
       update_params = %{name: "Updated Name"}
 
@@ -275,10 +247,9 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "returns error with invalid attributes", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+      channel = insert(:channel, workspace_id: workspace.id)
 
       update_params = %{
         name: ""
@@ -302,10 +273,9 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "returns 404 when updating channel from another workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       other_channel =
-        insert(:channel, workspace_id: other_workspace.id, project_id: other_project.id)
+        insert(:channel, workspace_id: other_workspace.id)
 
       update_params = %{name: "Hacked Name"}
 
@@ -316,8 +286,8 @@ defmodule BridgeWeb.ChannelControllerTest do
   end
 
   describe "delete" do
-    test "deletes channel", %{conn: conn, workspace: workspace, project: project} do
-      channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+    test "deletes channel", %{conn: conn, workspace: workspace} do
+      channel = insert(:channel, workspace_id: workspace.id)
 
       conn
       |> delete(~p"/api/channels/#{channel.id}")
@@ -326,10 +296,9 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "deleted channel no longer appears in index", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+      channel = insert(:channel, workspace_id: workspace.id)
 
       conn
       |> delete(~p"/api/channels/#{channel.id}")
@@ -346,10 +315,9 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "deleted channel returns 404 on show", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+      channel = insert(:channel, workspace_id: workspace.id)
 
       conn
       |> delete(~p"/api/channels/#{channel.id}")
@@ -368,10 +336,9 @@ defmodule BridgeWeb.ChannelControllerTest do
 
     test "returns 404 when deleting channel from another workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       other_channel =
-        insert(:channel, workspace_id: other_workspace.id, project_id: other_project.id)
+        insert(:channel, workspace_id: other_workspace.id)
 
       conn
       |> delete(~p"/api/channels/#{other_channel.id}")

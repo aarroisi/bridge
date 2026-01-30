@@ -39,7 +39,6 @@ defmodule BridgeWeb.DocJSON do
       title: doc.title,
       content: doc.content,
       starred: doc.starred,
-      project_id: doc.project_id,
       author_id: doc.author_id,
       # TODO: Load from author relationship
       author_name: "User",

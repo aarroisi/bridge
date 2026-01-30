@@ -16,9 +16,9 @@ defmodule BridgeWeb.ListControllerTest do
   end
 
   describe "index" do
-    test "returns all lists in workspace", %{conn: conn, workspace: workspace, project: project} do
-      list1 = insert(:list, workspace_id: workspace.id, project_id: project.id)
-      list2 = insert(:list, workspace_id: workspace.id, project_id: project.id)
+    test "returns all lists in workspace", %{conn: conn, workspace: workspace} do
+      list1 = insert(:list, workspace_id: workspace.id)
+      list2 = insert(:list, workspace_id: workspace.id)
 
       response =
         conn
@@ -32,13 +32,11 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "does not return lists from other workspaces", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
-      _list_in_workspace = insert(:list, workspace_id: workspace.id, project_id: project.id)
-      other_list = insert(:list, workspace_id: other_workspace.id, project_id: other_project.id)
+      _list_in_workspace = insert(:list, workspace_id: workspace.id)
+      other_list = insert(:list, workspace_id: other_workspace.id)
 
       response =
         conn
@@ -60,12 +58,11 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns paginated results with correct metadata", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       # Create 5 lists
       for _ <- 1..5 do
-        insert(:list, workspace_id: workspace.id, project_id: project.id)
+        insert(:list, workspace_id: workspace.id)
       end
 
       response =
@@ -81,11 +78,10 @@ defmodule BridgeWeb.ListControllerTest do
   end
 
   describe "create" do
-    test "creates list with valid attributes", %{conn: conn, project: project} do
+    test "creates list with valid attributes", %{conn: conn} do
       list_params = %{
         name: "New List",
-        starred: false,
-        project_id: project.id
+        starred: false
       }
 
       response =
@@ -95,14 +91,12 @@ defmodule BridgeWeb.ListControllerTest do
 
       assert response["data"]["name"] == "New List"
       assert response["data"]["starred"] == false
-      assert response["data"]["project_id"] == project.id
       assert response["data"]["id"]
     end
 
-    test "created list appears in index", %{conn: conn, project: project} do
+    test "created list appears in index", %{conn: conn} do
       list_params = %{
-        name: "Test List",
-        project_id: project.id
+        name: "Test List"
       }
 
       create_response =
@@ -136,14 +130,12 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "sets workspace to current user's workspace", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       other_workspace = insert(:workspace)
 
       list_params = %{
-        name: "Test List",
-        project_id: project.id
+        name: "Test List"
       }
 
       create_response =
@@ -170,8 +162,8 @@ defmodule BridgeWeb.ListControllerTest do
   end
 
   describe "show" do
-    test "returns list by id", %{conn: conn, workspace: workspace, project: project} do
-      list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+    test "returns list by id", %{conn: conn, workspace: workspace} do
+      list = insert(:list, workspace_id: workspace.id)
 
       response =
         conn
@@ -181,7 +173,6 @@ defmodule BridgeWeb.ListControllerTest do
       assert response["data"]["id"] == list.id
       assert response["data"]["name"] == list.name
       assert response["data"]["starred"] == list.starred
-      assert response["data"]["project_id"] == project.id
     end
 
     test "returns 404 for non-existent list", %{conn: conn} do
@@ -192,8 +183,7 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns 404 for list from another workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
-      other_list = insert(:list, workspace_id: other_workspace.id, project_id: other_project.id)
+      other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
       |> get(~p"/api/lists/#{other_list.id}")
@@ -204,13 +194,11 @@ defmodule BridgeWeb.ListControllerTest do
   describe "update" do
     test "updates list with valid attributes", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
       list =
         insert(:list,
           workspace_id: workspace.id,
-          project_id: project.id,
           name: "Old Name",
           starred: false
         )
@@ -231,10 +219,9 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "updated list reflects changes in show", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      list = insert(:list, workspace_id: workspace.id, project_id: project.id, name: "Old Name")
+      list = insert(:list, workspace_id: workspace.id, name: "Old Name")
 
       update_params = %{name: "Updated Name"}
 
@@ -252,10 +239,9 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns error with invalid attributes", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+      list = insert(:list, workspace_id: workspace.id)
 
       update_params = %{
         name: ""
@@ -279,8 +265,7 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns 404 when updating list from another workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
-      other_list = insert(:list, workspace_id: other_workspace.id, project_id: other_project.id)
+      other_list = insert(:list, workspace_id: other_workspace.id)
 
       update_params = %{name: "Hacked Name"}
 
@@ -291,8 +276,8 @@ defmodule BridgeWeb.ListControllerTest do
   end
 
   describe "delete" do
-    test "deletes list", %{conn: conn, workspace: workspace, project: project} do
-      list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+    test "deletes list", %{conn: conn, workspace: workspace} do
+      list = insert(:list, workspace_id: workspace.id)
 
       conn
       |> delete(~p"/api/lists/#{list.id}")
@@ -301,10 +286,9 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "deleted list no longer appears in index", %{
       conn: conn,
-      workspace: workspace,
-      project: project
+      workspace: workspace
     } do
-      list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+      list = insert(:list, workspace_id: workspace.id)
 
       conn
       |> delete(~p"/api/lists/#{list.id}")
@@ -319,8 +303,8 @@ defmodule BridgeWeb.ListControllerTest do
       refute list.id in list_ids
     end
 
-    test "deleted list returns 404 on show", %{conn: conn, workspace: workspace, project: project} do
-      list = insert(:list, workspace_id: workspace.id, project_id: project.id)
+    test "deleted list returns 404 on show", %{conn: conn, workspace: workspace} do
+      list = insert(:list, workspace_id: workspace.id)
 
       conn
       |> delete(~p"/api/lists/#{list.id}")
@@ -339,8 +323,7 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns 404 when deleting list from another workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
-      other_project = insert(:project, workspace_id: other_workspace.id)
-      other_list = insert(:list, workspace_id: other_workspace.id, project_id: other_project.id)
+      other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
       |> delete(~p"/api/lists/#{other_list.id}")

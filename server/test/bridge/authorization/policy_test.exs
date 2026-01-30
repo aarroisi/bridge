@@ -8,7 +8,9 @@ defmodule Bridge.Authorization.PolicyTest do
       workspace = insert(:workspace)
       owner = insert(:user, workspace_id: workspace.id, role: "owner")
       project = insert(:project, workspace_id: workspace.id)
-      doc = insert(:doc, workspace_id: workspace.id, project_id: project.id, author_id: owner.id)
+      doc = insert(:doc, workspace_id: workspace.id, author_id: owner.id)
+      # Link doc to project via project_items
+      insert(:project_item, project_id: project.id, item_type: "doc", item_id: doc.id)
 
       {:ok, owner: owner, workspace: workspace, project: project, doc: doc}
     end
@@ -22,10 +24,15 @@ defmodule Bridge.Authorization.PolicyTest do
       assert Policy.can?(owner, :manage_project_members, project)
     end
 
-    test "owner can view workspace-level items", %{owner: owner, workspace: workspace} do
+    test "owner can view workspace-level items (items not in any project)", %{
+      owner: owner,
+      workspace: workspace
+    } do
+      # Doc without project association
       workspace_doc =
-        insert(:doc, workspace_id: workspace.id, project_id: nil, author_id: owner.id)
+        insert(:doc, workspace_id: workspace.id, author_id: owner.id)
 
+      # Owner can still view it (owner can do anything)
       assert Policy.can?(owner, :view_item, workspace_doc)
     end
   end
@@ -40,10 +47,16 @@ defmodule Bridge.Authorization.PolicyTest do
       other_user = insert(:user, workspace_id: workspace.id, role: "member")
 
       member_doc =
-        insert(:doc, workspace_id: workspace.id, project_id: project.id, author_id: member.id)
+        insert(:doc, workspace_id: workspace.id, author_id: member.id)
+
+      # Link member_doc to project
+      insert(:project_item, project_id: project.id, item_type: "doc", item_id: member_doc.id)
 
       other_doc =
-        insert(:doc, workspace_id: workspace.id, project_id: project.id, author_id: other_user.id)
+        insert(:doc, workspace_id: workspace.id, author_id: other_user.id)
+
+      # Link other_doc to project
+      insert(:project_item, project_id: project.id, item_type: "doc", item_id: other_doc.id)
 
       {:ok,
        member: member,
@@ -69,9 +82,13 @@ defmodule Bridge.Authorization.PolicyTest do
       assert Policy.can?(member, :view_item, doc)
     end
 
-    test "member cannot view workspace-level items", %{member: member, workspace: workspace} do
+    test "member cannot view workspace-level items (not in any project)", %{
+      member: member,
+      workspace: workspace
+    } do
+      # Doc without project association
       workspace_doc =
-        insert(:doc, workspace_id: workspace.id, project_id: nil, author_id: member.id)
+        insert(:doc, workspace_id: workspace.id, author_id: member.id)
 
       refute Policy.can?(member, :view_item, workspace_doc)
     end
@@ -115,10 +132,16 @@ defmodule Bridge.Authorization.PolicyTest do
       other_user = insert(:user, workspace_id: workspace.id, role: "owner")
 
       guest_doc =
-        insert(:doc, workspace_id: workspace.id, project_id: project.id, author_id: guest.id)
+        insert(:doc, workspace_id: workspace.id, author_id: guest.id)
+
+      # Link guest_doc to project
+      insert(:project_item, project_id: project.id, item_type: "doc", item_id: guest_doc.id)
 
       other_doc =
-        insert(:doc, workspace_id: workspace.id, project_id: project.id, author_id: other_user.id)
+        insert(:doc, workspace_id: workspace.id, author_id: other_user.id)
+
+      # Link other_doc to project
+      insert(:project_item, project_id: project.id, item_type: "doc", item_id: other_doc.id)
 
       {:ok,
        guest: guest,

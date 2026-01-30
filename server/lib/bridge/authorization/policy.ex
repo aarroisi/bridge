@@ -35,10 +35,11 @@ defmodule Bridge.Authorization.Policy do
   end
 
   # View item - must have access to item's project
-  def can?(_user, :view_item, %{project_id: nil, list: nil}), do: false
-
   def can?(user, :view_item, item) do
-    is_project_member?(user, get_project_id(item))
+    case get_project_id(item) do
+      nil -> false
+      project_id -> is_project_member?(user, project_id)
+    end
   end
 
   # Create item in project - must be member of that project
@@ -48,20 +49,23 @@ defmodule Bridge.Authorization.Policy do
     is_project_member?(user, project_id)
   end
 
-  # Update item - must be creator
+  # Update item - must be creator and have project access
   def can?(user, :update_item, item) do
-    is_creator?(user, item) and is_project_member?(user, get_project_id(item))
+    case get_project_id(item) do
+      nil -> false
+      project_id -> is_creator?(user, item) and is_project_member?(user, project_id)
+    end
   end
 
-  # Delete item - must be creator
+  # Delete item - must be creator and have project access
   def can?(user, :delete_item, item) do
-    is_creator?(user, item) and is_project_member?(user, get_project_id(item))
+    case get_project_id(item) do
+      nil -> false
+      project_id -> is_creator?(user, item) and is_project_member?(user, project_id)
+    end
   end
 
   # Comment - can view = can comment
-  # DMs are accessible to all workspace members
-  def can?(_user, :comment, %{project_id: :dm}), do: true
-
   def can?(user, :comment, item) do
     can?(user, :view_item, item)
   end
@@ -85,14 +89,21 @@ defmodule Bridge.Authorization.Policy do
   defp get_creator_id(%{created_by_id: created_by_id}), do: created_by_id
   defp get_creator_id(_), do: nil
 
-  # Helper: Get project_id from item (handles nested items like tasks under lists)
-  defp get_project_id(%{project_id: project_id}) when not is_nil(project_id), do: project_id
+  # Helper: Get project_id from item using project_items lookup
+  # For docs, lists, channels - look up via Projects.get_item_project_id
+  defp get_project_id(%Bridge.Docs.Doc{id: id}), do: Projects.get_item_project_id("doc", id)
+  defp get_project_id(%Bridge.Lists.List{id: id}), do: Projects.get_item_project_id("list", id)
 
-  defp get_project_id(%{list: %{project_id: project_id}}) when not is_nil(project_id),
-    do: project_id
+  defp get_project_id(%Bridge.Chat.Channel{id: id}),
+    do: Projects.get_item_project_id("channel", id)
 
-  defp get_project_id(%{task: %{list: %{project_id: project_id}}}) when not is_nil(project_id),
-    do: project_id
+  # For tasks, look up via the list's project
+  defp get_project_id(%Bridge.Lists.Task{list_id: list_id}),
+    do: Projects.get_item_project_id("list", list_id)
+
+  # For subtasks, look up via the task's list's project
+  defp get_project_id(%Bridge.Lists.Subtask{task: %{list_id: list_id}}),
+    do: Projects.get_item_project_id("list", list_id)
 
   defp get_project_id(_), do: nil
 end

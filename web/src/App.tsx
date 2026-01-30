@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { HomePage } from "./pages/HomePage";
 import { EmptyState } from "./pages/EmptyState";
+import { ProjectPage } from "./pages/ProjectPage";
 import { ListView } from "./pages/ListView";
 import { DocView } from "./pages/DocView";
 import { ChatView } from "./pages/ChatView";
@@ -92,7 +93,32 @@ function App() {
           path="/projects/:id"
           element={
             <MainLayout>
-              <HomePage />
+              <ProjectPage />
+            </MainLayout>
+          }
+        />
+        {/* Nested routes for project items */}
+        <Route
+          path="/projects/:projectId/lists/:id"
+          element={
+            <MainLayout>
+              <ListView />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/projects/:projectId/docs/:id"
+          element={
+            <MainLayout>
+              <DocView />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/projects/:projectId/channels/:id"
+          element={
+            <MainLayout>
+              <ChatView />
             </MainLayout>
           }
         />

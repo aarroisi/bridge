@@ -34,6 +34,11 @@ defmodule BridgeWeb.Router do
       only: [:index, :create, :delete]
     )
 
+    # Project item management (owner only)
+    resources("/projects/:project_id/items", ProjectItemController,
+      only: [:index, :create, :delete]
+    )
+
     # Resource routes (authentication required)
     resources("/projects", ProjectController, except: [:new, :edit])
     resources("/lists", ListController, except: [:new, :edit])

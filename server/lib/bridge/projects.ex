@@ -8,6 +8,7 @@ defmodule Bridge.Projects do
 
   alias Bridge.Projects.Project
   alias Bridge.Projects.ProjectMember
+  alias Bridge.Projects.ProjectItem
   alias Bridge.Authorization
 
   @doc """
@@ -35,20 +36,20 @@ defmodule Bridge.Projects do
   end
 
   @doc """
-  Returns the list of projects with their associations preloaded for a workspace, filtered by user access.
+  Returns the list of projects with their items preloaded for a workspace, filtered by user access.
 
   ## Examples
 
-      iex> list_projects_with_associations(workspace_id, user)
-      [%Project{lists: [...], docs: [...], channels: [...]}, ...]
+      iex> list_projects_with_items(workspace_id, user)
+      [%Project{project_items: [...]}, ...]
 
   """
-  def list_projects_with_associations(workspace_id, user, opts \\ []) do
+  def list_projects_with_items(workspace_id, user, opts \\ []) do
     Project
     |> where([p], p.workspace_id == ^workspace_id)
     |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
-    |> preload([:lists, :docs, :channels])
+    |> preload(:project_items)
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -93,23 +94,23 @@ defmodule Bridge.Projects do
   end
 
   @doc """
-  Gets a single project with associations preloaded within a workspace.
+  Gets a single project with items preloaded within a workspace.
 
   Returns `{:ok, project}` if found, `{:error, :not_found}` otherwise.
 
   ## Examples
 
-      iex> get_project_with_associations(id, workspace_id)
-      {:ok, %Project{lists: [...], docs: [...], channels: [...]}}
+      iex> get_project_with_items(id, workspace_id)
+      {:ok, %Project{project_items: [...]}}
 
-      iex> get_project_with_associations(456, workspace_id)
+      iex> get_project_with_items(456, workspace_id)
       {:error, :not_found}
 
   """
-  def get_project_with_associations(id, workspace_id) do
+  def get_project_with_items(id, workspace_id) do
     case Project
          |> where([p], p.workspace_id == ^workspace_id)
-         |> preload([:lists, :docs, :channels])
+         |> preload(:project_items)
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       project -> {:ok, project}
@@ -241,6 +242,91 @@ defmodule Bridge.Projects do
     ProjectMember
     |> where([pm], pm.project_id == ^project_id)
     |> preload(:user)
+    |> Repo.all()
+  end
+
+  # Project Items
+
+  @doc """
+  Adds an item to a project.
+
+  ## Examples
+
+      iex> add_item(project_id, "list", list_id)
+      {:ok, %ProjectItem{}}
+
+  """
+  def add_item(project_id, item_type, item_id) do
+    %ProjectItem{}
+    |> ProjectItem.changeset(%{project_id: project_id, item_type: item_type, item_id: item_id})
+    |> Repo.insert()
+  end
+
+  @doc """
+  Removes an item from a project.
+
+  ## Examples
+
+      iex> remove_item("list", list_id)
+      {:ok, %ProjectItem{}}
+
+  """
+  def remove_item(item_type, item_id) do
+    case Repo.get_by(ProjectItem, item_type: item_type, item_id: item_id) do
+      nil -> {:error, :not_found}
+      item -> Repo.delete(item)
+    end
+  end
+
+  @doc """
+  Gets the project ID for an item, if it belongs to one.
+
+  ## Examples
+
+      iex> get_item_project_id("list", list_id)
+      "project-uuid"
+
+      iex> get_item_project_id("list", orphan_list_id)
+      nil
+
+  """
+  def get_item_project_id(item_type, item_id) do
+    ProjectItem
+    |> where([pi], pi.item_type == ^item_type and pi.item_id == ^item_id)
+    |> select([pi], pi.project_id)
+    |> Repo.one()
+  end
+
+  @doc """
+  Lists all items for a project.
+
+  ## Examples
+
+      iex> list_items(project_id)
+      [%ProjectItem{}, ...]
+
+  """
+  def list_items(project_id) do
+    ProjectItem
+    |> where([pi], pi.project_id == ^project_id)
+    |> order_by([pi], asc: pi.inserted_at)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets all item IDs for a specific type that belong to any project.
+  Useful for filtering out project items from workspace-level views.
+
+  ## Examples
+
+      iex> get_all_project_item_ids("list")
+      ["uuid1", "uuid2", ...]
+
+  """
+  def get_all_project_item_ids(item_type) do
+    ProjectItem
+    |> where([pi], pi.item_type == ^item_type)
+    |> select([pi], pi.item_id)
     |> Repo.all()
   end
 end

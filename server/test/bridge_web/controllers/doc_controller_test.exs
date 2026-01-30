@@ -19,11 +19,10 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns all docs in workspace", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
-      doc1 = insert(:doc, workspace_id: workspace.id, author_id: user.id, project_id: project.id)
-      doc2 = insert(:doc, workspace_id: workspace.id, author_id: user.id, project_id: project.id)
+      doc1 = insert(:doc, workspace_id: workspace.id, author_id: user.id)
+      doc2 = insert(:doc, workspace_id: workspace.id, author_id: user.id)
 
       response =
         conn
@@ -38,23 +37,20 @@ defmodule BridgeWeb.DocControllerTest do
     test "does not return docs from other workspaces", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
       # Doc in our workspace
       our_doc =
-        insert(:doc, workspace_id: workspace.id, author_id: user.id, project_id: project.id)
+        insert(:doc, workspace_id: workspace.id, author_id: user.id)
 
       # Doc in another workspace
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       _other_doc =
         insert(:doc,
           workspace_id: other_workspace.id,
-          author_id: other_user.id,
-          project_id: other_project.id
+          author_id: other_user.id
         )
 
       response =
@@ -78,35 +74,7 @@ defmodule BridgeWeb.DocControllerTest do
   end
 
   describe "create" do
-    test "creates doc with valid attributes", %{conn: conn, project: project} do
-      doc_params = %{
-        title: "Test Doc",
-        content: "Test content",
-        project_id: project.id
-      }
-
-      response =
-        conn
-        |> post(~p"/api/docs", doc: doc_params)
-        |> json_response(201)
-
-      assert response["data"]["title"] == "Test Doc"
-      assert response["data"]["content"] == "Test content"
-      assert response["data"]["project_id"] == project.id
-      assert response["data"]["id"]
-
-      # Verify it appears in the list
-      list_response =
-        conn
-        |> get(~p"/api/docs")
-        |> json_response(200)
-
-      assert Enum.any?(list_response["data"], fn doc ->
-               doc["id"] == response["data"]["id"]
-             end)
-    end
-
-    test "creates doc without project_id", %{conn: conn} do
+    test "creates doc with valid attributes", %{conn: conn} do
       doc_params = %{
         title: "Test Doc",
         content: "Test content"
@@ -118,7 +86,18 @@ defmodule BridgeWeb.DocControllerTest do
         |> json_response(201)
 
       assert response["data"]["title"] == "Test Doc"
-      assert response["data"]["project_id"] == nil
+      assert response["data"]["content"] == "Test content"
+      assert response["data"]["id"]
+
+      # Verify it appears in the list
+      list_response =
+        conn
+        |> get(~p"/api/docs")
+        |> json_response(200)
+
+      assert Enum.any?(list_response["data"], fn doc ->
+               doc["id"] == response["data"]["id"]
+             end)
     end
 
     test "returns error with invalid attributes", %{conn: conn} do
@@ -178,13 +157,11 @@ defmodule BridgeWeb.DocControllerTest do
       # Create a doc in another workspace
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       _other_doc =
         insert(:doc,
           workspace_id: other_workspace.id,
-          author_id: other_user.id,
-          project_id: other_project.id
+          author_id: other_user.id
         )
 
       # Our doc should be in the list, but not the other workspace's doc
@@ -204,14 +181,12 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns doc when found", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
       doc =
         insert(:doc,
           workspace_id: workspace.id,
           author_id: user.id,
-          project_id: project.id,
           title: "Test Doc"
         )
 
@@ -238,13 +213,11 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns 404 when doc exists but in different workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       other_doc =
         insert(:doc,
           workspace_id: other_workspace.id,
-          author_id: other_user.id,
-          project_id: other_project.id
+          author_id: other_user.id
         )
 
       response =
@@ -260,14 +233,12 @@ defmodule BridgeWeb.DocControllerTest do
     test "updates doc with valid attributes", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
       doc =
         insert(:doc,
           workspace_id: workspace.id,
           author_id: user.id,
-          project_id: project.id,
           title: "Old Title"
         )
 
@@ -304,13 +275,11 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns 404 when doc exists but in different workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       other_doc =
         insert(:doc,
           workspace_id: other_workspace.id,
-          author_id: other_user.id,
-          project_id: other_project.id
+          author_id: other_user.id
         )
 
       update_params = %{
@@ -328,10 +297,9 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns error with invalid attributes", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, project_id: project.id)
+      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id)
 
       update_params = %{
         title: ""
@@ -360,14 +328,12 @@ defmodule BridgeWeb.DocControllerTest do
     test "can toggle starred status", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
       doc =
         insert(:doc,
           workspace_id: workspace.id,
           author_id: user.id,
-          project_id: project.id,
           starred: false
         )
 
@@ -388,10 +354,9 @@ defmodule BridgeWeb.DocControllerTest do
     test "deletes doc when found", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, project_id: project.id)
+      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id)
 
       conn
       |> delete(~p"/api/docs/#{doc.id}")
@@ -420,13 +385,11 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns 404 when doc exists but in different workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_project = insert(:project, workspace_id: other_workspace.id)
 
       other_doc =
         insert(:doc,
           workspace_id: other_workspace.id,
-          author_id: other_user.id,
-          project_id: other_project.id
+          author_id: other_user.id
         )
 
       response =
@@ -440,10 +403,9 @@ defmodule BridgeWeb.DocControllerTest do
     test "doc no longer appears in list after deletion", %{
       conn: conn,
       workspace: workspace,
-      user: user,
-      project: project
+      user: user
     } do
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, project_id: project.id)
+      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id)
 
       # Verify it's in the list first
       list_response =

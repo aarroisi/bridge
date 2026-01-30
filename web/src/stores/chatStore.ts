@@ -18,7 +18,7 @@ interface ChatState {
 
   // Channel operations
   fetchChannels: (loadMore?: boolean) => Promise<void>;
-  createChannel: (name: string, projectId?: string) => Promise<Channel>;
+  createChannel: (name: string) => Promise<Channel>;
   updateChannel: (id: string, data: Partial<Channel>) => Promise<void>;
   deleteChannel: (id: string) => Promise<void>;
   toggleChannelStar: (id: string) => Promise<void>;
@@ -90,8 +90,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  createChannel: async (name: string, projectId?: string) => {
-    const channel = await api.post<Channel>("/channels", { name, projectId });
+  createChannel: async (name: string) => {
+    const channel = await api.post<Channel>("/channels", { name });
     set((state) => ({
       channels: [
         ...(Array.isArray(state.channels) ? state.channels : []),

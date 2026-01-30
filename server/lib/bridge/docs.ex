@@ -7,10 +7,9 @@ defmodule Bridge.Docs do
   alias Bridge.Repo
 
   alias Bridge.Docs.Doc
-  alias Bridge.Authorization
 
   @doc """
-  Returns the list of docs for a workspace, filtered by user access.
+  Returns the list of docs for a workspace.
 
   ## Examples
 
@@ -18,43 +17,11 @@ defmodule Bridge.Docs do
       [%Doc{}, ...]
 
   """
-  def list_docs(workspace_id, user, opts \\ []) do
-    base_query(workspace_id)
-    |> filter_by_user_access(user)
-    |> preload([:project, :author])
-    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
-  end
-
-  defp base_query(workspace_id) do
+  def list_docs(workspace_id, _user, opts \\ []) do
     Doc
     |> where([d], d.workspace_id == ^workspace_id)
     |> order_by([d], desc: d.id)
-  end
-
-  defp filter_by_user_access(query, user) do
-    case Authorization.accessible_project_ids(user) do
-      :all ->
-        query
-
-      project_ids ->
-        where(query, [d], d.project_id in ^project_ids)
-    end
-  end
-
-  @doc """
-  Returns the list of docs for a specific project.
-
-  ## Examples
-
-      iex> list_docs_by_project(project_id)
-      [%Doc{}, ...]
-
-  """
-  def list_docs_by_project(project_id, opts \\ []) do
-    Doc
-    |> where([d], d.project_id == ^project_id)
-    |> order_by([d], desc: d.id)
-    |> preload([:project, :author])
+    |> preload([:author])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -71,7 +38,7 @@ defmodule Bridge.Docs do
     Doc
     |> where([d], d.author_id == ^author_id)
     |> order_by([d], desc: d.id)
-    |> preload([:project, :author])
+    |> preload([:author])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -88,7 +55,7 @@ defmodule Bridge.Docs do
     Doc
     |> where([d], d.starred == true and d.workspace_id == ^workspace_id)
     |> order_by([d], desc: d.id)
-    |> preload([:project, :author])
+    |> preload([:author])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -109,7 +76,7 @@ defmodule Bridge.Docs do
   def get_doc(id, workspace_id) do
     case Doc
          |> where([d], d.workspace_id == ^workspace_id)
-         |> preload([:project, :author])
+         |> preload([:author])
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       doc -> {:ok, doc}

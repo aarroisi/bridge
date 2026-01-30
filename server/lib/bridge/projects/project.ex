@@ -7,12 +7,11 @@ defmodule Bridge.Projects.Project do
   @timestamps_opts [type: :utc_datetime_usec]
   schema "projects" do
     field(:name, :string)
+    field(:description, :string)
     field(:starred, :boolean, default: false)
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
-    has_many(:lists, Bridge.Lists.List)
-    has_many(:docs, Bridge.Docs.Doc)
-    has_many(:channels, Bridge.Chat.Channel)
+    has_many(:project_items, Bridge.Projects.ProjectItem)
     has_many(:project_members, Bridge.Projects.ProjectMember)
     has_many(:members, through: [:project_members, :user])
 
@@ -22,7 +21,7 @@ defmodule Bridge.Projects.Project do
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :starred, :workspace_id])
+    |> cast(attrs, [:name, :description, :starred, :workspace_id])
     |> validate_required([:name, :workspace_id])
   end
 end

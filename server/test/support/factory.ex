@@ -78,4 +78,11 @@ defmodule Bridge.Factory do
   def project_member_factory do
     %Bridge.Projects.ProjectMember{}
   end
+
+  def project_item_factory do
+    %Bridge.Projects.ProjectItem{
+      item_type: "doc",
+      item_id: UUIDv7.generate()
+    }
+  end
 end

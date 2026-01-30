@@ -38,7 +38,6 @@ defmodule BridgeWeb.ListJSON do
       id: list.id,
       name: list.name,
       starred: list.starred,
-      project_id: list.project_id,
       inserted_at: list.inserted_at,
       updated_at: list.updated_at
     }

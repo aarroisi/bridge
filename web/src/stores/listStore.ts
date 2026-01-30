@@ -12,7 +12,7 @@ interface ListState {
 
   // List operations
   fetchLists: (loadMore?: boolean) => Promise<void>;
-  createList: (name: string, projectId?: string) => Promise<List>;
+  createList: (name: string) => Promise<List>;
   updateList: (id: string, data: Partial<List>) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
   toggleListStar: (id: string) => Promise<void>;
@@ -65,8 +65,8 @@ export const useListStore = create<ListState>((set, get) => ({
     }
   },
 
-  createList: async (name: string, projectId?: string) => {
-    const list = await api.post<List>("/lists", { name, projectId });
+  createList: async (name: string) => {
+    const list = await api.post<List>("/lists", { name });
     set((state) => ({
       lists: [...(Array.isArray(state.lists) ? state.lists : []), list],
     }));

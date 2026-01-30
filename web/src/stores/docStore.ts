@@ -10,11 +10,7 @@ interface DocState {
 
   fetchDocs: (loadMore?: boolean) => Promise<void>;
   getDoc: (id: string) => Promise<Doc>;
-  createDoc: (
-    title: string,
-    content: string,
-    projectId?: string,
-  ) => Promise<Doc>;
+  createDoc: (title: string, content: string) => Promise<Doc>;
   updateDoc: (id: string, data: Partial<Doc>) => Promise<void>;
   deleteDoc: (id: string) => Promise<void>;
   toggleDocStar: (id: string) => Promise<void>;
@@ -67,8 +63,8 @@ export const useDocStore = create<DocState>((set, get) => ({
     }
   },
 
-  createDoc: async (title: string, content: string, projectId?: string) => {
-    const doc = await api.post<Doc>("/docs", { title, content, projectId });
+  createDoc: async (title: string, content: string) => {
+    const doc = await api.post<Doc>("/docs", { title, content });
     set((state) => ({
       docs: [...(Array.isArray(state.docs) ? state.docs : []), doc],
     }));

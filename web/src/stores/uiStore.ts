@@ -19,6 +19,7 @@ interface UIState {
   setSelectedTask: (id: string | null) => void;
   setOpenThread: (id: string | null) => void;
   toggleSection: (section: string) => void;
+  expandSection: (section: string) => void;
   setNavigationGuard: (guard: (() => Promise<boolean>) | null) => void;
 }
 
@@ -51,6 +52,14 @@ export const useUIStore = create<UIState>((set) => ({
       collapsedSections: {
         ...state.collapsedSections,
         [section]: !state.collapsedSections[section],
+      },
+    })),
+
+  expandSection: (section) =>
+    set((state) => ({
+      collapsedSections: {
+        ...state.collapsedSections,
+        [section]: false,
       },
     })),
 

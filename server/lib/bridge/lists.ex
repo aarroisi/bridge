@@ -7,7 +7,6 @@ defmodule Bridge.Lists do
   alias Bridge.Repo
 
   alias Bridge.Lists.{List, Task, Subtask}
-  alias Bridge.Authorization
 
   # ============================================================================
   # List functions
@@ -22,41 +21,16 @@ defmodule Bridge.Lists do
       [%List{}, ...]
 
   """
-  def list_lists(workspace_id, user, opts \\ []) do
+  def list_lists(workspace_id, _user, opts \\ []) do
     List
     |> where([l], l.workspace_id == ^workspace_id)
-    |> filter_by_user_access(user)
     |> order_by([l], desc: l.id)
-    |> preload([:project, :created_by])
-    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
-  end
-
-  defp filter_by_user_access(query, user) do
-    case Authorization.accessible_project_ids(user) do
-      :all -> query
-      project_ids -> where(query, [l], l.project_id in ^project_ids)
-    end
-  end
-
-  @doc """
-  Returns the list of lists for a specific project.
-
-  ## Examples
-
-      iex> list_lists_by_project(project_id)
-      [%List{}, ...]
-
-  """
-  def list_lists_by_project(project_id, opts \\ []) do
-    List
-    |> where([l], l.project_id == ^project_id)
-    |> order_by([l], desc: l.id)
-    |> preload([:project])
+    |> preload([:created_by])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred lists for a workspace, filtered by user access.
+  Returns the list of starred lists for a workspace.
 
   ## Examples
 
@@ -64,12 +38,11 @@ defmodule Bridge.Lists do
       [%List{}, ...]
 
   """
-  def list_starred_lists(workspace_id, user, opts \\ []) do
+  def list_starred_lists(workspace_id, _user, opts \\ []) do
     List
     |> where([l], l.starred == true and l.workspace_id == ^workspace_id)
-    |> filter_by_user_access(user)
     |> order_by([l], desc: l.id)
-    |> preload([:project, :created_by])
+    |> preload([:created_by])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -90,7 +63,7 @@ defmodule Bridge.Lists do
   def get_list(id, workspace_id) do
     case List
          |> where([l], l.workspace_id == ^workspace_id)
-         |> preload([:project, :created_by, tasks: [:assignee, :created_by]])
+         |> preload([:created_by, tasks: [:assignee, :created_by]])
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       list -> {:ok, list}
@@ -262,7 +235,7 @@ defmodule Bridge.Lists do
   def get_task(id) do
     case Task
          |> preload(
-           list: [:project],
+           list: [],
            assignee: [],
            created_by: [],
            subtasks: [:assignee, :created_by]
@@ -462,7 +435,7 @@ defmodule Bridge.Lists do
   """
   def get_subtask(id) do
     case Subtask
-         |> preload(task: [list: [:project]], assignee: [], created_by: [])
+         |> preload(task: [list: []], assignee: [], created_by: [])
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       subtask -> {:ok, subtask}

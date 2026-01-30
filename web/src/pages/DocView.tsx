@@ -30,12 +30,16 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Message as MessageType, Doc } from "@/types";
 import { clsx } from "clsx";
 
 export function DocView() {
-  const { id: docId } = useParams<{ id: string }>();
+  const { id: docId, projectId: projectIdParam } = useParams<{
+    id: string;
+    projectId?: string;
+  }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,6 +48,7 @@ export function DocView() {
     useChatStore();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { setNavigationGuard } = useUIStore();
+  const addItemToProject = useProjectStore((state) => state.addItem);
   const { success, error } = useToastStore();
   const isNewDoc = docId === "new";
 
@@ -183,10 +188,21 @@ export function DocView() {
 
     try {
       if (isNewDoc) {
-        // Create new document
+        // Create new document (without projectId - we use project_items now)
         const newDoc = await createDoc(editedTitle.trim(), editedContent || "");
+
+        // If created from a project, add it to the project
+        if (projectIdParam) {
+          await addItemToProject(projectIdParam, "doc", newDoc.id);
+        }
+
         success("Document created successfully");
-        navigate(`/docs/${newDoc.id}`);
+        // Navigate to the doc view (nested if from project)
+        if (projectIdParam) {
+          navigate(`/projects/${projectIdParam}/docs/${newDoc.id}`);
+        } else {
+          navigate(`/docs/${newDoc.id}`);
+        }
       } else {
         // Update existing document
         if (!docId) return;
@@ -361,7 +377,12 @@ export function DocView() {
   };
 
   const performCancelNew = () => {
-    navigate("/docs");
+    // Navigate back to project if we came from there, otherwise to docs
+    if (projectIdParam) {
+      navigate(`/projects/${projectIdParam}`);
+    } else {
+      navigate("/docs");
+    }
   };
 
   const handleSave = async () => {

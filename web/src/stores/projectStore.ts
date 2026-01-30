@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import { Project, PaginatedResponse } from "@/types";
+import { Project, ProjectItem, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
+
+interface CreateProjectParams {
+  name: string;
+  description?: string;
+  memberIds?: string[];
+}
 
 interface ProjectState {
   projects: Project[];
@@ -8,10 +14,20 @@ interface ProjectState {
   hasMore: boolean;
   afterCursor: string | null;
   fetchProjects: (loadMore?: boolean) => Promise<void>;
-  createProject: (name: string) => Promise<Project>;
+  createProject: (params: CreateProjectParams) => Promise<Project>;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   toggleStar: (id: string) => Promise<void>;
+  addItem: (
+    projectId: string,
+    itemType: "list" | "doc" | "channel",
+    itemId: string,
+  ) => Promise<ProjectItem>;
+  removeItem: (
+    projectId: string,
+    itemType: "list" | "doc" | "channel",
+    itemId: string,
+  ) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -51,8 +67,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  createProject: async (name: string) => {
-    const project = await api.post<Project>("/projects", { name });
+  createProject: async (params: CreateProjectParams) => {
+    const project = await api.post<Project>("/projects", {
+      project: {
+        name: params.name,
+        description: params.description,
+        memberIds: params.memberIds,
+      },
+    });
     set((state) => ({
       projects: [
         ...(Array.isArray(state.projects) ? state.projects : []),
@@ -63,7 +85,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   updateProject: async (id: string, data: Partial<Project>) => {
-    const project = await api.patch<Project>(`/projects/${id}`, data);
+    const project = await api.patch<Project>(`/projects/${id}`, {
+      project: data,
+    });
     set((state) => ({
       projects: state.projects.map((p) => (p.id === id ? project : p)),
     }));
@@ -81,5 +105,44 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (project) {
       await get().updateProject(id, { starred: !project.starred });
     }
+  },
+
+  addItem: async (
+    projectId: string,
+    itemType: "list" | "doc" | "channel",
+    itemId: string,
+  ) => {
+    const item = await api.post<ProjectItem>(`/projects/${projectId}/items`, {
+      itemType,
+      itemId,
+    });
+    // Update the project's items in state
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === projectId ? { ...p, items: [...(p.items || []), item] } : p,
+      ),
+    }));
+    return item;
+  },
+
+  removeItem: async (
+    projectId: string,
+    itemType: "list" | "doc" | "channel",
+    itemId: string,
+  ) => {
+    await api.delete(`/projects/${projectId}/items/${itemType}:${itemId}`);
+    // Remove the item from state
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              items: (p.items || []).filter(
+                (i) => !(i.itemType === itemType && i.itemId === itemId),
+              ),
+            }
+          : p,
+      ),
+    }));
   },
 }));

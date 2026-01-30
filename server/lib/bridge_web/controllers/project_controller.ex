@@ -13,7 +13,7 @@ defmodule BridgeWeb.ProjectController do
   plug(:authorize, :manage_projects when action in [:create, :update, :delete])
 
   defp load_resource(conn, _opts) do
-    case Projects.get_project(conn.params["id"], conn.assigns.workspace_id) do
+    case Projects.get_project_with_items(conn.params["id"], conn.assigns.workspace_id) do
       {:ok, project} ->
         assign(conn, :project, project)
 
@@ -44,16 +44,26 @@ defmodule BridgeWeb.ProjectController do
     user = conn.assigns.current_user
 
     opts = build_pagination_opts(params)
-    page = Projects.list_projects(workspace_id, user, opts)
+    page = Projects.list_projects_with_items(workspace_id, user, opts)
 
     render(conn, :index, page: page)
   end
 
   def create(conn, %{"project" => project_params}) do
     workspace_id = conn.assigns.workspace_id
-    project_params = Map.put(project_params, "workspace_id", workspace_id)
+    member_ids = Map.get(project_params, "member_ids", [])
+
+    project_params =
+      project_params
+      |> Map.put("workspace_id", workspace_id)
+      |> Map.delete("member_ids")
 
     with {:ok, project} <- Projects.create_project(project_params) do
+      # Add members to the project
+      Enum.each(member_ids, fn user_id ->
+        Projects.add_member(project.id, user_id)
+      end)
+
       conn
       |> put_status(:created)
       |> render(:show, project: project)

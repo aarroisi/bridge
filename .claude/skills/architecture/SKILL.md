@@ -219,27 +219,15 @@ The `Bridge.Authorization.Policy` module defines all permission rules:
 def can?(%User{role: "owner"}, _action, _resource), do: true
 
 # Members/guests check project membership and ownership
-def can?(user, :view_item, item), do: is_project_member?(user, item.project_id)
-def can?(user, :update_item, item), do: is_creator?(user, item) and is_project_member?(user, item.project_id)
-```
-
-### Filtering by User Access
-
-Context functions filter results based on user role:
-
-```elixir
-def list_docs(workspace_id, user, opts \\ []) do
-  Doc
-  |> where([d], d.workspace_id == ^workspace_id)
-  |> filter_by_user_access(user)
-  |> Repo.paginate(opts)
+# Project ID is looked up via project_items table
+def can?(user, :view_item, item) do
+  project_id = Projects.get_item_project_id(item_type(item), item.id)
+  is_project_member?(user, project_id)
 end
 
-defp filter_by_user_access(query, user) do
-  case Authorization.accessible_project_ids(user) do
-    :all -> query  # Owner sees all
-    project_ids -> where(query, [d], d.project_id in ^project_ids)
-  end
+def can?(user, :update_item, item) do
+  project_id = Projects.get_item_project_id(item_type(item), item.id)
+  is_creator?(user, item) and is_project_member?(user, project_id)
 end
 ```
 
@@ -247,7 +235,49 @@ end
 
 - `users.role` - Role field ("owner", "member", "guest")
 - `project_members` - Join table linking users to projects
+- `project_items` - Polymorphic join table linking projects to docs/lists/channels
 - Items have `created_by_id` or `author_id` for ownership tracking
+
+## Project Items (Polymorphic Association)
+
+Items (docs, lists, channels) are linked to projects via the `project_items` join table:
+
+```elixir
+# project_items schema
+schema "project_items" do
+  field :item_type, :string  # "doc", "list", "channel"
+  field :item_id, :binary_id
+  belongs_to :project, Project
+  timestamps()
+end
+```
+
+### Adding Items to Projects
+
+```elixir
+# Add a doc to a project
+Projects.add_item(project_id, "doc", doc.id)
+
+# Remove an item from its project
+Projects.remove_item("doc", doc.id)
+
+# Get the project ID for an item
+Projects.get_item_project_id("doc", doc.id)  # Returns project_id or nil
+```
+
+### Project with Items
+
+Projects can be loaded with their items:
+
+```elixir
+# List projects with items preloaded
+Projects.list_projects_with_items(workspace_id, user)
+
+# Get a single project with items
+Projects.get_project_with_items(id, workspace_id)
+```
+
+The `project_items` are returned in the API response and frontend uses them to filter which items belong to which project.
 
 ## Common Controller Patterns
 

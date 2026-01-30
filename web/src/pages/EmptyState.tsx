@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FolderKanban,
@@ -12,11 +13,14 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useListStore } from "@/stores/listStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
+import { CreateProjectModal } from "@/components/features/CreateProjectModal";
 
 export function EmptyState() {
   const location = useLocation();
   const navigate = useNavigate();
   const { success, error } = useToastStore();
+
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
   const createProject = useProjectStore((state) => state.createProject);
   const createList = useListStore((state) => state.createList);
@@ -43,10 +47,8 @@ export function EmptyState() {
           icon: FolderKanban,
           description: "Organize your work into projects",
           actionText: "Create Project",
-          action: async () => {
-            const project = await createProject("New Project");
-            success("Project created successfully");
-            navigate(`/projects/${project.id}`);
+          action: () => {
+            setShowCreateProjectModal(true);
           },
         };
       case "lists":
@@ -121,6 +123,26 @@ export function EmptyState() {
     }
   };
 
+  const handleCreateProject = async (data: {
+    name: string;
+    description?: string;
+    memberIds: string[];
+  }) => {
+    try {
+      const project = await createProject({
+        name: data.name,
+        description: data.description,
+        memberIds: data.memberIds,
+      });
+      success("Project created successfully");
+      setShowCreateProjectModal(false);
+      navigate(`/projects/${project.id}`);
+    } catch (err) {
+      console.error("Failed to create project:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
+
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="text-center max-w-md">
@@ -141,6 +163,12 @@ export function EmptyState() {
           </button>
         )}
       </div>
+
+      <CreateProjectModal
+        isOpen={showCreateProjectModal}
+        onClose={() => setShowCreateProjectModal(false)}
+        onSubmit={handleCreateProject}
+      />
     </div>
   );
 }

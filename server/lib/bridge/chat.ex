@@ -7,14 +7,13 @@ defmodule Bridge.Chat do
   alias Bridge.Repo
 
   alias Bridge.Chat.{Channel, DirectMessage, Message}
-  alias Bridge.Authorization
 
   # ============================================================================
   # Channel functions
   # ============================================================================
 
   @doc """
-  Returns the list of channels for a workspace, filtered by user access.
+  Returns the list of channels for a workspace.
 
   ## Examples
 
@@ -22,41 +21,16 @@ defmodule Bridge.Chat do
       [%Channel{}, ...]
 
   """
-  def list_channels(workspace_id, user, opts \\ []) do
+  def list_channels(workspace_id, _user, opts \\ []) do
     Channel
     |> where([c], c.workspace_id == ^workspace_id)
-    |> filter_by_user_access(user)
     |> order_by([c], desc: c.id)
-    |> preload([:project, :created_by])
-    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
-  end
-
-  defp filter_by_user_access(query, user) do
-    case Authorization.accessible_project_ids(user) do
-      :all -> query
-      project_ids -> where(query, [c], c.project_id in ^project_ids)
-    end
-  end
-
-  @doc """
-  Returns the list of channels for a specific project.
-
-  ## Examples
-
-      iex> list_channels_by_project(project_id)
-      [%Channel{}, ...]
-
-  """
-  def list_channels_by_project(project_id, opts \\ []) do
-    Channel
-    |> where([c], c.project_id == ^project_id)
-    |> order_by([c], desc: c.id)
-    |> preload([:project])
+    |> preload([:created_by])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
   @doc """
-  Returns the list of starred channels for a workspace, filtered by user access.
+  Returns the list of starred channels for a workspace.
 
   ## Examples
 
@@ -64,12 +38,11 @@ defmodule Bridge.Chat do
       [%Channel{}, ...]
 
   """
-  def list_starred_channels(workspace_id, user, opts \\ []) do
+  def list_starred_channels(workspace_id, _user, opts \\ []) do
     Channel
     |> where([c], c.starred == true and c.workspace_id == ^workspace_id)
-    |> filter_by_user_access(user)
     |> order_by([c], desc: c.id)
-    |> preload([:project, :created_by])
+    |> preload([:created_by])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -90,7 +63,7 @@ defmodule Bridge.Chat do
   def get_channel(id, workspace_id) do
     case Channel
          |> where([c], c.workspace_id == ^workspace_id)
-         |> preload([:project, :created_by])
+         |> preload([:created_by])
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       channel -> {:ok, channel}

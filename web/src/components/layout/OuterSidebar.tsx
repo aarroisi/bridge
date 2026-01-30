@@ -51,7 +51,9 @@ export function OuterSidebar() {
   // Determine active category from URL
   const getCurrentCategory = (): Category => {
     const path = location.pathname;
+
     if (path === "/") return "home";
+    // All /projects/* routes (including nested /projects/:id/docs/:docId) are projects
     if (path.startsWith("/projects")) return "projects";
     if (path.startsWith("/lists")) return "lists";
     if (path.startsWith("/docs")) return "docs";

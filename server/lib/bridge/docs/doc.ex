@@ -12,7 +12,6 @@ defmodule Bridge.Docs.Doc do
     field(:starred, :boolean, default: false)
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
-    belongs_to(:project, Bridge.Projects.Project)
     belongs_to(:author, Bridge.Accounts.User)
 
     timestamps()
@@ -21,7 +20,7 @@ defmodule Bridge.Docs.Doc do
   @doc false
   def changeset(doc, attrs) do
     doc
-    |> cast(attrs, [:title, :content, :starred, :workspace_id, :project_id, :author_id])
+    |> cast(attrs, [:title, :content, :starred, :workspace_id, :author_id])
     |> validate_required([:title, :workspace_id, :author_id])
     |> sanitize_html()
   end

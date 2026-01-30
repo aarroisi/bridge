@@ -5,7 +5,7 @@ defmodule BridgeWeb.MessageControllerTest do
     workspace = insert(:workspace)
     user = insert(:user, workspace_id: workspace.id)
     project = insert(:project, workspace_id: workspace.id)
-    channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+    channel = insert(:channel, workspace_id: workspace.id)
 
     conn =
       build_conn()
@@ -35,10 +35,9 @@ defmodule BridgeWeb.MessageControllerTest do
       conn: conn,
       user: user,
       workspace: workspace,
-      project: project,
       channel: channel
     } do
-      other_channel = insert(:channel, workspace_id: workspace.id, project_id: project.id)
+      other_channel = insert(:channel, workspace_id: workspace.id)
 
       _message_in_channel =
         insert(:message, entity_type: "channel", entity_id: channel.id, user_id: user.id)

@@ -51,9 +51,7 @@ export function WorkspaceMembersPage() {
 
   const handleRoleChange = async (memberId: string, newRole: Role) => {
     try {
-      await api.put(`/workspace/members/${memberId}`, {
-        user: { role: newRole },
-      });
+      await api.put(`/workspace/members/${memberId}`, { role: newRole });
       setMembers((prev) =>
         prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)),
       );
@@ -248,7 +246,10 @@ function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps) {
 
     try {
       const response = await api.post<WorkspaceMember>("/workspace/members", {
-        user: { name, email, password, role },
+        name,
+        email,
+        password,
+        role,
       });
       onInvite(response);
       toast.success("Member invited successfully");

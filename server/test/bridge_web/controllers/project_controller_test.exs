@@ -79,7 +79,7 @@ defmodule BridgeWeb.ProjectControllerTest do
 
       response =
         conn
-        |> post(~p"/api/projects", project: project_params)
+        |> post(~p"/api/projects", project_params)
         |> json_response(201)
 
       assert response["data"]["name"] == "New Project"
@@ -94,7 +94,7 @@ defmodule BridgeWeb.ProjectControllerTest do
 
       create_response =
         conn
-        |> post(~p"/api/projects", project: project_params)
+        |> post(~p"/api/projects", project_params)
         |> json_response(201)
 
       project_id = create_response["data"]["id"]
@@ -115,7 +115,7 @@ defmodule BridgeWeb.ProjectControllerTest do
 
       response =
         conn
-        |> post(~p"/api/projects", project: project_params)
+        |> post(~p"/api/projects", project_params)
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -133,7 +133,7 @@ defmodule BridgeWeb.ProjectControllerTest do
 
       create_response =
         conn
-        |> post(~p"/api/projects", project: project_params)
+        |> post(~p"/api/projects", project_params)
         |> json_response(201)
 
       project_id = create_response["data"]["id"]
@@ -196,7 +196,7 @@ defmodule BridgeWeb.ProjectControllerTest do
 
       response =
         conn
-        |> put(~p"/api/projects/#{project.id}", project: update_params)
+        |> put(~p"/api/projects/#{project.id}", update_params)
         |> json_response(200)
 
       assert response["data"]["name"] == "New Name"
@@ -209,7 +209,7 @@ defmodule BridgeWeb.ProjectControllerTest do
       update_params = %{name: "Updated Name"}
 
       conn
-      |> put(~p"/api/projects/#{project.id}", project: update_params)
+      |> put(~p"/api/projects/#{project.id}", update_params)
       |> json_response(200)
 
       show_response =
@@ -229,7 +229,7 @@ defmodule BridgeWeb.ProjectControllerTest do
 
       response =
         conn
-        |> put(~p"/api/projects/#{project.id}", project: update_params)
+        |> put(~p"/api/projects/#{project.id}", update_params)
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -239,7 +239,7 @@ defmodule BridgeWeb.ProjectControllerTest do
       update_params = %{name: "New Name"}
 
       conn
-      |> put(~p"/api/projects/00000000-0000-0000-0000-000000000000", project: update_params)
+      |> put(~p"/api/projects/00000000-0000-0000-0000-000000000000", update_params)
       |> json_response(404)
     end
 
@@ -250,7 +250,7 @@ defmodule BridgeWeb.ProjectControllerTest do
       update_params = %{name: "Hacked Name"}
 
       conn
-      |> put(~p"/api/projects/#{other_project.id}", project: update_params)
+      |> put(~p"/api/projects/#{other_project.id}", update_params)
       |> json_response(404)
     end
   end

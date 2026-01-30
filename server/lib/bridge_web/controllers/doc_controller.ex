@@ -43,8 +43,7 @@ defmodule BridgeWeb.DocController do
 
   defp get_authorization_resource(conn, :create_item) do
     # For create, we check project_id from params
-    params = conn.params["doc"] || conn.params
-    params["project_id"]
+    conn.params["project_id"]
   end
 
   defp get_authorization_resource(conn, _permission) do
@@ -65,16 +64,8 @@ defmodule BridgeWeb.DocController do
     current_user = conn.assigns.current_user
     workspace_id = conn.assigns.workspace_id
 
-    # Handle both nested and flat params
     doc_params =
-      case params do
-        %{"doc" => nested_params} -> nested_params
-        flat_params -> flat_params
-      end
-
-    # Add author_id and workspace_id
-    doc_params =
-      doc_params
+      params
       |> Map.put("author_id", current_user.id)
       |> Map.put("workspace_id", workspace_id)
 
@@ -91,13 +82,7 @@ defmodule BridgeWeb.DocController do
 
   def update(conn, params) do
     doc = conn.assigns.doc
-
-    # Handle both nested and flat params
-    doc_params =
-      case params do
-        %{"doc" => nested_params} -> nested_params
-        flat_params -> Map.drop(flat_params, ["id"])
-      end
+    doc_params = Map.drop(params, ["id"])
 
     with {:ok, doc} <- Docs.update_doc(doc, doc_params) do
       render(conn, :show, doc: doc)

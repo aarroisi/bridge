@@ -19,6 +19,7 @@ cd server && mix test           cd web && npx playwright test
 3. **Test-Driven**: Always use TDD for both backend and frontend - write tests first, then implement
 4. **E2E Testing**: Use `keyboard.insertText()` for React inputs, NOT `fill()`
 5. **Toast Notifications**: Always show toast after successful backend mutations (create, update, delete) using `useToastStore`
+6. **API Params**: Send params directly without nested wrappers - use `{name, email}` NOT `{user: {name, email}}`
 
 ## Documentation
 

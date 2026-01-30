@@ -82,7 +82,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> post(~p"/api/docs", doc: doc_params)
+        |> post(~p"/api/docs", doc_params)
         |> json_response(201)
 
       assert response["data"]["title"] == "Test Doc"
@@ -108,7 +108,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> post(~p"/api/docs", doc: doc_params)
+        |> post(~p"/api/docs", doc_params)
         |> dbg()
 
       IO.inspect(response, label: "RESPONSE")
@@ -133,7 +133,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> post(~p"/api/docs", doc: doc_params)
+        |> post(~p"/api/docs", doc_params)
         |> json_response(201)
 
       assert response["data"]["author_id"] == user.id
@@ -150,7 +150,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> post(~p"/api/docs", doc: doc_params)
+        |> post(~p"/api/docs", doc_params)
         |> json_response(201)
 
       # Workspace is set correctly, verify by checking we can only see docs from our workspace
@@ -249,7 +249,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> put(~p"/api/docs/#{doc.id}", doc: update_params)
+        |> put(~p"/api/docs/#{doc.id}", update_params)
         |> json_response(200)
 
       assert response["data"]["title"] == "New Title"
@@ -266,7 +266,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> put(~p"/api/docs/#{fake_id}", doc: update_params)
+        |> put(~p"/api/docs/#{fake_id}", update_params)
         |> json_response(404)
 
       assert response["errors"]
@@ -288,7 +288,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> put(~p"/api/docs/#{other_doc.id}", doc: update_params)
+        |> put(~p"/api/docs/#{other_doc.id}", update_params)
         |> json_response(404)
 
       assert response["errors"]
@@ -307,7 +307,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> put(~p"/api/docs/#{doc.id}", doc: update_params)
+        |> put(~p"/api/docs/#{doc.id}", update_params)
         |> dbg()
 
       IO.inspect(response, label: "UPDATE RESPONSE")
@@ -343,7 +343,7 @@ defmodule BridgeWeb.DocControllerTest do
 
       response =
         conn
-        |> put(~p"/api/docs/#{doc.id}", doc: update_params)
+        |> put(~p"/api/docs/#{doc.id}", update_params)
         |> json_response(200)
 
       assert response["data"]["starred"] == true

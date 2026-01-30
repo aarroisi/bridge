@@ -69,7 +69,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
 
       response =
         conn
-        |> post(~p"/api/workspace/members", member: member_params)
+        |> post(~p"/api/workspace/members", member_params)
         |> json_response(201)
 
       assert response["data"]["name"] == "New User"
@@ -87,7 +87,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
 
       response =
         conn
-        |> post(~p"/api/workspace/members", member: member_params)
+        |> post(~p"/api/workspace/members", member_params)
         |> json_response(201)
 
       assert response["data"]["role"] == "guest"
@@ -98,7 +98,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
 
       response =
         conn
-        |> post(~p"/api/workspace/members", member: member_params)
+        |> post(~p"/api/workspace/members", member_params)
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -112,8 +112,9 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
         |> put_session(:user_id, existing_member.id)
 
       conn
-      |> post(~p"/api/workspace/members",
-        member: %{name: "Test", email: "test@test.com", password: "pass123"}
+      |> post(
+        ~p"/api/workspace/members",
+        %{name: "Test", email: "test@test.com", password: "pass123"}
       )
       |> json_response(403)
     end
@@ -137,7 +138,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
     test "updates member role", %{conn: conn, member: member} do
       response =
         conn
-        |> put(~p"/api/workspace/members/#{member.id}", member: %{role: "guest"})
+        |> put(~p"/api/workspace/members/#{member.id}", %{role: "guest"})
         |> json_response(200)
 
       assert response["data"]["role"] == "guest"
@@ -148,7 +149,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
       other_user = insert(:user, workspace_id: other_workspace.id)
 
       conn
-      |> put(~p"/api/workspace/members/#{other_user.id}", member: %{role: "guest"})
+      |> put(~p"/api/workspace/members/#{other_user.id}", %{role: "guest"})
       |> json_response(404)
     end
 
@@ -158,7 +159,7 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
         |> put_session(:user_id, member.id)
 
       conn
-      |> put(~p"/api/workspace/members/#{member.id}", member: %{role: "guest"})
+      |> put(~p"/api/workspace/members/#{member.id}", %{role: "guest"})
       |> json_response(403)
     end
   end

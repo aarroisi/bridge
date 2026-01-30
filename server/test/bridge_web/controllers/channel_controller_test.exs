@@ -91,7 +91,7 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       response =
         conn
-        |> post(~p"/api/channels", channel: channel_params)
+        |> post(~p"/api/channels", channel_params)
         |> json_response(201)
 
       assert response["data"]["name"] == "New Channel"
@@ -106,7 +106,7 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       create_response =
         conn
-        |> post(~p"/api/channels", channel: channel_params)
+        |> post(~p"/api/channels", channel_params)
         |> json_response(201)
 
       channel_id = create_response["data"]["id"]
@@ -127,7 +127,7 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       response =
         conn
-        |> post(~p"/api/channels", channel: channel_params)
+        |> post(~p"/api/channels", channel_params)
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -145,7 +145,7 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       create_response =
         conn
-        |> post(~p"/api/channels", channel: channel_params)
+        |> post(~p"/api/channels", channel_params)
         |> json_response(201)
 
       channel_id = create_response["data"]["id"]
@@ -217,7 +217,7 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       response =
         conn
-        |> put(~p"/api/channels/#{channel.id}", channel: update_params)
+        |> put(~p"/api/channels/#{channel.id}", update_params)
         |> json_response(200)
 
       assert response["data"]["name"] == "New Name"
@@ -234,7 +234,7 @@ defmodule BridgeWeb.ChannelControllerTest do
       update_params = %{name: "Updated Name"}
 
       conn
-      |> put(~p"/api/channels/#{channel.id}", channel: update_params)
+      |> put(~p"/api/channels/#{channel.id}", update_params)
       |> json_response(200)
 
       show_response =
@@ -257,7 +257,7 @@ defmodule BridgeWeb.ChannelControllerTest do
 
       response =
         conn
-        |> put(~p"/api/channels/#{channel.id}", channel: update_params)
+        |> put(~p"/api/channels/#{channel.id}", update_params)
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -267,7 +267,7 @@ defmodule BridgeWeb.ChannelControllerTest do
       update_params = %{name: "New Name"}
 
       conn
-      |> put(~p"/api/channels/00000000-0000-0000-0000-000000000000", channel: update_params)
+      |> put(~p"/api/channels/00000000-0000-0000-0000-000000000000", update_params)
       |> json_response(404)
     end
 
@@ -280,7 +280,7 @@ defmodule BridgeWeb.ChannelControllerTest do
       update_params = %{name: "Hacked Name"}
 
       conn
-      |> put(~p"/api/channels/#{other_channel.id}", channel: update_params)
+      |> put(~p"/api/channels/#{other_channel.id}", update_params)
       |> json_response(404)
     end
   end

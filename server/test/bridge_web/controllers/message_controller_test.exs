@@ -95,7 +95,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(201)
 
       assert response["data"]["text"] == "Hello, world!"
@@ -118,7 +118,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(201)
 
       assert response["data"]["text"] == "This is a reply"
@@ -138,7 +138,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(201)
 
       assert response["data"]["text"] == "Quoting this message"
@@ -154,7 +154,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       create_response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(201)
 
       message_id = create_response["data"]["id"]
@@ -175,7 +175,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(422)
 
       assert response["errors"]["text"] || response["errors"]["entity_type"] ||
@@ -191,7 +191,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(422)
 
       assert response["errors"]["entity_type"]
@@ -206,7 +206,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> post(~p"/api/messages", message: message_params)
+        |> post(~p"/api/messages", message_params)
         |> json_response(201)
 
       assert response["data"]["user_id"] == user.id
@@ -257,7 +257,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> put(~p"/api/messages/#{message.id}", message: update_params)
+        |> put(~p"/api/messages/#{message.id}", update_params)
         |> json_response(200)
 
       assert response["data"]["text"] == "Updated text"
@@ -275,7 +275,7 @@ defmodule BridgeWeb.MessageControllerTest do
       update_params = %{text: "Updated text"}
 
       conn
-      |> put(~p"/api/messages/#{message.id}", message: update_params)
+      |> put(~p"/api/messages/#{message.id}", update_params)
       |> json_response(200)
 
       show_response =
@@ -296,7 +296,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> put(~p"/api/messages/#{message.id}", message: update_params)
+        |> put(~p"/api/messages/#{message.id}", update_params)
         |> json_response(422)
 
       assert response["errors"]["text"]
@@ -312,7 +312,7 @@ defmodule BridgeWeb.MessageControllerTest do
 
       response =
         conn
-        |> put(~p"/api/messages/#{message.id}", message: update_params)
+        |> put(~p"/api/messages/#{message.id}", update_params)
         |> json_response(422)
 
       assert response["errors"]["entity_type"]
@@ -322,7 +322,7 @@ defmodule BridgeWeb.MessageControllerTest do
       update_params = %{text: "New text"}
 
       conn
-      |> put(~p"/api/messages/00000000-0000-0000-0000-000000000000", message: update_params)
+      |> put(~p"/api/messages/00000000-0000-0000-0000-000000000000", update_params)
       |> json_response(404)
     end
   end

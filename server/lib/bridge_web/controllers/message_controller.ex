@@ -122,16 +122,16 @@ defmodule BridgeWeb.MessageController do
     render(conn, :index, page: page)
   end
 
-  def create(conn, %{"message" => message_params}) do
+  def create(conn, params) do
     current_user = conn.assigns.current_user
 
     # Support both camelCase (frontend) and snake_case (tests) params
     attrs = %{
-      "text" => message_params["text"],
-      "entity_type" => message_params["entityType"] || message_params["entity_type"],
-      "entity_id" => message_params["entityId"] || message_params["entity_id"],
-      "parent_id" => message_params["parentId"] || message_params["parent_id"],
-      "quote_id" => message_params["quoteId"] || message_params["quote_id"],
+      "text" => params["text"],
+      "entity_type" => params["entityType"] || params["entity_type"],
+      "entity_id" => params["entityId"] || params["entity_id"],
+      "parent_id" => params["parentId"] || params["parent_id"],
+      "quote_id" => params["quoteId"] || params["quote_id"],
       "user_id" => current_user.id
     }
 
@@ -149,8 +149,8 @@ defmodule BridgeWeb.MessageController do
     render(conn, :show, message: conn.assigns.message)
   end
 
-  def update(conn, %{"message" => message_params}) do
-    with {:ok, message} <- Chat.update_message(conn.assigns.message, message_params) do
+  def update(conn, params) do
+    with {:ok, message} <- Chat.update_message(conn.assigns.message, params) do
       render(conn, :show, message: message)
     end
   end

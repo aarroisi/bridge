@@ -58,27 +58,23 @@ export const useDocStore = create<DocState>((set, get) => ({
 }));
 ```
 
-### API Client Pattern
+### API Calls - Use Flat Params
+
+**IMPORTANT**: Always send params directly without nested wrappers:
 
 ```typescript
-const api = {
-  get: async <T>(url: string): Promise<T> => {
-    const response = await fetch(`${BASE_URL}${url}`);
-    if (!response.ok) throw new Error("Request failed");
-    return response.json();
-  },
+// ✅ CORRECT - flat params
+await api.post("/docs", { title: "My Doc", content: "..." });
+await api.post("/channels", { name: "general" });
+await api.post("/workspace/members", { name, email, password, role });
 
-  post: async <T>(url: string, data: unknown): Promise<T> => {
-    const response = await fetch(`${BASE_URL}${url}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error("Request failed");
-    return response.json();
-  },
-};
+// ❌ WRONG - nested under a key
+await api.post("/docs", { doc: { title: "My Doc", content: "..." } });
+await api.post("/channels", { channel: { name: "general" } });
+await api.post("/workspace/members", { user: { name, email, password, role } });
 ```
+
+This keeps the API contract simple and consistent across all endpoints.
 
 ## E2E Testing with Playwright
 

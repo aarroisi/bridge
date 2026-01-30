@@ -232,13 +232,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     quoteId?: string,
   ) => {
     const message = await api.post<Message>("/messages", {
-      message: {
-        entityType,
-        entityId,
-        text,
-        parentId,
-        quoteId,
-      },
+      entityType,
+      entityId,
+      text,
+      parentId,
+      quoteId,
     });
     const key = `${entityType}:${entityId}`;
     // Prepend new message since backend stores in desc order (newest first)

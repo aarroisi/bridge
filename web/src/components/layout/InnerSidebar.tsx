@@ -525,7 +525,7 @@ export function InnerSidebar() {
                                   : "text-dark-text-muted",
                               )}
                             >
-                              <ListTodo size={14} />
+                              <ListTodo size={14} className="flex-shrink-0" />
                               <span className="truncate">{list.name}</span>
                             </button>
                           );
@@ -545,7 +545,7 @@ export function InnerSidebar() {
                                   : "text-dark-text-muted",
                               )}
                             >
-                              <FileText size={14} />
+                              <FileText size={14} className="flex-shrink-0" />
                               <span className="truncate">{doc.title}</span>
                             </button>
                           );
@@ -569,7 +569,7 @@ export function InnerSidebar() {
                                   : "text-dark-text-muted",
                               )}
                             >
-                              <Hash size={14} />
+                              <Hash size={14} className="flex-shrink-0" />
                               <span className="truncate">{channel.name}</span>
                             </button>
                           );

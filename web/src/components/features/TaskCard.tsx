@@ -28,12 +28,12 @@ export function TaskCard({
     >
       <h4 className="font-medium text-dark-text text-sm mb-2">{task.title}</h4>
 
-      {(task.assigneeName || task.dueOn) && (
+      {(task.assignee || task.dueOn) && (
         <div className="flex items-center gap-3 text-xs text-dark-text-muted">
-          {task.assigneeName && (
+          {task.assignee && (
             <div className="flex items-center gap-1">
-              <Avatar name={task.assigneeName} size="xs" />
-              <span>{task.assigneeName}</span>
+              <Avatar name={task.assignee.name} size="xs" />
+              <span>{task.assignee.name}</span>
             </div>
           )}
 

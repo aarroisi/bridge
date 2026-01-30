@@ -9,6 +9,7 @@ defmodule Bridge.Lists.Subtask do
     field(:title, :string)
     field(:status, :string, default: "todo")
     field(:notes, :string)
+    field(:due_on, :date)
 
     belongs_to(:task, Bridge.Lists.Task)
     belongs_to(:assignee, Bridge.Accounts.User)
@@ -20,7 +21,7 @@ defmodule Bridge.Lists.Subtask do
   @doc false
   def changeset(subtask, attrs) do
     subtask
-    |> cast(attrs, [:title, :status, :notes, :task_id, :assignee_id, :created_by_id])
+    |> cast(attrs, [:title, :status, :notes, :due_on, :task_id, :assignee_id, :created_by_id])
     |> validate_required([:title, :task_id, :created_by_id])
     |> validate_inclusion(:status, ["todo", "doing", "done"])
   end

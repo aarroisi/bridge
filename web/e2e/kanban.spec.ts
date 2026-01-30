@@ -148,7 +148,10 @@ test.describe("Kanban Board", () => {
       .filter({ hasText: /^doing$/ })
       .click();
 
-    // Wait for status update
+    // Click Save button to apply changes
+    await page.getByRole("button", { name: /^save$/i }).click();
+
+    // Wait for save to complete
     await page.waitForTimeout(500);
 
     // Close the modal by pressing Escape

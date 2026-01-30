@@ -83,8 +83,16 @@ defmodule BridgeWeb.ListStatusController do
   def delete(conn, _params) do
     status = conn.assigns.status
 
-    with {:ok, _status} <- Lists.delete_status(status) do
-      send_resp(conn, :no_content, "")
+    case Lists.delete_status(status) do
+      {:ok, _status} ->
+        send_resp(conn, :no_content, "")
+
+      {:error, :has_tasks} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> Phoenix.Controller.json(%{
+          error: "Cannot delete status that has tasks. Move or delete the tasks first."
+        })
     end
   end
 

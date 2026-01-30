@@ -58,6 +58,13 @@ export interface List {
   updatedAt: string;
 }
 
+// Embedded user info (for assignee, created_by, etc.)
+export interface EmbeddedUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Task {
   id: string;
   listId: string;
@@ -65,12 +72,12 @@ export interface Task {
   statusId: string;
   status?: ListStatus;
   position: number;
-  assigneeId?: string;
-  assigneeName?: string;
+  assigneeId?: string | null;
+  assignee?: EmbeddedUser | null;
   createdById: string;
-  createdByName: string;
-  dueOn?: string;
-  notes?: string;
+  createdBy?: EmbeddedUser | null;
+  dueOn?: string | null;
+  notes?: string | null;
   insertedAt: string;
   updatedAt: string;
 }
@@ -80,11 +87,12 @@ export interface Subtask {
   taskId: string;
   title: string;
   status: "todo" | "doing" | "done";
-  assigneeId?: string;
-  assigneeName?: string;
+  assigneeId?: string | null;
+  assignee?: EmbeddedUser | null;
   createdById: string;
-  createdByName: string;
-  notes?: string;
+  createdBy?: EmbeddedUser | null;
+  notes?: string | null;
+  dueOn?: string | null;
   insertedAt: string;
   updatedAt: string;
 }

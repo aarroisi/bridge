@@ -1,12 +1,20 @@
-import { useState } from "react";
-import { X, Plus, Trash2, GripVertical } from "lucide-react";
-import { ListStatus } from "@/types";
+import { useState, useRef, useEffect } from "react";
+import {
+  X,
+  Plus,
+  Trash2,
+  GripVertical,
+  ChevronDown,
+  Undo2,
+} from "lucide-react";
+import { ListStatus, Task } from "@/types";
 import { useListStore } from "@/stores/listStore";
 import { clsx } from "clsx";
 
 interface StatusManagerProps {
   listId: string;
   statuses: ListStatus[];
+  tasks: Task[];
   onClose: () => void;
 }
 
@@ -21,44 +29,118 @@ const STATUS_COLORS = [
   { name: "Pink", value: "#ec4899" },
 ];
 
+interface LocalStatus {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+  isNew?: boolean;
+  isDeleted?: boolean;
+  isModified?: boolean;
+}
+
 export function StatusManager({
   listId,
   statuses,
+  tasks,
   onClose,
 }: StatusManagerProps) {
   const { createStatus, updateStatus, deleteStatus, reorderStatuses } =
     useListStore();
+
+  // Local state for batched changes
+  const [localStatuses, setLocalStatuses] = useState<LocalStatus[]>(() =>
+    [...statuses]
+      .sort((a, b) => a.position - b.position)
+      .map((s) => ({
+        ...s,
+        isNew: false,
+        isDeleted: false,
+        isModified: false,
+      })),
+  );
   const [newStatusName, setNewStatusName] = useState("");
   const [newStatusColor, setNewStatusColor] = useState(STATUS_COLORS[0].value);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingColor, setEditingColor] = useState("");
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [showEditColorPicker, setShowEditColorPicker] = useState(false);
+  const [showNewColorPicker, setShowNewColorPicker] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
+  const editColorRef = useRef<HTMLDivElement>(null);
+  const newColorRef = useRef<HTMLDivElement>(null);
 
-  const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position);
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        editColorRef.current &&
+        !editColorRef.current.contains(e.target as Node)
+      ) {
+        setShowEditColorPicker(false);
+      }
+      if (
+        newColorRef.current &&
+        !newColorRef.current.contains(e.target as Node)
+      ) {
+        setShowNewColorPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const handleAddStatus = async () => {
+  const sortedLocalStatuses = [...localStatuses].sort(
+    (a, b) => a.position - b.position,
+  );
+
+  const getTaskCountForStatus = (statusId: string) => {
+    return tasks.filter((t) => t.statusId === statusId).length;
+  };
+
+  const hasChanges = () => {
+    return localStatuses.some((s) => s.isNew || s.isDeleted || s.isModified);
+  };
+
+  const handleAddStatus = () => {
     if (!newStatusName.trim()) return;
-    await createStatus(listId, {
-      name: newStatusName.trim(),
+    const newStatus: LocalStatus = {
+      id: `new-${Date.now()}`,
+      name: newStatusName.trim().toUpperCase(),
       color: newStatusColor,
-    });
+      position: localStatuses.length,
+      isNew: true,
+      isDeleted: false,
+      isModified: false,
+    };
+    setLocalStatuses([...localStatuses, newStatus]);
     setNewStatusName("");
     setNewStatusColor(STATUS_COLORS[0].value);
   };
 
-  const handleStartEdit = (status: ListStatus) => {
+  const handleStartEdit = (status: LocalStatus) => {
     setEditingId(status.id);
     setEditingName(status.name);
     setEditingColor(status.color);
+    setShowEditColorPicker(false);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingId || !editingName.trim()) return;
-    await updateStatus(editingId, {
-      name: editingName.trim(),
-      color: editingColor,
-    });
+    setLocalStatuses(
+      localStatuses.map((s) =>
+        s.id === editingId
+          ? {
+              ...s,
+              name: editingName.trim().toUpperCase(),
+              color: editingColor,
+              isModified: !s.isNew,
+            }
+          : s,
+      ),
+    );
     setEditingId(null);
   };
 
@@ -68,14 +150,41 @@ export function StatusManager({
     setEditingColor("");
   };
 
-  const handleDelete = async (id: string) => {
-    if (sortedStatuses.length <= 1) {
-      alert("Cannot delete the last status");
+  const handleDeleteClick = (id: string) => {
+    const nonDeletedCount = localStatuses.filter((s) => !s.isDeleted).length;
+    if (nonDeletedCount <= 1) {
+      setErrorModal("Cannot delete the last status.");
       return;
     }
-    if (confirm("Delete this status? Tasks will be moved to the first status.")) {
-      await deleteStatus(id, listId);
+
+    const status = localStatuses.find((s) => s.id === id);
+    if (!status) return;
+
+    // For new statuses, just remove them
+    if (status.isNew) {
+      setLocalStatuses(localStatuses.filter((s) => s.id !== id));
+      return;
     }
+
+    // For existing statuses, check if they have tasks
+    const taskCount = getTaskCountForStatus(id);
+    if (taskCount > 0) {
+      setErrorModal(
+        `Cannot delete this status because it has ${taskCount} task${taskCount > 1 ? "s" : ""}. Move or delete the tasks first.`,
+      );
+      return;
+    }
+
+    // Mark for deletion
+    setLocalStatuses(
+      localStatuses.map((s) => (s.id === id ? { ...s, isDeleted: true } : s)),
+    );
+  };
+
+  const handleUndoDelete = (id: string) => {
+    setLocalStatuses(
+      localStatuses.map((s) => (s.id === id ? { ...s, isDeleted: false } : s)),
+    );
   };
 
   const handleDragStart = (id: string) => {
@@ -86,46 +195,88 @@ export function StatusManager({
     e.preventDefault();
     if (!draggedId || draggedId === targetId) return;
 
-    const currentOrder = sortedStatuses.map((s) => s.id);
-    const draggedIndex = currentOrder.indexOf(draggedId);
-    const targetIndex = currentOrder.indexOf(targetId);
+    const activeStatuses = sortedLocalStatuses.filter((s) => !s.isDeleted);
+    const activeIds = activeStatuses.map((s) => s.id);
+    const draggedIndex = activeIds.indexOf(draggedId);
+    const targetIndex = activeIds.indexOf(targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
-    // Reorder locally for visual feedback
-    const newOrder = [...currentOrder];
-    newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedId);
+    // Reorder locally
+    const newStatuses = [...localStatuses];
+    const draggedStatus = newStatuses.find((s) => s.id === draggedId);
+    const targetStatus = newStatuses.find((s) => s.id === targetId);
 
-    // We'll commit on drop
+    if (draggedStatus && targetStatus) {
+      const tempPosition = draggedStatus.position;
+      draggedStatus.position = targetStatus.position;
+      targetStatus.position = tempPosition;
+      draggedStatus.isModified = !draggedStatus.isNew;
+      targetStatus.isModified = !targetStatus.isNew;
+    }
+
+    setLocalStatuses(newStatuses);
   };
 
-  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-
-    const currentOrder = sortedStatuses.map((s) => s.id);
-    const draggedIndex = currentOrder.indexOf(draggedId);
-    const targetIndex = currentOrder.indexOf(targetId);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedId(null);
-      return;
-    }
-
-    const newOrder = [...currentOrder];
-    newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedId);
-
-    await reorderStatuses(listId, newOrder);
     setDraggedId(null);
   };
 
   const handleDragEnd = () => {
     setDraggedId(null);
+  };
+
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      // Process deletions first
+      for (const status of localStatuses.filter(
+        (s) => s.isDeleted && !s.isNew,
+      )) {
+        await deleteStatus(status.id, listId);
+      }
+
+      // Process new statuses
+      for (const status of localStatuses.filter(
+        (s) => s.isNew && !s.isDeleted,
+      )) {
+        await createStatus(listId, {
+          name: status.name,
+          color: status.color,
+        });
+      }
+
+      // Process updates
+      for (const status of localStatuses.filter(
+        (s) => s.isModified && !s.isNew && !s.isDeleted,
+      )) {
+        await updateStatus(status.id, {
+          name: status.name,
+          color: status.color,
+        });
+      }
+
+      // Reorder if positions changed
+      const finalStatuses = localStatuses
+        .filter((s) => !s.isDeleted)
+        .sort((a, b) => a.position - b.position);
+
+      const originalOrder = [...statuses]
+        .sort((a, b) => a.position - b.position)
+        .map((s) => s.id);
+      const newOrder = finalStatuses.filter((s) => !s.isNew).map((s) => s.id);
+
+      if (JSON.stringify(originalOrder) !== JSON.stringify(newOrder)) {
+        await reorderStatuses(listId, newOrder);
+      }
+
+      onClose();
+    } catch {
+      setErrorModal("Failed to save changes. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -144,53 +295,114 @@ export function StatusManager({
         <div className="flex-1 overflow-y-auto p-6">
           {/* Existing Statuses */}
           <div className="space-y-2 mb-6">
-            {sortedStatuses.map((status) => (
+            {sortedLocalStatuses.map((status) => (
               <div
                 key={status.id}
-                draggable={editingId !== status.id}
+                draggable={editingId !== status.id && !status.isDeleted}
                 onDragStart={() => handleDragStart(status.id)}
                 onDragOver={(e) => handleDragOver(e, status.id)}
-                onDrop={(e) => handleDrop(e, status.id)}
+                onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
                 className={clsx(
-                  "flex items-center gap-3 p-3 bg-dark-bg border border-dark-border rounded-lg",
+                  "flex items-center gap-3 p-3 border rounded-lg transition-all",
+                  status.isDeleted
+                    ? "bg-red-500/10 border-red-500/30"
+                    : "bg-dark-bg border-dark-border",
                   draggedId === status.id && "opacity-50",
+                  status.isNew && !status.isDeleted && "border-green-500/50",
+                  status.isModified &&
+                    !status.isNew &&
+                    !status.isDeleted &&
+                    "border-yellow-500/50",
                 )}
               >
-                <div className="cursor-grab text-dark-text-muted hover:text-dark-text">
-                  <GripVertical size={16} />
-                </div>
-
-                {editingId === status.id ? (
+                {status.isDeleted ? (
+                  // Deleted status view
                   <>
+                    <div className="text-dark-text-muted opacity-30">
+                      <GripVertical size={16} />
+                    </div>
+                    <div
+                      className="w-4 h-4 rounded-full flex-shrink-0 opacity-50"
+                      style={{ backgroundColor: status.color }}
+                    />
+                    <span className="flex-1 text-dark-text-muted line-through">
+                      {status.name}
+                    </span>
+                    <span className="text-xs text-red-400">
+                      Will be deleted
+                    </span>
+                    <button
+                      onClick={() => handleUndoDelete(status.id)}
+                      className="p-1 text-blue-400 hover:text-blue-300 hover:bg-dark-surface rounded transition-colors"
+                      title="Undo delete"
+                    >
+                      <Undo2 size={16} />
+                    </button>
+                  </>
+                ) : editingId === status.id ? (
+                  // Editing view
+                  <>
+                    <div className="text-dark-text-muted">
+                      <GripVertical size={16} />
+                    </div>
+                    {/* Color dropdown */}
+                    <div className="relative" ref={editColorRef}>
+                      <button
+                        onClick={() =>
+                          setShowEditColorPicker(!showEditColorPicker)
+                        }
+                        className="flex items-center gap-1 p-1 hover:bg-dark-surface rounded transition-colors"
+                      >
+                        <div
+                          className="w-5 h-5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: editingColor }}
+                        />
+                        <ChevronDown
+                          size={14}
+                          className="text-dark-text-muted"
+                        />
+                      </button>
+                      {showEditColorPicker && (
+                        <div className="absolute top-full left-0 mt-1 p-2 bg-dark-bg border border-dark-border rounded-lg shadow-lg z-10 w-[120px]">
+                          <div className="grid grid-cols-4 gap-2">
+                            {STATUS_COLORS.map((color) => (
+                              <button
+                                key={color.value}
+                                onClick={() => {
+                                  setEditingColor(color.value);
+                                  setShowEditColorPicker(false);
+                                }}
+                                className={clsx(
+                                  "w-6 h-6 rounded-full border-2 flex-shrink-0",
+                                  editingColor === color.value
+                                    ? "border-white"
+                                    : "border-transparent hover:border-dark-text-muted",
+                                )}
+                                style={{ backgroundColor: color.value }}
+                                title={color.name}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveEdit();
+                        if (e.key === "Escape") handleCancelEdit();
+                      }}
                       className="flex-1 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
                       autoFocus
                     />
-                    <div className="flex gap-1">
-                      {STATUS_COLORS.map((color) => (
-                        <button
-                          key={color.value}
-                          onClick={() => setEditingColor(color.value)}
-                          className={clsx(
-                            "w-6 h-6 rounded-full border-2",
-                            editingColor === color.value
-                              ? "border-white"
-                              : "border-transparent",
-                          )}
-                          style={{ backgroundColor: color.value }}
-                          title={color.name}
-                        />
-                      ))}
-                    </div>
                     <button
                       onClick={handleSaveEdit}
                       className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                     >
-                      Save
+                      OK
                     </button>
                     <button
                       onClick={handleCancelEdit}
@@ -200,7 +412,11 @@ export function StatusManager({
                     </button>
                   </>
                 ) : (
+                  // Normal view
                   <>
+                    <div className="cursor-grab text-dark-text-muted hover:text-dark-text">
+                      <GripVertical size={16} />
+                    </div>
                     <div
                       className="w-4 h-4 rounded-full flex-shrink-0"
                       style={{ backgroundColor: status.color }}
@@ -213,7 +429,7 @@ export function StatusManager({
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(status.id)}
+                      onClick={() => handleDeleteClick(status.id)}
                       className="p-1 text-dark-text-muted hover:text-red-500 transition-colors"
                       title="Delete status"
                     >
@@ -231,6 +447,42 @@ export function StatusManager({
               Add New Status
             </h4>
             <div className="flex items-center gap-3">
+              {/* Color dropdown */}
+              <div className="relative" ref={newColorRef}>
+                <button
+                  onClick={() => setShowNewColorPicker(!showNewColorPicker)}
+                  className="flex items-center gap-1 p-2 bg-dark-bg border border-dark-border rounded hover:border-dark-text-muted transition-colors"
+                >
+                  <div
+                    className="w-5 h-5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: newStatusColor }}
+                  />
+                  <ChevronDown size={14} className="text-dark-text-muted" />
+                </button>
+                {showNewColorPicker && (
+                  <div className="absolute bottom-full left-0 mb-1 p-2 bg-dark-bg border border-dark-border rounded-lg shadow-lg z-10 w-[120px]">
+                    <div className="grid grid-cols-4 gap-2">
+                      {STATUS_COLORS.map((color) => (
+                        <button
+                          key={color.value}
+                          onClick={() => {
+                            setNewStatusColor(color.value);
+                            setShowNewColorPicker(false);
+                          }}
+                          className={clsx(
+                            "w-6 h-6 rounded-full border-2 flex-shrink-0",
+                            newStatusColor === color.value
+                              ? "border-white"
+                              : "border-transparent hover:border-dark-text-muted",
+                          )}
+                          style={{ backgroundColor: color.value }}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <input
                 type="text"
                 value={newStatusName}
@@ -239,22 +491,6 @@ export function StatusManager({
                 placeholder="Status name"
                 className="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm text-dark-text placeholder:text-dark-text-muted focus:outline-none focus:border-blue-500"
               />
-              <div className="flex gap-1">
-                {STATUS_COLORS.map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => setNewStatusColor(color.value)}
-                    className={clsx(
-                      "w-6 h-6 rounded-full border-2",
-                      newStatusColor === color.value
-                        ? "border-white"
-                        : "border-transparent",
-                    )}
-                    style={{ backgroundColor: color.value }}
-                    title={color.name}
-                  />
-                ))}
-              </div>
               <button
                 onClick={handleAddStatus}
                 disabled={!newStatusName.trim()}
@@ -265,7 +501,55 @@ export function StatusManager({
             </div>
           </div>
         </div>
+
+        {/* Footer with Save button */}
+        <div className="px-6 py-4 border-t border-dark-border flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-dark-text-muted hover:text-dark-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveAll}
+            disabled={!hasChanges() || isSaving}
+            className={clsx(
+              "px-4 py-2 rounded font-medium transition-colors",
+              hasChanges()
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-dark-bg text-dark-text-muted cursor-not-allowed",
+            )}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
+
+      {/* Error Modal */}
+      {errorModal && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]"
+          onClick={() => setErrorModal(null)}
+        >
+          <div
+            className="bg-dark-surface border border-dark-border rounded-lg p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-dark-text mb-2">
+              Cannot Delete
+            </h3>
+            <p className="text-sm text-dark-text-muted mb-4">{errorModal}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setErrorModal(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

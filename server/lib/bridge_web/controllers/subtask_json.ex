@@ -28,13 +28,26 @@ defmodule BridgeWeb.SubtaskJSON do
       title: subtask.title,
       status: subtask.status,
       notes: subtask.notes,
+      due_on: subtask.due_on,
       task_id: subtask.task_id,
       assignee_id: subtask.assignee_id,
+      assignee: get_assignee(subtask),
       created_by_id: subtask.created_by_id,
+      created_by: get_created_by(subtask),
       inserted_at: subtask.inserted_at,
       updated_at: subtask.updated_at
     }
   end
+
+  defp get_assignee(%Subtask{assignee: %{id: id, name: name, email: email}}),
+    do: %{id: id, name: name, email: email}
+
+  defp get_assignee(_), do: nil
+
+  defp get_created_by(%Subtask{created_by: %{id: id, name: name, email: email}}),
+    do: %{id: id, name: name, email: email}
+
+  defp get_created_by(_), do: nil
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

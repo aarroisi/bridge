@@ -7,13 +7,21 @@ import {
   CheckSquare,
   Square,
   Trash2,
+  Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
 import { Message } from "./Message";
 import { DiscussionThread } from "./DiscussionThread";
 import { CommentEditor } from "./CommentEditor";
-import { Task, Subtask, ListStatus, Message as MessageType } from "@/types";
+import { RichTextNotesEditor } from "@/components/ui/RichTextNotesEditor";
+import {
+  Task,
+  Subtask,
+  ListStatus,
+  Message as MessageType,
+  User,
+} from "@/types";
 import { useListStore } from "@/stores/listStore";
 import { useChatStore } from "@/stores/chatStore";
 import { clsx } from "clsx";
@@ -23,7 +31,9 @@ interface TaskDetailModalProps {
   subtasks: Subtask[];
   comments: MessageType[];
   statuses: ListStatus[];
+  workspaceMembers?: User[];
   onClose: () => void;
+  onSubtaskClick?: (subtaskId: string) => void;
 }
 
 export function TaskDetailModal({
@@ -31,7 +41,9 @@ export function TaskDetailModal({
   subtasks,
   comments,
   statuses,
+  workspaceMembers = [],
   onClose,
+  onSubtaskClick,
 }: TaskDetailModalProps) {
   const [openThread, setOpenThread] = useState<MessageType | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -42,11 +54,24 @@ export function TaskDetailModal({
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
   const [subtaskToDelete, setSubtaskToDelete] = useState<Subtask | null>(null);
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(task.title);
+  // Local state for batched save
+  const [localStatusId, setLocalStatusId] = useState(task.statusId);
+  const [localAssigneeId, setLocalAssigneeId] = useState<string | undefined>(
+    task.assigneeId ?? undefined,
+  );
+  const [localDueDate, setLocalDueDate] = useState(task.dueOn || "");
+  const [localNotes, setLocalNotes] = useState(task.notes || "");
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
   const subtaskInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
   const {
     updateTask,
     updateSubtask,
@@ -58,6 +83,17 @@ export function TaskDetailModal({
 
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position);
   const currentStatus = sortedStatuses.find((s) => s.id === task.statusId);
+  const localStatus = sortedStatuses.find((s) => s.id === localStatusId);
+  const selectedAssignee = workspaceMembers.find(
+    (m) => m.id === localAssigneeId,
+  );
+
+  // Check if any details have changed
+  const hasDetailsChanged =
+    localStatusId !== task.statusId ||
+    (localAssigneeId || null) !== (task.assigneeId || null) ||
+    (localDueDate || null) !== (task.dueOn || null) ||
+    (localNotes || "") !== (task.notes || "");
 
   // Calculate checklist progress
   const completedCount = subtasks.filter((s) => s.status === "done").length;
@@ -68,13 +104,21 @@ export function TaskDetailModal({
   // Close on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !openThread) {
+      if (e.key === "Escape" && !openThread && !editingTitle) {
         onClose();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, openThread]);
+  }, [onClose, openThread, editingTitle]);
+
+  // Focus title input when editing
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingTitle]);
 
   // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -83,9 +127,38 @@ export function TaskDetailModal({
     }
   };
 
-  const handleStatusChange = async (statusId: string) => {
-    await updateTask(task.id, { statusId });
+  const handleTitleSave = async () => {
+    if (titleValue.trim() && titleValue !== task.title) {
+      await updateTask(task.id, { title: titleValue.trim() });
+    } else {
+      setTitleValue(task.title);
+    }
+    setEditingTitle(false);
+  };
+
+  const handleLocalStatusChange = (statusId: string) => {
+    setLocalStatusId(statusId);
     setIsStatusDropdownOpen(false);
+  };
+
+  const handleLocalAssigneeChange = (assigneeId: string | null) => {
+    setLocalAssigneeId(assigneeId || undefined);
+    setIsAssigneeDropdownOpen(false);
+  };
+
+  const handleSaveDetails = async () => {
+    if (!hasDetailsChanged) return;
+    setIsSavingDetails(true);
+    try {
+      await updateTask(task.id, {
+        statusId: localStatusId,
+        assigneeId: localAssigneeId || null,
+        dueOn: localDueDate || null,
+        notes: localNotes,
+      });
+    } finally {
+      setIsSavingDetails(false);
+    }
   };
 
   const handleSubtaskToggle = async (subtask: Subtask) => {
@@ -137,6 +210,10 @@ export function TaskDetailModal({
     );
     setNewComment("");
     setQuotingMessage(null);
+    // Scroll to bottom after comment is added
+    setTimeout(() => {
+      commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const handleQuote = (message: MessageType) => {
@@ -188,9 +265,40 @@ export function TaskDetailModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-dark-border flex items-start justify-between flex-shrink-0">
           <div className="flex-1 pr-4">
-            <h2 className="text-xl font-semibold text-dark-text mb-2">
-              {task.title}
-            </h2>
+            {editingTitle ? (
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleTitleSave();
+                    } else if (e.key === "Escape") {
+                      setTitleValue(task.title);
+                      setEditingTitle(false);
+                    }
+                  }}
+                  className="flex-1 text-xl font-semibold text-dark-text bg-transparent border-b-2 border-blue-500 focus:outline-none pb-1"
+                />
+                <button
+                  onClick={handleTitleSave}
+                  className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  title="Save title"
+                >
+                  <Check size={18} />
+                </button>
+              </div>
+            ) : (
+              <h2
+                onClick={() => setEditingTitle(true)}
+                className="text-xl font-semibold text-dark-text mb-2 cursor-pointer hover:text-blue-400 transition-colors"
+                title="Click to edit"
+              >
+                {task.title}
+              </h2>
+            )}
             <div className="flex items-center gap-4 flex-wrap">
               {currentStatus && (
                 <div className="flex items-center gap-2">
@@ -203,10 +311,10 @@ export function TaskDetailModal({
                   </span>
                 </div>
               )}
-              {task.assigneeName && (
+              {task.assignee && (
                 <div className="flex items-center gap-2 text-sm text-dark-text-muted">
-                  <Avatar name={task.assigneeName} size="xs" />
-                  <span>{task.assigneeName}</span>
+                  <Avatar name={task.assignee.name} size="xs" />
+                  <span>{task.assignee.name}</span>
                 </div>
               )}
               {task.dueOn && (
@@ -238,69 +346,178 @@ export function TaskDetailModal({
         <div className="flex-1 overflow-hidden flex">
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto">
-            {/* Status Section */}
-            <div className="px-6 py-4 border-b border-dark-border">
-              <label className="block text-sm font-medium text-dark-text mb-2">
-                Status
-              </label>
-              <div className="relative">
-                <button
-                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                  className="w-full max-w-xs flex items-center justify-between px-3 py-2 bg-dark-surface border border-dark-border rounded-lg text-sm hover:border-dark-text-muted transition-colors"
-                >
+            {/* Task Details Section */}
+            <div className="px-6 py-4 border-b border-dark-border space-y-4">
+              {/* Status Row */}
+              <div className="flex items-start gap-6">
+                <label className="w-24 flex-shrink-0 text-sm font-medium text-dark-text text-right pt-2">
+                  Status
+                </label>
+                <div className="flex-1 relative">
                   <div className="flex items-center gap-2">
-                    {currentStatus && (
+                    {localStatus && (
                       <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: currentStatus.color }}
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: localStatus.color }}
                       />
                     )}
-                    <span className="text-dark-text">
-                      {currentStatus?.name || "Select status"}
-                    </span>
+                    <button
+                      onClick={() =>
+                        setIsStatusDropdownOpen(!isStatusDropdownOpen)
+                      }
+                      className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface border border-dark-border rounded text-sm hover:border-dark-text-muted transition-colors"
+                    >
+                      <span className="text-dark-text">
+                        {localStatus?.name || "Select status"}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={clsx(
+                          "text-dark-text-muted transition-transform",
+                          isStatusDropdownOpen && "rotate-180",
+                        )}
+                      />
+                    </button>
                   </div>
-                  <ChevronDown
-                    size={16}
-                    className={clsx(
-                      "text-dark-text-muted transition-transform",
-                      isStatusDropdownOpen && "rotate-180",
+                  {isStatusDropdownOpen && (
+                    <div className="absolute z-10 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg overflow-hidden">
+                      {sortedStatuses.map((status) => (
+                        <button
+                          key={status.id}
+                          onClick={() => handleLocalStatusChange(status.id)}
+                          className={clsx(
+                            "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-dark-border transition-colors",
+                            localStatusId === status.id && "bg-dark-border",
+                          )}
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: status.color }}
+                          />
+                          <span className="text-dark-text">{status.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Assignee Row */}
+              <div className="flex items-start gap-6">
+                <label className="w-24 flex-shrink-0 text-sm font-medium text-dark-text text-right pt-2">
+                  Assigned to
+                </label>
+                <div className="flex-1 relative">
+                  <button
+                    onClick={() =>
+                      setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen)
+                    }
+                    className="flex items-center gap-2 text-sm hover:text-blue-400 transition-colors py-1.5"
+                  >
+                    {selectedAssignee ? (
+                      <>
+                        <Avatar name={selectedAssignee.name} size="xs" />
+                        <span className="text-dark-text">
+                          {selectedAssignee.name}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-dark-text-muted">
+                        Type names to assign...
+                      </span>
                     )}
-                  />
-                </button>
-                {isStatusDropdownOpen && (
-                  <div className="absolute z-10 w-full max-w-xs mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg overflow-hidden">
-                    {sortedStatuses.map((status) => (
+                  </button>
+                  {isAssigneeDropdownOpen && (
+                    <div className="absolute z-10 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto min-w-[200px]">
                       <button
-                        key={status.id}
-                        onClick={() => handleStatusChange(status.id)}
+                        onClick={() => handleLocalAssigneeChange(null)}
                         className={clsx(
                           "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-dark-border transition-colors",
-                          task.statusId === status.id && "bg-dark-border",
+                          !localAssigneeId && "bg-dark-border",
                         )}
                       >
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: status.color }}
-                        />
-                        <span className="text-dark-text">{status.name}</span>
+                        <span className="text-dark-text-muted">Unassigned</span>
                       </button>
-                    ))}
-                  </div>
-                )}
+                      {workspaceMembers.map((member) => (
+                        <button
+                          key={member.id}
+                          onClick={() => handleLocalAssigneeChange(member.id)}
+                          className={clsx(
+                            "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-dark-border transition-colors",
+                            localAssigneeId === member.id && "bg-dark-border",
+                          )}
+                        >
+                          <Avatar name={member.name} size="xs" />
+                          <span className="text-dark-text">{member.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Due Date Row */}
+              <div className="flex items-start gap-6">
+                <label className="w-24 flex-shrink-0 text-sm font-medium text-dark-text text-right pt-2">
+                  Due on
+                </label>
+                <div className="flex-1 flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={localDueDate}
+                    onChange={(e) => setLocalDueDate(e.target.value)}
+                    className={clsx(
+                      "px-2 py-1.5 bg-transparent border-none text-sm focus:outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert",
+                      localDueDate
+                        ? "text-dark-text"
+                        : "text-dark-text-muted [&::-webkit-datetime-edit]:text-dark-text-muted",
+                    )}
+                  />
+                  {localDueDate && (
+                    <button
+                      onClick={() => setLocalDueDate("")}
+                      className="text-dark-text-muted hover:text-red-400 transition-colors p-1"
+                      title="Clear due date"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes Row */}
+              <div className="flex items-start gap-6">
+                <label className="w-24 flex-shrink-0 text-sm font-medium text-dark-text text-right pt-2">
+                  Notes
+                </label>
+                <div className="flex-1">
+                  <RichTextNotesEditor
+                    value={localNotes}
+                    onChange={setLocalNotes}
+                    placeholder="Add notes..."
+                  />
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex items-start gap-6">
+                <div className="w-24 flex-shrink-0" />
+                <div className="flex-1">
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={!hasDetailsChanged || isSavingDetails}
+                    className={clsx(
+                      "px-4 py-2 text-sm font-medium rounded transition-colors",
+                      hasDetailsChanged
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-dark-surface text-dark-text-muted cursor-not-allowed",
+                    )}
+                  >
+                    {isSavingDetails ? "Saving..." : "Save"}
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Notes Section */}
-            {task.notes && (
-              <div className="px-6 py-4 border-b border-dark-border">
-                <h3 className="text-sm font-medium text-dark-text mb-2">
-                  Notes
-                </h3>
-                <p className="text-sm text-dark-text-muted whitespace-pre-wrap">
-                  {task.notes}
-                </p>
-              </div>
-            )}
 
             {/* Checklist Section */}
             <div className="px-6 py-4 border-b border-dark-border">
@@ -350,16 +567,17 @@ export function TaskDetailModal({
                         <Square size={18} />
                       )}
                     </button>
-                    <span
+                    <button
+                      onClick={() => onSubtaskClick?.(subtask.id)}
                       className={clsx(
-                        "flex-1 text-sm leading-relaxed",
+                        "flex-1 text-sm leading-relaxed text-left hover:text-blue-400 transition-colors",
                         subtask.status === "done"
                           ? "text-dark-text-muted line-through"
                           : "text-dark-text",
                       )}
                     >
                       {subtask.title}
-                    </span>
+                    </button>
                     <button
                       onClick={() => setSubtaskToDelete(subtask)}
                       className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-dark-text-muted hover:text-red-400 transition-all"
@@ -455,6 +673,7 @@ export function TaskDetailModal({
                         </div>
                       );
                     })}
+                    <div ref={commentsEndRef} />
                   </div>
                 </>
               ) : (

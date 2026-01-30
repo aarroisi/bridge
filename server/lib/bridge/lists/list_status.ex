@@ -21,10 +21,18 @@ defmodule Bridge.Lists.ListStatus do
     status
     |> cast(attrs, [:name, :color, :position, :list_id])
     |> validate_required([:name, :list_id])
+    |> uppercase_name()
     |> validate_format(:color, ~r/^#[0-9a-fA-F]{6}$/, message: "must be a valid hex color")
     |> unique_constraint([:list_id, :name],
       name: :list_statuses_list_id_name_index,
       message: "already exists in this list"
     )
+  end
+
+  defp uppercase_name(changeset) do
+    case get_change(changeset, :name) do
+      nil -> changeset
+      name -> put_change(changeset, :name, String.upcase(name))
+    end
   end
 end

@@ -226,21 +226,17 @@ defmodule Bridge.Lists do
   Deletes a status. Tasks with this status will have their status_id set to nil.
   """
   def delete_status(%ListStatus{} = status) do
-    # Move all tasks with this status to the first status in the list
-    first_status =
-      ListStatus
-      |> where([s], s.list_id == ^status.list_id and s.id != ^status.id)
-      |> order_by([s], asc: s.position)
-      |> limit(1)
-      |> Repo.one()
-
-    if first_status do
+    # Check if there are any tasks using this status
+    task_count =
       Task
       |> where([t], t.status_id == ^status.id)
-      |> Repo.update_all(set: [status_id: first_status.id])
-    end
+      |> Repo.aggregate(:count, :id)
 
-    Repo.delete(status)
+    if task_count > 0 do
+      {:error, :has_tasks}
+    else
+      Repo.delete(status)
+    end
   end
 
   @doc """
@@ -454,8 +450,11 @@ defmodule Bridge.Lists do
     case task
          |> Task.changeset(attrs)
          |> Repo.update() do
-      {:ok, updated_task} -> {:ok, Repo.preload(updated_task, :status, force: true)}
-      error -> error
+      {:ok, updated_task} ->
+        {:ok, Repo.preload(updated_task, [:status, :assignee, :created_by], force: true)}
+
+      error ->
+        error
     end
   end
 
@@ -720,9 +719,15 @@ defmodule Bridge.Lists do
 
   """
   def update_subtask(%Subtask{} = subtask, attrs) do
-    subtask
-    |> Subtask.changeset(attrs)
-    |> Repo.update()
+    case subtask
+         |> Subtask.changeset(attrs)
+         |> Repo.update() do
+      {:ok, updated_subtask} ->
+        {:ok, Repo.preload(updated_subtask, [:assignee, :created_by], force: true)}
+
+      error ->
+        error
+    end
   end
 
   @doc """

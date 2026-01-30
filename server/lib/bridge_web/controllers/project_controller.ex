@@ -49,12 +49,12 @@ defmodule BridgeWeb.ProjectController do
     render(conn, :index, page: page)
   end
 
-  def create(conn, %{"project" => project_params}) do
+  def create(conn, params) do
     workspace_id = conn.assigns.workspace_id
-    member_ids = Map.get(project_params, "member_ids", [])
+    member_ids = Map.get(params, "member_ids", [])
 
     project_params =
-      project_params
+      params
       |> Map.put("workspace_id", workspace_id)
       |> Map.delete("member_ids")
 
@@ -74,7 +74,9 @@ defmodule BridgeWeb.ProjectController do
     render(conn, :show, project: conn.assigns.project)
   end
 
-  def update(conn, %{"project" => project_params}) do
+  def update(conn, params) do
+    project_params = Map.drop(params, ["id"])
+
     with {:ok, project} <- Projects.update_project(conn.assigns.project, project_params) do
       render(conn, :show, project: project)
     end

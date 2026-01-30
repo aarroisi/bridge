@@ -3,6 +3,7 @@ import { Bold, Italic, List, ListOrdered, Quote, X } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import DOMPurify from "dompurify";
 import { Message as MessageType } from "@/types";
 import { clsx } from "clsx";
 
@@ -174,9 +175,15 @@ export const CommentEditor = forwardRef<
                   <Quote size={14} />
                   <span>Quoting {quotingMessage.userName}</span>
                 </div>
-                <p className="text-dark-text-muted truncate">
-                  {quotingMessage.text}
-                </p>
+                <div
+                  className="text-dark-text-muted truncate prose prose-invert prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(quotingMessage.text, {
+                      ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s"],
+                      ALLOWED_ATTR: [],
+                    }),
+                  }}
+                />
               </div>
               <button
                 onClick={onCancelQuote}

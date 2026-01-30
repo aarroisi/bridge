@@ -39,11 +39,18 @@ defmodule Bridge.Factory do
     }
   end
 
+  def list_status_factory do
+    %Bridge.Lists.ListStatus{
+      name: sequence(:status_name, &"status-#{&1}"),
+      color: "#6b7280",
+      position: 0
+    }
+  end
+
   def task_factory do
     %Bridge.Lists.Task{
       title: Faker.Lorem.sentence(3..6),
       notes: Faker.Lorem.paragraph(1..3),
-      status: "todo",
       due_on: Date.add(Date.utc_today(), Enum.random(1..30))
     }
   end

@@ -69,11 +69,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   createProject: async (params: CreateProjectParams) => {
     const project = await api.post<Project>("/projects", {
-      project: {
-        name: params.name,
-        description: params.description,
-        memberIds: params.memberIds,
-      },
+      name: params.name,
+      description: params.description,
+      member_ids: params.memberIds,
     });
     set((state) => ({
       projects: [
@@ -85,9 +83,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   updateProject: async (id: string, data: Partial<Project>) => {
-    const project = await api.patch<Project>(`/projects/${id}`, {
-      project: data,
-    });
+    const project = await api.patch<Project>(`/projects/${id}`, data);
     set((state) => ({
       projects: state.projects.map((p) => (p.id === id ? project : p)),
     }));

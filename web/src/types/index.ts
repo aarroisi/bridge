@@ -40,11 +40,20 @@ export interface ProjectItem {
   itemId: string;
 }
 
+// List Status type
+export interface ListStatus {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+}
+
 // List types
 export interface List {
   id: string;
   name: string;
   starred: boolean;
+  statuses?: ListStatus[];
   insertedAt: string;
   updatedAt: string;
 }
@@ -53,7 +62,9 @@ export interface Task {
   id: string;
   listId: string;
   title: string;
-  status: "todo" | "doing" | "done";
+  statusId: string;
+  status?: ListStatus;
+  position: number;
   assigneeId?: string;
   assigneeName?: string;
   createdById: string;

@@ -34,18 +34,31 @@ defmodule BridgeWeb.TaskJSON do
   end
 
   defp data(%Task{} = task) do
-    %{
+    base = %{
       id: task.id,
       title: task.title,
-      status: task.status,
+      position: task.position,
       notes: task.notes,
       due_on: task.due_on,
       list_id: task.list_id,
+      status_id: task.status_id,
       assignee_id: task.assignee_id,
       created_by_id: task.created_by_id,
       inserted_at: task.inserted_at,
       updated_at: task.updated_at
     }
+
+    # Include status object if loaded
+    if Ecto.assoc_loaded?(task.status) and task.status do
+      Map.put(base, :status, %{
+        id: task.status.id,
+        name: task.status.name,
+        color: task.status.color,
+        position: task.status.position
+      })
+    else
+      base
+    end
   end
 
   defp translate_errors(changeset) do

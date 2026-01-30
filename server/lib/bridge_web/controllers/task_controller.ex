@@ -8,10 +8,10 @@ defmodule BridgeWeb.TaskController do
 
   action_fallback(BridgeWeb.FallbackController)
 
-  plug(:load_resource when action in [:show, :update, :delete])
+  plug(:load_resource when action in [:show, :update, :delete, :reorder])
   plug(:authorize, :view_item when action in [:show])
   plug(:authorize, :create_item when action in [:create])
-  plug(:authorize, :update_item when action in [:update])
+  plug(:authorize, :update_item when action in [:update, :reorder])
   plug(:authorize, :delete_item when action in [:delete])
 
   defp load_resource(conn, _opts) do
@@ -43,8 +43,7 @@ defmodule BridgeWeb.TaskController do
 
   defp get_authorization_resource(conn, :create_item) do
     # For create, we need to get the list's project_id via project_items
-    params = conn.params["task"] || conn.params
-    list_id = params["list_id"]
+    list_id = conn.params["list_id"]
 
     if list_id do
       Projects.get_item_project_id("list", list_id)
@@ -70,11 +69,11 @@ defmodule BridgeWeb.TaskController do
     end
   end
 
-  def create(conn, %{"task" => task_params}) do
+  def create(conn, params) do
     current_user = conn.assigns.current_user
-    task_params_with_user = Map.put(task_params, "created_by_id", current_user.id)
+    task_params = Map.put(params, "created_by_id", current_user.id)
 
-    with {:ok, task} <- Lists.create_task(task_params_with_user) do
+    with {:ok, task} <- Lists.create_task(task_params) do
       conn
       |> put_status(:created)
       |> render(:show, task: task)
@@ -85,7 +84,9 @@ defmodule BridgeWeb.TaskController do
     render(conn, :show, task: conn.assigns.task)
   end
 
-  def update(conn, %{"task" => task_params}) do
+  def update(conn, params) do
+    task_params = Map.drop(params, ["id"])
+
     with {:ok, task} <- Lists.update_task(conn.assigns.task, task_params) do
       render(conn, :show, task: task)
     end
@@ -94,6 +95,14 @@ defmodule BridgeWeb.TaskController do
   def delete(conn, _params) do
     with {:ok, _task} <- Lists.delete_task(conn.assigns.task) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def reorder(conn, %{"position" => position} = params) do
+    new_status_id = params["status_id"]
+
+    with {:ok, task} <- Lists.reorder_task(conn.assigns.task, position, new_status_id) do
+      render(conn, :show, task: task)
     end
   end
 end

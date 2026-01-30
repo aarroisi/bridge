@@ -78,15 +78,10 @@ defmodule BridgeWeb.ListControllerTest do
   end
 
   describe "create" do
-    test "creates list with valid attributes", %{conn: conn} do
-      list_params = %{
-        name: "New List",
-        starred: false
-      }
-
+    test "creates list with valid attributes using flat params", %{conn: conn} do
       response =
         conn
-        |> post(~p"/api/lists", list: list_params)
+        |> post(~p"/api/lists", %{name: "New List", starred: false})
         |> json_response(201)
 
       assert response["data"]["name"] == "New List"
@@ -95,13 +90,9 @@ defmodule BridgeWeb.ListControllerTest do
     end
 
     test "created list appears in index", %{conn: conn} do
-      list_params = %{
-        name: "Test List"
-      }
-
       create_response =
         conn
-        |> post(~p"/api/lists", list: list_params)
+        |> post(~p"/api/lists", %{name: "Test List"})
         |> json_response(201)
 
       list_id = create_response["data"]["id"]
@@ -116,13 +107,9 @@ defmodule BridgeWeb.ListControllerTest do
     end
 
     test "returns error with invalid attributes", %{conn: conn} do
-      list_params = %{
-        name: ""
-      }
-
       response =
         conn
-        |> post(~p"/api/lists", list: list_params)
+        |> post(~p"/api/lists", %{name: ""})
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -134,13 +121,9 @@ defmodule BridgeWeb.ListControllerTest do
     } do
       other_workspace = insert(:workspace)
 
-      list_params = %{
-        name: "Test List"
-      }
-
       create_response =
         conn
-        |> post(~p"/api/lists", list: list_params)
+        |> post(~p"/api/lists", %{name: "Test List"})
         |> json_response(201)
 
       list_id = create_response["data"]["id"]
@@ -158,6 +141,16 @@ defmodule BridgeWeb.ListControllerTest do
       list = Bridge.Repo.get!(Bridge.Lists.List, list_id)
       assert list.workspace_id == workspace.id
       refute list.workspace_id == other_workspace.id
+    end
+
+    test "sets created_by_id to current user", %{conn: conn, user: user} do
+      response =
+        conn
+        |> post(~p"/api/lists", %{name: "My List"})
+        |> json_response(201)
+
+      list = Bridge.Repo.get!(Bridge.Lists.List, response["data"]["id"])
+      assert list.created_by_id == user.id
     end
   end
 
@@ -192,7 +185,7 @@ defmodule BridgeWeb.ListControllerTest do
   end
 
   describe "update" do
-    test "updates list with valid attributes", %{
+    test "updates list with valid attributes using flat params", %{
       conn: conn,
       workspace: workspace
     } do
@@ -203,14 +196,9 @@ defmodule BridgeWeb.ListControllerTest do
           starred: false
         )
 
-      update_params = %{
-        name: "New Name",
-        starred: true
-      }
-
       response =
         conn
-        |> put(~p"/api/lists/#{list.id}", list: update_params)
+        |> put(~p"/api/lists/#{list.id}", %{name: "New Name", starred: true})
         |> json_response(200)
 
       assert response["data"]["name"] == "New Name"
@@ -223,10 +211,8 @@ defmodule BridgeWeb.ListControllerTest do
     } do
       list = insert(:list, workspace_id: workspace.id, name: "Old Name")
 
-      update_params = %{name: "Updated Name"}
-
       conn
-      |> put(~p"/api/lists/#{list.id}", list: update_params)
+      |> put(~p"/api/lists/#{list.id}", %{name: "Updated Name"})
       |> json_response(200)
 
       show_response =
@@ -243,23 +229,17 @@ defmodule BridgeWeb.ListControllerTest do
     } do
       list = insert(:list, workspace_id: workspace.id)
 
-      update_params = %{
-        name: ""
-      }
-
       response =
         conn
-        |> put(~p"/api/lists/#{list.id}", list: update_params)
+        |> put(~p"/api/lists/#{list.id}", %{name: ""})
         |> json_response(422)
 
       assert response["errors"]["name"]
     end
 
     test "returns 404 for non-existent list", %{conn: conn} do
-      update_params = %{name: "New Name"}
-
       conn
-      |> put(~p"/api/lists/00000000-0000-0000-0000-000000000000", list: update_params)
+      |> put(~p"/api/lists/00000000-0000-0000-0000-000000000000", %{name: "New Name"})
       |> json_response(404)
     end
 
@@ -267,10 +247,8 @@ defmodule BridgeWeb.ListControllerTest do
       other_workspace = insert(:workspace)
       other_list = insert(:list, workspace_id: other_workspace.id)
 
-      update_params = %{name: "Hacked Name"}
-
       conn
-      |> put(~p"/api/lists/#{other_list.id}", list: update_params)
+      |> put(~p"/api/lists/#{other_list.id}", %{name: "Hacked Name"})
       |> json_response(404)
     end
   end

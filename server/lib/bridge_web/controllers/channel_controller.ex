@@ -42,8 +42,7 @@ defmodule BridgeWeb.ChannelController do
   end
 
   defp get_authorization_resource(conn, :create_item) do
-    params = conn.params["channel"] || conn.params
-    params["project_id"]
+    conn.params["project_id"]
   end
 
   defp get_authorization_resource(conn, _permission) do
@@ -60,12 +59,12 @@ defmodule BridgeWeb.ChannelController do
     render(conn, :index, page: page)
   end
 
-  def create(conn, %{"channel" => channel_params}) do
+  def create(conn, params) do
     workspace_id = conn.assigns.workspace_id
     user = conn.assigns.current_user
 
     channel_params =
-      channel_params
+      params
       |> Map.put("workspace_id", workspace_id)
       |> Map.put("created_by_id", user.id)
 
@@ -80,7 +79,9 @@ defmodule BridgeWeb.ChannelController do
     render(conn, :show, channel: conn.assigns.channel)
   end
 
-  def update(conn, %{"channel" => channel_params}) do
+  def update(conn, params) do
+    channel_params = Map.drop(params, ["id"])
+
     with {:ok, channel} <- Chat.update_channel(conn.assigns.channel, channel_params) do
       render(conn, :show, channel: channel)
     end

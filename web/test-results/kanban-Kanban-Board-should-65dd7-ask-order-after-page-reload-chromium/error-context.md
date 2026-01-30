@@ -8,7 +8,7 @@
         - img [ref=e7]
       - button "Projects" [ref=e10] [cursor=pointer]:
         - img [ref=e11]
-      - button "Lists" [ref=e13] [cursor=pointer]:
+      - button "Lists" [active] [ref=e13] [cursor=pointer]:
         - img [ref=e14]
       - button "Docs" [ref=e17] [cursor=pointer]:
         - img [ref=e18]
@@ -20,13 +20,16 @@
       - img [ref=e29]
     - button "TU" [ref=e36] [cursor=pointer]:
       - generic [ref=e38]: TU
-  - generic [ref=e41]:
-    - generic [ref=e42]:
-      - text: All Projects
-      - button [ref=e43] [cursor=pointer]:
-        - img [ref=e44]
-    - button "Sidebar Test Project" [ref=e48] [cursor=pointer]:
-      - generic [ref=e49]: Sidebar Test Project
-  - main [ref=e50]:
-    - paragraph [ref=e52]: Select a doc to view
+  - generic [ref=e42]:
+    - text: All Lists
+    - button [ref=e43] [cursor=pointer]:
+      - img [ref=e44]
+  - main [ref=e45]:
+    - generic [ref=e47]:
+      - img [ref=e49]
+      - heading "Lists" [level=2] [ref=e52]
+      - paragraph [ref=e53]: Create lists to organize your tasks
+      - button "Create List" [ref=e54] [cursor=pointer]:
+        - img [ref=e55]
+        - text: Create List
 ```

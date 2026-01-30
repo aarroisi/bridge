@@ -2,21 +2,29 @@ defmodule BridgeWeb.SubtaskController do
   use BridgeWeb, :controller
 
   alias Bridge.Lists
-  alias Bridge.Authorization.Policy
   import Plug.Conn
 
   action_fallback(BridgeWeb.FallbackController)
 
   plug(:load_resource when action in [:show, :update, :delete])
-  plug(:authorize, :view_item when action in [:show])
-  plug(:authorize, :create_item when action in [:create])
-  plug(:authorize, :update_item when action in [:update])
-  plug(:authorize, :delete_item when action in [:delete])
+  plug(:verify_workspace_access_for_create when action in [:create])
 
   defp load_resource(conn, _opts) do
+    workspace_id = conn.assigns.workspace_id
+
     case Lists.get_subtask(conn.params["id"]) do
       {:ok, subtask} ->
-        assign(conn, :subtask, subtask)
+        # Verify the subtask's task's list belongs to user's workspace
+        case Lists.get_list(subtask.task.list_id, workspace_id) do
+          {:ok, _list} ->
+            assign(conn, :subtask, subtask)
+
+          {:error, :not_found} ->
+            conn
+            |> put_status(:not_found)
+            |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+            |> halt()
+        end
 
       {:error, :not_found} ->
         conn
@@ -26,49 +34,55 @@ defmodule BridgeWeb.SubtaskController do
     end
   end
 
-  defp authorize(conn, permission) do
-    user = conn.assigns.current_user
-    resource = get_authorization_resource(conn, permission)
+  # Verify the task belongs to a list in the user's workspace (for create)
+  defp verify_workspace_access_for_create(conn, _opts) do
+    task_id = conn.params["task_id"]
+    workspace_id = conn.assigns.workspace_id
 
-    if Policy.can?(user, permission, resource) do
-      conn
+    if task_id do
+      case Lists.get_task(task_id) do
+        {:ok, task} ->
+          # Check if the task's list belongs to the user's workspace
+          case Lists.get_list(task.list_id, workspace_id) do
+            {:ok, _list} ->
+              conn
+
+            {:error, :not_found} ->
+              conn
+              |> put_status(:not_found)
+              |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+              |> halt()
+          end
+
+        {:error, :not_found} ->
+          conn
+          |> put_status(:not_found)
+          |> Phoenix.Controller.json(%{errors: %{detail: "Not Found"}})
+          |> halt()
+      end
     else
       conn
-      |> put_status(:forbidden)
-      |> Phoenix.Controller.json(%{error: "Forbidden"})
+      |> put_status(:bad_request)
+      |> Phoenix.Controller.json(%{errors: %{detail: "task_id is required"}})
       |> halt()
     end
   end
 
-  defp get_authorization_resource(conn, :create_item) do
-    # For create, we need to get the task's list's project_id
-    params = conn.params["subtask"] || conn.params
-    task_id = params["task_id"]
-
-    if task_id do
-      case Lists.get_task(task_id) do
-        {:ok, task} -> task.list.project_id
-        _ -> nil
-      end
-    else
-      nil
-    end
-  end
-
-  defp get_authorization_resource(conn, _permission) do
-    conn.assigns[:subtask]
-  end
-
-  def index(conn, _params) do
-    subtasks = Lists.list_subtasks()
+  def index(conn, %{"task_id" => task_id}) do
+    subtasks = Lists.list_subtasks(task_id)
     render(conn, :index, subtasks: subtasks)
   end
 
-  def create(conn, %{"subtask" => subtask_params}) do
-    current_user = conn.assigns.current_user
-    subtask_params_with_user = Map.put(subtask_params, "created_by_id", current_user.id)
+  def index(conn, _params) do
+    subtasks = []
+    render(conn, :index, subtasks: subtasks)
+  end
 
-    with {:ok, subtask} <- Lists.create_subtask(subtask_params_with_user) do
+  def create(conn, params) do
+    current_user = conn.assigns.current_user
+    subtask_params = Map.put(params, "created_by_id", current_user.id)
+
+    with {:ok, subtask} <- Lists.create_subtask(subtask_params) do
       conn
       |> put_status(:created)
       |> render(:show, subtask: subtask)
@@ -79,7 +93,9 @@ defmodule BridgeWeb.SubtaskController do
     render(conn, :show, subtask: conn.assigns.subtask)
   end
 
-  def update(conn, %{"subtask" => subtask_params}) do
+  def update(conn, params) do
+    subtask_params = Map.drop(params, ["id"])
+
     with {:ok, subtask} <- Lists.update_subtask(conn.assigns.subtask, subtask_params) do
       render(conn, :show, subtask: subtask)
     end

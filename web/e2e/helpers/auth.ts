@@ -19,10 +19,19 @@ export async function registerTestUser(page: Page) {
   await page.goto("/register");
 
   const timestamp = Date.now();
-  await page.getByLabel("Workspace Name").fill(`Test Workspace ${timestamp}`);
-  await page.getByLabel("Your Name").fill(`Test User ${timestamp}`);
-  await page.getByLabel("Email").fill(`test${timestamp}@example.com`);
-  await page.getByLabel("Password").fill("password123");
+
+  // Use keyboard.insertText for React controlled inputs
+  await page.getByLabel("Workspace Name").focus();
+  await page.keyboard.insertText(`Test Workspace ${timestamp}`);
+
+  await page.getByLabel("Your Name").focus();
+  await page.keyboard.insertText(`Test User ${timestamp}`);
+
+  await page.getByLabel("Email").focus();
+  await page.keyboard.insertText(`test${timestamp}@example.com`);
+
+  await page.getByLabel("Password").focus();
+  await page.keyboard.insertText("password123");
 
   await page.getByRole("button", { name: /create workspace/i }).click();
 

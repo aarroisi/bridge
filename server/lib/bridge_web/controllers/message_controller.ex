@@ -37,10 +37,10 @@ defmodule BridgeWeb.MessageController do
 
         :create_message ->
           # Check if user can comment on the entity
-          # If entity_type/entity_id are missing/invalid, let validation handle it
-          params = conn.params["message"] || conn.params
-          entity_type = params["entity_type"]
-          entity_id = params["entity_id"]
+          # Support both camelCase (frontend) and snake_case (tests)
+          message_params = conn.params["message"] || %{}
+          entity_type = message_params["entityType"] || message_params["entity_type"]
+          entity_id = message_params["entityId"] || message_params["entity_id"]
 
           cond do
             # If entity_type or entity_id is missing, let validation handle it
@@ -124,9 +124,18 @@ defmodule BridgeWeb.MessageController do
 
   def create(conn, %{"message" => message_params}) do
     current_user = conn.assigns.current_user
-    message_params_with_user = Map.put(message_params, "user_id", current_user.id)
 
-    with {:ok, message} <- Chat.create_message(message_params_with_user) do
+    # Support both camelCase (frontend) and snake_case (tests) params
+    attrs = %{
+      "text" => message_params["text"],
+      "entity_type" => message_params["entityType"] || message_params["entity_type"],
+      "entity_id" => message_params["entityId"] || message_params["entity_id"],
+      "parent_id" => message_params["parentId"] || message_params["parent_id"],
+      "quote_id" => message_params["quoteId"] || message_params["quote_id"],
+      "user_id" => current_user.id
+    }
+
+    with {:ok, message} <- Chat.create_message(attrs) do
       # Preload associations
       message = Bridge.Repo.preload(message, [:user, :parent, quote: [:user]])
 

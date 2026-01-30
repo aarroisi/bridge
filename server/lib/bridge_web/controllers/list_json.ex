@@ -34,12 +34,28 @@ defmodule BridgeWeb.ListJSON do
   end
 
   defp data(%List{} = list) do
-    %{
+    base = %{
       id: list.id,
       name: list.name,
       starred: list.starred,
       inserted_at: list.inserted_at,
       updated_at: list.updated_at
+    }
+
+    # Include statuses if loaded
+    if Ecto.assoc_loaded?(list.statuses) do
+      Map.put(base, :statuses, Enum.map(list.statuses, &status_data/1))
+    else
+      base
+    end
+  end
+
+  defp status_data(status) do
+    %{
+      id: status.id,
+      name: status.name,
+      color: status.color,
+      position: status.position
     }
   end
 

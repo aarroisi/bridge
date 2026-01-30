@@ -6,7 +6,6 @@ interface UIState {
   activeItem: ActiveItem | null;
   sidebarOpen: boolean;
   viewMode: ViewMode;
-  selectedTaskId: string | null;
   openThreadId: string | null;
   collapsedSections: Record<string, boolean>;
   navigationGuard: (() => Promise<boolean>) | null;
@@ -16,7 +15,6 @@ interface UIState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
-  setSelectedTask: (id: string | null) => void;
   setOpenThread: (id: string | null) => void;
   toggleSection: (section: string) => void;
   expandSection: (section: string) => void;
@@ -28,7 +26,6 @@ export const useUIStore = create<UIState>((set) => ({
   activeItem: null,
   sidebarOpen: true,
   viewMode: "board",
-  selectedTaskId: null,
   openThreadId: null,
   collapsedSections: {},
   navigationGuard: null,
@@ -42,8 +39,6 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
   setViewMode: (mode) => set({ viewMode: mode }),
-
-  setSelectedTask: (id) => set({ selectedTaskId: id }),
 
   setOpenThread: (id) => set({ openThreadId: id }),
 

@@ -14,12 +14,10 @@ defmodule BridgeWeb.WorkspaceMemberController do
     render(conn, :index, members: members)
   end
 
-  def create(conn, %{"user" => user_params}) do
+  def create(conn, params) do
     workspace_id = conn.assigns.workspace_id
 
-    user_params =
-      user_params
-      |> Map.put("workspace_id", workspace_id)
+    user_params = Map.put(params, "workspace_id", workspace_id)
 
     with {:ok, user} <- Accounts.create_user(user_params) do
       conn
@@ -28,8 +26,9 @@ defmodule BridgeWeb.WorkspaceMemberController do
     end
   end
 
-  def update(conn, %{"id" => id, "user" => user_params}) do
+  def update(conn, %{"id" => id} = params) do
     workspace_id = conn.assigns.workspace_id
+    user_params = Map.drop(params, ["id"])
 
     with {:ok, user} <- Accounts.get_workspace_user(id, workspace_id),
          {:ok, user} <- Accounts.update_user(user, user_params) do

@@ -74,7 +74,9 @@ export function DiscussionView({
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    // Check for empty content - strip HTML tags to check actual text
+    const textContent = newComment.replace(/<[^>]*>/g, "").trim();
+    if (!textContent) return;
     try {
       await onSendMessage(newComment, quotingMessage?.id);
       setNewComment("");

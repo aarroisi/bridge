@@ -78,9 +78,15 @@ export function Message({
               <Quote size={12} />
               <span className="font-semibold">{displayQuote.userName}</span>
             </div>
-            <p className="text-sm text-dark-text-muted mt-1 line-clamp-2">
-              {displayQuote.text}
-            </p>
+            <div
+              className="text-sm text-dark-text-muted mt-1 line-clamp-2 prose prose-invert prose-sm max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(displayQuote.text, {
+                  ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s"],
+                  ALLOWED_ATTR: [],
+                }),
+              }}
+            />
           </button>
         )}
 

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { List, Task, Subtask, PaginatedResponse } from "@/types";
+import { List, ListStatus, Task, Subtask, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 
 interface ListState {
@@ -17,11 +17,28 @@ interface ListState {
   deleteList: (id: string) => Promise<void>;
   toggleListStar: (id: string) => Promise<void>;
 
+  // Status operations
+  createStatus: (
+    listId: string,
+    data: { name: string; color: string },
+  ) => Promise<ListStatus>;
+  updateStatus: (
+    id: string,
+    data: Partial<Pick<ListStatus, "name" | "color">>,
+  ) => Promise<void>;
+  deleteStatus: (id: string, listId: string) => Promise<void>;
+  reorderStatuses: (listId: string, statusIds: string[]) => Promise<void>;
+
   // Task operations
   fetchTasks: (listId: string) => Promise<void>;
   createTask: (listId: string, data: Partial<Task>) => Promise<Task>;
   updateTask: (id: string, data: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  reorderTask: (
+    taskId: string,
+    newStatusId: string,
+    newIndex: number,
+  ) => Promise<void>;
 
   // Subtask operations
   fetchSubtasks: (taskId: string) => Promise<void>;
@@ -95,6 +112,70 @@ export const useListStore = create<ListState>((set, get) => ({
     }
   },
 
+  // Status operations
+  createStatus: async (
+    listId: string,
+    data: { name: string; color: string },
+  ) => {
+    const status = await api.post<ListStatus>(
+      `/lists/${listId}/statuses`,
+      data,
+    );
+    set((state) => ({
+      lists: state.lists.map((l) =>
+        l.id === listId
+          ? { ...l, statuses: [...(l.statuses || []), status] }
+          : l,
+      ),
+    }));
+    return status;
+  },
+
+  updateStatus: async (
+    id: string,
+    data: Partial<Pick<ListStatus, "name" | "color">>,
+  ) => {
+    const status = await api.patch<ListStatus>(`/statuses/${id}`, data);
+    set((state) => ({
+      lists: state.lists.map((l) => ({
+        ...l,
+        statuses: l.statuses?.map((s) => (s.id === id ? status : s)),
+      })),
+    }));
+  },
+
+  deleteStatus: async (id: string, listId: string) => {
+    await api.delete(`/statuses/${id}`);
+    set((state) => ({
+      lists: state.lists.map((l) =>
+        l.id === listId
+          ? { ...l, statuses: l.statuses?.filter((s) => s.id !== id) }
+          : l,
+      ),
+    }));
+    // Refetch tasks since some may have been moved to a different status
+    await get().fetchTasks(listId);
+  },
+
+  reorderStatuses: async (listId: string, statusIds: string[]) => {
+    await api.put(`/lists/${listId}/statuses/reorder`, {
+      status_ids: statusIds,
+    });
+    // Update local state with new positions
+    set((state) => ({
+      lists: state.lists.map((l) => {
+        if (l.id !== listId || !l.statuses) return l;
+        const reorderedStatuses = statusIds
+          .map((id, index) => {
+            const status = l.statuses!.find((s) => s.id === id);
+            return status ? { ...status, position: index } : null;
+          })
+          .filter((s): s is ListStatus => s !== null);
+        return { ...l, statuses: reorderedStatuses };
+      }),
+    }));
+  },
+
   // Task operations
   fetchTasks: async (listId: string) => {
     try {
@@ -150,6 +231,55 @@ export const useListStore = create<ListState>((set, get) => ({
       });
       return { tasks: newTasks };
     });
+  },
+
+  reorderTask: async (
+    taskId: string,
+    newStatusId: string,
+    newIndex: number,
+  ) => {
+    const state = get();
+
+    // Find the task and its list
+    let task: Task | undefined;
+    let listId: string | undefined;
+
+    for (const [lid, tasks] of Object.entries(state.tasks)) {
+      const found = tasks.find((t) => t.id === taskId);
+      if (found) {
+        task = found;
+        listId = lid;
+        break;
+      }
+    }
+
+    if (!task || !listId) return;
+
+    const listTasks = state.tasks[listId] || [];
+
+    // Optimistic update: immediately update the UI
+    const updatedTasks = listTasks.map((t) =>
+      t.id === taskId ? { ...t, statusId: newStatusId } : t,
+    );
+
+    set((state) => ({
+      tasks: { ...state.tasks, [listId!]: updatedTasks },
+    }));
+
+    try {
+      // Call the API
+      await api.put(`/tasks/${taskId}/reorder`, {
+        position: newIndex,
+        status_id: newStatusId,
+      });
+
+      // Refetch to get accurate positions from server
+      await get().fetchTasks(listId);
+    } catch (error) {
+      console.error("Failed to reorder task:", error);
+      // Revert on error by refetching
+      await get().fetchTasks(listId);
+    }
   },
 
   // Subtask operations

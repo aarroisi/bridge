@@ -6,7 +6,13 @@ defmodule Bridge.Lists do
   import Ecto.Query, warn: false
   alias Bridge.Repo
 
-  alias Bridge.Lists.{List, Task, Subtask}
+  alias Bridge.Lists.{List, ListStatus, Task, Subtask}
+
+  @default_statuses [
+    %{name: "todo", color: "#6b7280", position: 0},
+    %{name: "doing", color: "#3b82f6", position: 1},
+    %{name: "done", color: "#22c55e", position: 2}
+  ]
 
   # ============================================================================
   # List functions
@@ -25,7 +31,7 @@ defmodule Bridge.Lists do
     List
     |> where([l], l.workspace_id == ^workspace_id)
     |> order_by([l], desc: l.id)
-    |> preload([:created_by])
+    |> preload([:created_by, :statuses])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -42,7 +48,7 @@ defmodule Bridge.Lists do
     List
     |> where([l], l.starred == true and l.workspace_id == ^workspace_id)
     |> order_by([l], desc: l.id)
-    |> preload([:created_by])
+    |> preload([:created_by, :statuses])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -63,7 +69,7 @@ defmodule Bridge.Lists do
   def get_list(id, workspace_id) do
     case List
          |> where([l], l.workspace_id == ^workspace_id)
-         |> preload([:created_by, tasks: [:assignee, :created_by]])
+         |> preload([:created_by, statuses: [], tasks: [:assignee, :created_by, :status]])
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       list -> {:ok, list}
@@ -83,9 +89,24 @@ defmodule Bridge.Lists do
 
   """
   def create_list(attrs \\ %{}) do
-    %List{}
-    |> List.changeset(attrs)
-    |> Repo.insert()
+    Repo.transaction(fn ->
+      with {:ok, list} <-
+             %List{}
+             |> List.changeset(attrs)
+             |> Repo.insert() do
+        # Create default statuses for the new list
+        Enum.each(@default_statuses, fn status_attrs ->
+          %ListStatus{}
+          |> ListStatus.changeset(Map.put(status_attrs, :list_id, list.id))
+          |> Repo.insert!()
+        end)
+
+        # Return list with statuses preloaded
+        list |> Repo.preload(:statuses)
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -149,6 +170,97 @@ defmodule Bridge.Lists do
   end
 
   # ============================================================================
+  # List Status functions
+  # ============================================================================
+
+  @doc """
+  Returns all statuses for a list ordered by position.
+  """
+  def list_statuses(list_id) do
+    ListStatus
+    |> where([s], s.list_id == ^list_id)
+    |> order_by([s], asc: s.position)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a single status.
+  """
+  def get_status(id) do
+    case Repo.get(ListStatus, id) do
+      nil -> {:error, :not_found}
+      status -> {:ok, status}
+    end
+  end
+
+  @doc """
+  Creates a status for a list.
+  """
+  def create_status(attrs \\ %{}) do
+    list_id = attrs["list_id"] || attrs[:list_id]
+
+    # Get max position and add 1
+    max_position =
+      ListStatus
+      |> where([s], s.list_id == ^list_id)
+      |> select([s], max(s.position))
+      |> Repo.one() || -1
+
+    attrs_with_position = Map.put(attrs, "position", max_position + 1)
+
+    %ListStatus{}
+    |> ListStatus.changeset(attrs_with_position)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a status.
+  """
+  def update_status(%ListStatus{} = status, attrs) do
+    status
+    |> ListStatus.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a status. Tasks with this status will have their status_id set to nil.
+  """
+  def delete_status(%ListStatus{} = status) do
+    # Move all tasks with this status to the first status in the list
+    first_status =
+      ListStatus
+      |> where([s], s.list_id == ^status.list_id and s.id != ^status.id)
+      |> order_by([s], asc: s.position)
+      |> limit(1)
+      |> Repo.one()
+
+    if first_status do
+      Task
+      |> where([t], t.status_id == ^status.id)
+      |> Repo.update_all(set: [status_id: first_status.id])
+    end
+
+    Repo.delete(status)
+  end
+
+  @doc """
+  Reorders statuses for a list by providing an ordered list of status IDs.
+  """
+  def reorder_statuses(list_id, status_ids) when is_list(status_ids) do
+    Repo.transaction(fn ->
+      status_ids
+      |> Enum.with_index()
+      |> Enum.each(fn {status_id, index} ->
+        ListStatus
+        |> where([s], s.id == ^status_id and s.list_id == ^list_id)
+        |> Repo.update_all(set: [position: index])
+      end)
+
+      list_statuses(list_id)
+    end)
+  end
+
+  # ============================================================================
   # Task functions
   # ============================================================================
 
@@ -164,8 +276,8 @@ defmodule Bridge.Lists do
   def list_tasks(list_id, opts \\ []) when is_binary(list_id) do
     Task
     |> where([t], t.list_id == ^list_id)
-    |> order_by([t], desc: t.id)
-    |> preload([:list, :assignee, :created_by, subtasks: [:assignee, :created_by]])
+    |> order_by([t], asc: t.position, desc: t.id)
+    |> preload([:list, :assignee, :created_by, :status, subtasks: [:assignee, :created_by]])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -186,18 +298,18 @@ defmodule Bridge.Lists do
   end
 
   @doc """
-  Returns the list of tasks with a specific status.
+  Returns the list of tasks with a specific status_id.
 
   ## Examples
 
-      iex> list_tasks_by_status("todo")
+      iex> list_tasks_by_status_id(status_id)
       [%Task{}, ...]
 
   """
-  def list_tasks_by_status(status) do
+  def list_tasks_by_status_id(status_id) do
     Task
-    |> where([t], t.status == ^status)
-    |> preload([:list, :assignee, :created_by, :subtasks])
+    |> where([t], t.status_id == ^status_id)
+    |> preload([:list, :assignee, :created_by, :status, :subtasks])
     |> Repo.all()
   end
 
@@ -235,7 +347,8 @@ defmodule Bridge.Lists do
   def get_task(id) do
     case Task
          |> preload(
-           list: [],
+           list: [:statuses],
+           status: [],
            assignee: [],
            created_by: [],
            subtasks: [:assignee, :created_by]
@@ -259,10 +372,56 @@ defmodule Bridge.Lists do
 
   """
   def create_task(attrs \\ %{}) do
-    %Task{}
-    |> Task.changeset(attrs)
-    |> Repo.insert()
+    list_id = attrs["list_id"] || attrs[:list_id]
+    status_id = attrs["status_id"] || attrs[:status_id]
+
+    # If no status_id provided, get the first status (lowest position) for the list
+    status_id =
+      if status_id do
+        status_id
+      else
+        get_first_status_id(list_id)
+      end
+
+    # Get max position for the status column and add 1000
+    max_position = get_max_position_by_status_id(list_id, status_id)
+
+    attrs_with_defaults =
+      attrs
+      |> Map.put("position", max_position + 1000)
+      |> Map.put("status_id", status_id)
+
+    result =
+      %Task{}
+      |> Task.changeset(attrs_with_defaults)
+      |> Repo.insert()
+
+    case result do
+      {:ok, task} -> {:ok, Repo.preload(task, [:status, :assignee, :created_by])}
+      error -> error
+    end
   end
+
+  defp get_first_status_id(list_id) when is_binary(list_id) do
+    ListStatus
+    |> where([s], s.list_id == ^list_id)
+    |> order_by([s], asc: s.position)
+    |> limit(1)
+    |> select([s], s.id)
+    |> Repo.one()
+  end
+
+  defp get_first_status_id(_), do: nil
+
+  defp get_max_position_by_status_id(list_id, status_id)
+       when is_binary(list_id) and is_binary(status_id) do
+    Task
+    |> where([t], t.list_id == ^list_id and t.status_id == ^status_id)
+    |> select([t], max(t.position))
+    |> Repo.one() || 0
+  end
+
+  defp get_max_position_by_status_id(_, _), do: 0
 
   @doc """
   Creates a task for a specific list.
@@ -292,9 +451,82 @@ defmodule Bridge.Lists do
 
   """
   def update_task(%Task{} = task, attrs) do
-    task
-    |> Task.changeset(attrs)
-    |> Repo.update()
+    case task
+         |> Task.changeset(attrs)
+         |> Repo.update() do
+      {:ok, updated_task} -> {:ok, Repo.preload(updated_task, :status, force: true)}
+      error -> error
+    end
+  end
+
+  @doc """
+  Reorders a task within its list, optionally changing status.
+
+  ## Parameters
+    - task: The task to reorder
+    - target_index: The target index in the column (0-based)
+    - new_status: Optional new status (for cross-column moves)
+
+  ## Returns
+    - {:ok, task} on success
+    - {:error, changeset} on failure
+
+  ## Examples
+
+      iex> reorder_task(task, 0)
+      {:ok, %Task{}}
+
+      iex> reorder_task(task, 1, "doing")
+      {:ok, %Task{}}
+
+  """
+  def reorder_task(%Task{} = task, target_index, new_status_id \\ nil) do
+    new_status_id = new_status_id || task.status_id
+
+    # Calculate the new position based on neighbors
+    calculated_position = calculate_position(task.list_id, new_status_id, target_index, task.id)
+
+    result =
+      task
+      |> Task.changeset(%{position: calculated_position, status_id: new_status_id})
+      |> Repo.update()
+
+    case result do
+      {:ok, task} -> {:ok, Repo.preload(task, [:status, :assignee, :created_by])}
+      error -> error
+    end
+  end
+
+  defp calculate_position(list_id, status_id, target_index, exclude_task_id) do
+    # Get all tasks in the target column ordered by position, excluding the task being moved
+    positions =
+      Task
+      |> where(
+        [t],
+        t.list_id == ^list_id and t.status_id == ^status_id and t.id != ^exclude_task_id
+      )
+      |> order_by([t], asc: t.position)
+      |> select([t], t.position)
+      |> Repo.all()
+
+    cond do
+      # Empty column or inserting at start
+      positions == [] or target_index == 0 ->
+        case positions do
+          [] -> 1000
+          [first | _] -> div(first, 2)
+        end
+
+      # Inserting at end
+      target_index >= length(positions) ->
+        Elixir.List.last(positions) + 1000
+
+      # Inserting between two tasks
+      true ->
+        prev_pos = Enum.at(positions, target_index - 1)
+        next_pos = Enum.at(positions, target_index)
+        div(prev_pos + next_pos, 2)
+    end
   end
 
   @doc """
@@ -344,12 +576,12 @@ defmodule Bridge.Lists do
 
   ## Examples
 
-      iex> update_task_status(task, "done")
+      iex> update_task_status(task, status_id)
       {:ok, %Task{}}
 
   """
-  def update_task_status(%Task{} = task, status) do
-    update_task(task, %{status: status})
+  def update_task_status(%Task{} = task, status_id) do
+    update_task(task, %{status_id: status_id})
   end
 
   # ============================================================================

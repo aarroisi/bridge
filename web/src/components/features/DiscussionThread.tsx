@@ -34,7 +34,9 @@ export function DiscussionThread({
   }, [parentMessage.id]);
 
   const handleSendReply = async () => {
-    if (!replyText.trim()) return;
+    // Check for empty content - strip HTML tags to check actual text
+    const textContent = replyText.replace(/<[^>]*>/g, "").trim();
+    if (!textContent) return;
 
     try {
       await onSendReply(parentMessage.id, replyText, quoteTarget?.id);

@@ -42,8 +42,7 @@ defmodule BridgeWeb.ListController do
   end
 
   defp get_authorization_resource(conn, :create_item) do
-    params = conn.params["list"] || conn.params
-    params["project_id"]
+    conn.params["project_id"]
   end
 
   defp get_authorization_resource(conn, _permission) do
@@ -60,12 +59,12 @@ defmodule BridgeWeb.ListController do
     render(conn, :index, page: page)
   end
 
-  def create(conn, %{"list" => list_params}) do
+  def create(conn, params) do
     workspace_id = conn.assigns.workspace_id
     user = conn.assigns.current_user
 
     list_params =
-      list_params
+      params
       |> Map.put("workspace_id", workspace_id)
       |> Map.put("created_by_id", user.id)
 
@@ -80,7 +79,10 @@ defmodule BridgeWeb.ListController do
     render(conn, :show, list: conn.assigns.list)
   end
 
-  def update(conn, %{"list" => list_params}) do
+  def update(conn, params) do
+    # Remove id from params since it's already in the resource
+    list_params = Map.drop(params, ["id"])
+
     with {:ok, list} <- Lists.update_list(conn.assigns.list, list_params) do
       render(conn, :show, list: list)
     end

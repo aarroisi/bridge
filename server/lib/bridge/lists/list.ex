@@ -11,6 +11,7 @@ defmodule Bridge.Lists.List do
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
     belongs_to(:created_by, Bridge.Accounts.User)
+    has_many(:statuses, Bridge.Lists.ListStatus)
     has_many(:tasks, Bridge.Lists.Task)
 
     timestamps()

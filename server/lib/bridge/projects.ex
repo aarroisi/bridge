@@ -335,4 +335,14 @@ defmodule Bridge.Projects do
     |> select([pi], pi.item_id)
     |> Repo.all()
   end
+
+  @doc """
+  Removes all project memberships for a user.
+  Used when soft-deleting a user.
+  """
+  def remove_all_memberships_for_user(user_id) do
+    ProjectMember
+    |> where([pm], pm.user_id == ^user_id)
+    |> Repo.delete_all()
+  end
 end

@@ -1,0 +1,182 @@
+defmodule Bridge.AccountsTest do
+  use Bridge.DataCase
+
+  alias Bridge.Accounts
+  alias Bridge.Accounts.User
+  alias Bridge.Projects
+  alias Bridge.Notifications
+
+  describe "delete_user/1 (soft delete)" do
+    setup do
+      workspace = insert(:workspace)
+      user = insert(:user, workspace_id: workspace.id, role: "member")
+      owner = insert(:user, workspace_id: workspace.id, role: "owner")
+
+      {:ok, workspace: workspace, user: user, owner: owner}
+    end
+
+    test "marks user as inactive", %{user: user} do
+      assert user.is_active == true
+
+      {:ok, deleted_user} = Accounts.delete_user(user)
+
+      assert deleted_user.is_active == false
+      assert deleted_user.deleted_at != nil
+    end
+
+    test "scrubs email to free it for reuse", %{user: user} do
+      original_email = user.email
+
+      {:ok, deleted_user} = Accounts.delete_user(user)
+
+      assert deleted_user.email == "deleted_#{user.id}@deleted.local"
+      assert deleted_user.email != original_email
+    end
+
+    test "preserves user record in database", %{user: user} do
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # User record should still exist
+      assert {:ok, found_user} = Accounts.get_user(user.id)
+      assert found_user.id == user.id
+      assert found_user.is_active == false
+    end
+
+    test "removes project memberships", %{workspace: workspace, user: user} do
+      project = insert(:project, workspace_id: workspace.id)
+      {:ok, _} = Projects.add_member(project.id, user.id)
+
+      # Verify membership exists
+      assert Projects.is_member?(project.id, user.id)
+
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # Membership should be removed
+      refute Projects.is_member?(project.id, user.id)
+    end
+
+    test "removes notifications where user is recipient", %{
+      workspace: workspace,
+      user: user,
+      owner: owner
+    } do
+      notification = insert(:notification, user_id: user.id, actor_id: owner.id)
+
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # Notification should be deleted
+      assert {:error, :not_found} = Notifications.get_notification(notification.id)
+    end
+
+    test "removes notifications where user is actor", %{
+      workspace: workspace,
+      user: user,
+      owner: owner
+    } do
+      notification = insert(:notification, user_id: owner.id, actor_id: user.id)
+
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # Notification should be deleted
+      assert {:error, :not_found} = Notifications.get_notification(notification.id)
+    end
+
+    test "preserves messages created by user", %{workspace: workspace, user: user} do
+      channel = insert(:channel, workspace_id: workspace.id)
+      message = insert(:message, user_id: user.id, entity_type: "channel", entity_id: channel.id)
+
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # Message should still exist
+      assert {:ok, found_message} = Bridge.Chat.get_message(message.id)
+      assert found_message.user_id == user.id
+    end
+
+    test "preserves tasks created by user", %{workspace: workspace, user: user} do
+      list = insert(:list, workspace_id: workspace.id, created_by_id: user.id)
+      task = insert(:task, list_id: list.id, created_by_id: user.id)
+
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # Task should still exist with created_by reference
+      assert {:ok, found_task} = Bridge.Lists.get_task(task.id)
+      assert found_task.created_by_id == user.id
+    end
+
+    test "preserves docs created by user", %{workspace: workspace, user: user} do
+      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id)
+
+      {:ok, _deleted_user} = Accounts.delete_user(user)
+
+      # Doc should still exist with author reference
+      assert {:ok, found_doc} = Bridge.Docs.get_doc(doc.id, workspace.id)
+      assert found_doc.author_id == user.id
+    end
+  end
+
+  describe "list_workspace_users/1" do
+    setup do
+      workspace = insert(:workspace)
+      active_user = insert(:user, workspace_id: workspace.id, role: "member", is_active: true)
+      inactive_user = insert(:user, workspace_id: workspace.id, role: "member", is_active: false)
+
+      {:ok, workspace: workspace, active_user: active_user, inactive_user: inactive_user}
+    end
+
+    test "only returns active users", %{
+      workspace: workspace,
+      active_user: active_user,
+      inactive_user: inactive_user
+    } do
+      users = Accounts.list_workspace_users(workspace.id)
+
+      user_ids = Enum.map(users, & &1.id)
+      assert active_user.id in user_ids
+      refute inactive_user.id in user_ids
+    end
+  end
+
+  describe "authenticate_user/2" do
+    setup do
+      workspace = insert(:workspace)
+
+      active_user =
+        insert(:user,
+          workspace_id: workspace.id,
+          email: "active@example.com",
+          password_hash: User.hash_password("password123"),
+          is_active: true
+        )
+
+      inactive_user =
+        insert(:user,
+          workspace_id: workspace.id,
+          email: "inactive@example.com",
+          password_hash: User.hash_password("password123"),
+          is_active: false
+        )
+
+      {:ok, active_user: active_user, inactive_user: inactive_user}
+    end
+
+    test "allows active users to authenticate", %{active_user: active_user} do
+      assert {:ok, user} = Accounts.authenticate_user("active@example.com", "password123")
+      assert user.id == active_user.id
+    end
+
+    test "denies inactive users from authenticating", %{inactive_user: _inactive_user} do
+      assert {:error, :invalid_credentials} =
+               Accounts.authenticate_user("inactive@example.com", "password123")
+    end
+
+    test "denies with wrong password", %{active_user: _active_user} do
+      assert {:error, :invalid_credentials} =
+               Accounts.authenticate_user("active@example.com", "wrongpassword")
+    end
+
+    test "denies with non-existent email" do
+      assert {:error, :invalid_credentials} =
+               Accounts.authenticate_user("nonexistent@example.com", "password123")
+    end
+  end
+end

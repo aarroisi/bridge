@@ -13,6 +13,8 @@ defmodule Bridge.Accounts.User do
     field(:password_hash, :string)
     field(:password, :string, virtual: true)
     field(:role, :string, default: "owner")
+    field(:is_active, :boolean, default: true)
+    field(:deleted_at, :utc_datetime_usec)
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
     has_many(:project_members, Bridge.Projects.ProjectMember)
@@ -26,7 +28,16 @@ defmodule Bridge.Accounts.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:name, :email, :avatar, :online, :workspace_id, :role])
+    |> cast(attrs, [
+      :name,
+      :email,
+      :avatar,
+      :online,
+      :workspace_id,
+      :role,
+      :is_active,
+      :deleted_at
+    ])
     |> validate_required([:name, :email])
     |> validate_format(:email, ~r/@/)
     |> validate_inclusion(:role, @roles)

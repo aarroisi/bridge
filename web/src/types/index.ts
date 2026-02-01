@@ -9,6 +9,7 @@ export interface User {
   avatar: string;
   online: boolean;
   role: Role;
+  isActive: boolean;
   insertedAt: string;
   updatedAt: string;
 }

@@ -201,4 +201,14 @@ defmodule Bridge.Notifications do
   def change_notification(%Notification{} = notification, attrs \\ %{}) do
     Notification.changeset(notification, attrs)
   end
+
+  @doc """
+  Deletes all notifications for a user (both as recipient and actor).
+  Used when soft-deleting a user.
+  """
+  def delete_all_for_user(user_id) do
+    Notification
+    |> where([n], n.user_id == ^user_id or n.actor_id == ^user_id)
+    |> Repo.delete_all()
+  end
 end

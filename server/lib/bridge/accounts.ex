@@ -22,11 +22,11 @@ defmodule Bridge.Accounts do
   end
 
   @doc """
-  Returns the list of users in a workspace.
+  Returns the list of active users in a workspace.
   """
   def list_workspace_users(workspace_id) do
     User
-    |> where([u], u.workspace_id == ^workspace_id)
+    |> where([u], u.workspace_id == ^workspace_id and u.is_active == true)
     |> order_by([u], desc: u.inserted_at)
     |> Repo.all()
   end
@@ -120,7 +120,8 @@ defmodule Bridge.Accounts do
   end
 
   @doc """
-  Deletes a user.
+  Soft-deletes a user by marking them as inactive and scrubbing their email.
+  Also removes their project memberships and notifications.
 
   ## Examples
 
@@ -132,7 +133,30 @@ defmodule Bridge.Accounts do
 
   """
   def delete_user(%User{} = user) do
-    Repo.delete(user)
+    alias Bridge.Projects
+    alias Bridge.Notifications
+
+    Repo.transaction(fn ->
+      # Remove project memberships
+      Projects.remove_all_memberships_for_user(user.id)
+
+      # Remove notifications (both as recipient and actor)
+      Notifications.delete_all_for_user(user.id)
+
+      # Scrub email and soft-delete user
+      scrubbed_email = "deleted_#{user.id}@deleted.local"
+
+      case user
+           |> User.changeset(%{
+             is_active: false,
+             deleted_at: DateTime.utc_now(),
+             email: scrubbed_email
+           })
+           |> Repo.update() do
+        {:ok, updated_user} -> updated_user
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -253,9 +277,14 @@ defmodule Bridge.Accounts do
   @doc """
   Authenticates a user by email and password.
   Returns {:ok, user} or {:error, :invalid_credentials}
+  Only active users can authenticate.
   """
   def authenticate_user(email, password) do
-    user = Repo.get_by(User, email: email) |> Repo.preload(:workspace)
+    user =
+      User
+      |> where([u], u.email == ^email and u.is_active == true)
+      |> Repo.one()
+      |> Repo.preload(:workspace)
 
     if user && User.verify_password(user, password) do
       {:ok, user}

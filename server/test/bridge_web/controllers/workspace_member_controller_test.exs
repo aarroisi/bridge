@@ -34,14 +34,18 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
       assert guest.id in user_ids
     end
 
-    test "returns 403 for non-owners", %{conn: conn, member: member} do
+    test "allows non-owners to view member list", %{conn: conn, member: member} do
       conn =
         conn
         |> put_session(:user_id, member.id)
 
-      conn
-      |> get(~p"/api/workspace/members")
-      |> json_response(403)
+      response =
+        conn
+        |> get(~p"/api/workspace/members")
+        |> json_response(200)
+
+      # Non-owners can view members
+      assert is_list(response["data"])
     end
   end
 
@@ -179,10 +183,58 @@ defmodule BridgeWeb.WorkspaceMemberControllerTest do
       {:ok, conn: conn, workspace: workspace, owner: owner, member: member}
     end
 
-    test "deletes a member", %{conn: conn, member: member} do
+    test "soft-deletes a member", %{conn: conn, member: member} do
       conn
       |> delete(~p"/api/workspace/members/#{member.id}")
       |> response(204)
+
+      # User record should still exist but be inactive
+      {:ok, deleted_user} = Bridge.Accounts.get_user(member.id)
+      assert deleted_user.is_active == false
+      assert deleted_user.deleted_at != nil
+    end
+
+    test "soft-deleted member no longer appears in member list", %{conn: conn, member: member} do
+      # Delete the member
+      conn
+      |> delete(~p"/api/workspace/members/#{member.id}")
+      |> response(204)
+
+      # Fetch members list
+      response =
+        conn
+        |> get(~p"/api/workspace/members")
+        |> json_response(200)
+
+      user_ids = Enum.map(response["data"], & &1["id"])
+      refute member.id in user_ids
+    end
+
+    test "soft-deleted member email is freed for reuse", %{
+      conn: conn,
+      workspace: workspace,
+      member: member
+    } do
+      original_email = member.email
+
+      conn
+      |> delete(~p"/api/workspace/members/#{member.id}")
+      |> response(204)
+
+      # Should be able to create a new user with the same email
+      new_member_params = %{
+        name: "New User",
+        email: original_email,
+        password: "password123",
+        role: "member"
+      }
+
+      response =
+        conn
+        |> post(~p"/api/workspace/members", new_member_params)
+        |> json_response(201)
+
+      assert response["data"]["email"] == original_email
     end
 
     test "returns 404 for user from another workspace", %{conn: conn} do

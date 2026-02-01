@@ -12,18 +12,30 @@ defmodule BridgeWeb.Plugs.AuthPlug do
     if user_id do
       case Accounts.get_user(user_id) do
         {:ok, user} ->
-          # Check if user has a workspace
-          if user.workspace_id do
-            conn
-            |> assign(:current_user, user)
-            |> assign(:current_user_id, user.id)
-            |> assign(:workspace_id, user.workspace_id)
-          else
-            conn
-            |> put_status(:forbidden)
-            |> put_view(json: BridgeWeb.ErrorJSON)
-            |> json(%{error: "User not associated with any workspace"})
-            |> halt()
+          cond do
+            # Check if user is inactive (soft-deleted)
+            not user.is_active ->
+              conn
+              |> clear_session()
+              |> put_status(:unauthorized)
+              |> put_view(json: BridgeWeb.ErrorJSON)
+              |> json(%{error: "Account has been deactivated"})
+              |> halt()
+
+            # Check if user has a workspace
+            is_nil(user.workspace_id) ->
+              conn
+              |> put_status(:forbidden)
+              |> put_view(json: BridgeWeb.ErrorJSON)
+              |> json(%{error: "User not associated with any workspace"})
+              |> halt()
+
+            # User is valid
+            true ->
+              conn
+              |> assign(:current_user, user)
+              |> assign(:current_user_id, user.id)
+              |> assign(:workspace_id, user.workspace_id)
           end
 
         {:error, :not_found} ->

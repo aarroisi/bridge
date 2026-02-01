@@ -39,7 +39,11 @@ export function KanbanBoard({
   selectedTaskId,
 }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeTaskOriginalIndex, setActiveTaskOriginalIndex] = useState<
+    number | null
+  >(null);
   const [overStatusId, setOverStatusId] = useState<string | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(
     new Set(),
   );
@@ -164,55 +168,82 @@ export function KanbanBoard({
     const task = tasks.find((t) => t.id === event.active.id);
     setActiveTask(task || null);
     setOverStatusId(null);
+
+    // Track the original index of the task in its column
+    if (task) {
+      const columnTasks = groupedTasks[task.statusId] || [];
+      const originalIndex = columnTasks.findIndex((t) => t.id === task.id);
+      setActiveTaskOriginalIndex(originalIndex);
+    }
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over || !active) {
       setOverStatusId(null);
+      setDropIndex(null);
       return;
     }
 
     const activeTask = tasks.find((t) => t.id === active.id);
     if (!activeTask) {
       setOverStatusId(null);
+      setDropIndex(null);
       return;
     }
 
     const overId = over.id as string;
     let targetStatusId: string | null = null;
+    let targetIndex: number | null = null;
 
     // Check if over a column directly
     const isColumnDrop = sortedStatuses.some((s) => s.id === overId);
     if (isColumnDrop) {
       targetStatusId = overId;
+      // Dropping on empty column area - add to end
+      targetIndex = groupedTasks[overId]?.length || 0;
     } else {
       // Over a task - find which column it belongs to
       const overTask = tasks.find((t) => t.id === overId);
       if (overTask) {
         targetStatusId = overTask.statusId;
+        // Find the index of the task we're hovering over
+        const columnTasks = groupedTasks[targetStatusId] || [];
+        targetIndex = columnTasks.findIndex((t) => t.id === overId);
       } else {
         // Task not found - might be hovering over empty space or self
         // Try to get the droppable container from the over data
         const containerId = over.data?.current?.sortable?.containerId;
         if (containerId && sortedStatuses.some((s) => s.id === containerId)) {
           targetStatusId = containerId;
+          targetIndex = groupedTasks[containerId]?.length || 0;
         }
       }
     }
 
-    // Only highlight if moving to a different status
-    if (targetStatusId && targetStatusId !== activeTask.statusId) {
-      setOverStatusId(targetStatusId);
+    // Set target status and drop index for both cross-column and within-column
+    if (targetStatusId) {
+      // Only highlight column if moving to a different status
+      if (targetStatusId !== activeTask.statusId) {
+        setOverStatusId(targetStatusId);
+      } else {
+        setOverStatusId(null);
+      }
+      setDropIndex(targetIndex);
     } else {
       setOverStatusId(null);
+      setDropIndex(null);
     }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const draggedTaskOriginalIndex = activeTaskOriginalIndex;
+
     setActiveTask(null);
+    setActiveTaskOriginalIndex(null);
     setOverStatusId(null);
+    setDropIndex(null);
 
     if (!over) return;
 
@@ -230,7 +261,14 @@ export function KanbanBoard({
     if (isColumnDrop) {
       // Dropped on column header/empty area
       targetStatusId = over.id as string;
-      targetIndex = groupedTasks[targetStatusId]?.length || 0;
+      // For cross-column, count tasks without the dragged one
+      const columnTasks = groupedTasks[targetStatusId] || [];
+      if (task.statusId === targetStatusId) {
+        // Same column - subtract 1 because task will be removed
+        targetIndex = columnTasks.length - 1;
+      } else {
+        targetIndex = columnTasks.length;
+      }
     } else {
       // Dropped on another task - insert at that task's position
       const overTask = tasks.find((t) => t.id === over.id);
@@ -238,7 +276,20 @@ export function KanbanBoard({
 
       targetStatusId = overTask.statusId;
       const columnTasks = groupedTasks[targetStatusId] || [];
-      targetIndex = columnTasks.findIndex((t) => t.id === over.id);
+      const overTaskIndex = columnTasks.findIndex((t) => t.id === over.id);
+
+      // reorderTask expects index in the list WITHOUT the dragged task
+      // So we need to adjust if dragging within same column and dropping after original position
+      if (
+        task.statusId === targetStatusId &&
+        draggedTaskOriginalIndex !== null &&
+        overTaskIndex > draggedTaskOriginalIndex
+      ) {
+        // The over task's index will shift down by 1 when dragged task is removed
+        targetIndex = overTaskIndex - 1;
+      } else {
+        targetIndex = overTaskIndex;
+      }
     }
 
     // Only reorder if something changed
@@ -261,22 +312,64 @@ export function KanbanBoard({
       >
         <div className="flex h-full">
           <div className="flex-1 flex overflow-x-auto gap-2 p-2">
-            {sortedStatusesWithDoneLast.map((status, index) => (
-              <KanbanColumn
-                key={status.id}
-                id={status.id}
-                title={status.name}
-                color={status.color}
-                tasks={groupedTasks[status.id] || []}
-                onTaskClick={onTaskClick}
-                onAddTask={onAddTask}
-                selectedTaskId={selectedTaskId}
-                isHighlighted={overStatusId === status.id}
-                isFirstColumn={index === 0}
-                isCollapsed={collapsedColumns.has(status.id)}
-                onToggleCollapse={() => toggleColumnCollapse(status.id)}
-              />
-            ))}
+            {sortedStatusesWithDoneLast.map((status, index) => {
+              const isDragSource = activeTask?.statusId === status.id;
+              const isCrossColumnDrag =
+                activeTask &&
+                overStatusId &&
+                overStatusId !== activeTask.statusId;
+              const isDragTarget = isCrossColumnDrag
+                ? overStatusId === status.id
+                : isDragSource;
+
+              // Filter out the active task from the source column
+              const columnTasks = groupedTasks[status.id] || [];
+              const filteredTasks =
+                isDragSource && activeTask
+                  ? columnTasks.filter((t) => t.id !== activeTask.id)
+                  : columnTasks;
+
+              // Calculate the adjusted placeholder index for the filtered list
+              let adjustedDropIndex: number | null = null;
+              if (isDragTarget && dropIndex !== null) {
+                if (isDragSource && !isCrossColumnDrag) {
+                  // Within-column drag: adjust for removed task
+                  // If dropping at or after original position, subtract 1
+                  // because the task was removed from the list
+                  if (
+                    activeTaskOriginalIndex !== null &&
+                    dropIndex > activeTaskOriginalIndex
+                  ) {
+                    adjustedDropIndex = dropIndex - 1;
+                  } else {
+                    adjustedDropIndex = dropIndex;
+                  }
+                } else {
+                  // Cross-column drag: no adjustment needed
+                  adjustedDropIndex = dropIndex;
+                }
+              }
+
+              return (
+                <KanbanColumn
+                  key={status.id}
+                  id={status.id}
+                  title={status.name}
+                  color={status.color}
+                  tasks={filteredTasks}
+                  onTaskClick={onTaskClick}
+                  onAddTask={onAddTask}
+                  selectedTaskId={selectedTaskId}
+                  isHighlighted={
+                    !!(isCrossColumnDrag && overStatusId === status.id)
+                  }
+                  isFirstColumn={index === 0}
+                  isCollapsed={collapsedColumns.has(status.id)}
+                  onToggleCollapse={() => toggleColumnCollapse(status.id)}
+                  dropPlaceholderIndex={adjustedDropIndex}
+                />
+              );
+            })}
           </div>
         </div>
 

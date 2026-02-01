@@ -20,6 +20,7 @@ interface KanbanColumnProps {
   isFirstColumn?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  dropPlaceholderIndex?: number | null;
 }
 
 export function KanbanColumn({
@@ -34,6 +35,7 @@ export function KanbanColumn({
   isFirstColumn = false,
   isCollapsed = false,
   onToggleCollapse,
+  dropPlaceholderIndex,
 }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id });
 
@@ -111,14 +113,22 @@ export function KanbanColumn({
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          {tasks.map((task) => (
-            <SortableTaskCard
-              key={task.id}
-              task={task}
-              onClick={() => onTaskClick(task.id)}
-              isSelected={selectedTaskId === task.id}
-            />
+          {tasks.map((task, index) => (
+            <div key={task.id}>
+              {dropPlaceholderIndex === index && (
+                <div className="h-16 mb-2 rounded-lg border-2 border-dashed border-blue-400 bg-blue-400/10" />
+              )}
+              <SortableTaskCard
+                task={task}
+                onClick={() => onTaskClick(task.id)}
+                isSelected={selectedTaskId === task.id}
+              />
+            </div>
           ))}
+          {dropPlaceholderIndex != null &&
+            dropPlaceholderIndex >= tasks.length && (
+              <div className="h-16 rounded-lg border-2 border-dashed border-blue-400 bg-blue-400/10" />
+            )}
         </SortableContext>
 
         {isFirstColumn && (

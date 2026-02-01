@@ -26,6 +26,9 @@ defmodule BridgeWeb.Router do
     # Auth routes (authentication required)
     put("/auth/me", AuthController, :update_me)
 
+    # Workspace settings (owner only)
+    put("/workspace", WorkspaceController, :update)
+
     # Workspace member management (owner only)
     resources("/workspace/members", WorkspaceMemberController, except: [:new, :edit, :show])
 

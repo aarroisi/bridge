@@ -51,11 +51,13 @@ defmodule BridgeWeb.ProjectController do
 
   def create(conn, params) do
     workspace_id = conn.assigns.workspace_id
+    user = conn.assigns.current_user
     member_ids = Map.get(params, "member_ids", [])
 
     project_params =
       params
       |> Map.put("workspace_id", workspace_id)
+      |> Map.put("created_by_id", user.id)
       |> Map.delete("member_ids")
 
     with {:ok, project} <- Projects.create_project(project_params) do
@@ -63,6 +65,9 @@ defmodule BridgeWeb.ProjectController do
       Enum.each(member_ids, fn user_id ->
         Projects.add_member(project.id, user_id)
       end)
+
+      # Preload created_by for the response
+      project = Bridge.Repo.preload(project, :created_by)
 
       conn
       |> put_status(:created)
@@ -76,6 +81,7 @@ defmodule BridgeWeb.ProjectController do
 
   def update(conn, params) do
     with {:ok, project} <- Projects.update_project(conn.assigns.project, params) do
+      project = Bridge.Repo.preload(project, :created_by)
       render(conn, :show, project: project)
     end
   end

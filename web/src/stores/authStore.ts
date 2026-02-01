@@ -7,14 +7,22 @@ interface ItemWithCreator {
   createdBy?: { id: string } | null;
 }
 
+interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface AuthState {
   user: User | null;
+  workspace: Workspace | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string }) => Promise<void>;
+  updateWorkspace: (data: { name?: string; slug?: string }) => Promise<void>;
   // Permission helpers
   isOwner: () => boolean;
   canEdit: (item: ItemWithCreator) => boolean;
@@ -23,20 +31,26 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  workspace: null,
   isAuthenticated: false,
   isLoading: true,
 
   login: async (email: string, password: string) => {
     try {
-      const data = await api.post<{ user: User; token: string }>(
-        "/auth/login",
-        {
-          email,
-          password,
-        },
-      );
+      const data = await api.post<{
+        user: User;
+        workspace: Workspace;
+        token: string;
+      }>("/auth/login", {
+        email,
+        password,
+      });
       api.setToken(data.token);
-      set({ user: data.user, isAuthenticated: true });
+      set({
+        user: data.user,
+        workspace: data.workspace,
+        isAuthenticated: true,
+      });
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -50,7 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.error("Logout request failed:", error);
     } finally {
       api.clearToken();
-      set({ user: null, isAuthenticated: false });
+      set({ user: null, workspace: null, isAuthenticated: false });
     }
   },
 
@@ -62,18 +76,40 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (response.ok) {
         const data = await response.json();
-        set({ user: data.user, isAuthenticated: true, isLoading: false });
+        set({
+          user: data.user,
+          workspace: data.workspace,
+          isAuthenticated: true,
+          isLoading: false,
+        });
       } else {
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({
+          user: null,
+          workspace: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
       }
     } catch (error) {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      set({
+        user: null,
+        workspace: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
     }
   },
 
   updateProfile: async (data: { name?: string; email?: string }) => {
     const response = await api.put<{ user: User }>("/auth/me", { user: data });
     set({ user: response.user });
+  },
+
+  updateWorkspace: async (data: { name?: string; slug?: string }) => {
+    const response = await api.put<{ workspace: Workspace }>("/workspace", {
+      workspace: data,
+    });
+    set({ workspace: response.workspace });
   },
 
   // Permission helpers

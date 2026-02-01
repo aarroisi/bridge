@@ -13,6 +13,7 @@ defmodule Bridge.Projects.Project do
     field(:end_date, :date)
 
     belongs_to(:workspace, Bridge.Accounts.Workspace)
+    belongs_to(:created_by, Bridge.Accounts.User)
     has_many(:project_items, Bridge.Projects.ProjectItem)
     has_many(:project_members, Bridge.Projects.ProjectMember)
     has_many(:members, through: [:project_members, :user])
@@ -23,7 +24,15 @@ defmodule Bridge.Projects.Project do
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :description, :starred, :start_date, :end_date, :workspace_id])
+    |> cast(attrs, [
+      :name,
+      :description,
+      :starred,
+      :start_date,
+      :end_date,
+      :workspace_id,
+      :created_by_id
+    ])
     |> validate_required([:name, :workspace_id])
     |> validate_dates()
   end

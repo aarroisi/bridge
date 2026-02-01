@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { api } from "@/lib/api";
@@ -15,8 +14,7 @@ interface WorkspaceMember extends User {
 }
 
 export function WorkspaceMembersPage() {
-  const navigate = useNavigate();
-  const { user: currentUser, isOwner } = useAuthStore();
+  const { user: currentUser } = useAuthStore();
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -24,13 +22,6 @@ export function WorkspaceMembersPage() {
     null,
   );
   const [roleDropdownOpen, setRoleDropdownOpen] = useState<string | null>(null);
-
-  // Redirect non-owners
-  useEffect(() => {
-    if (!isOwner()) {
-      navigate("/");
-    }
-  }, [isOwner, navigate]);
 
   // Fetch members
   useEffect(() => {
@@ -86,121 +77,115 @@ export function WorkspaceMembersPage() {
   }
 
   return (
-    <div className="flex-1 bg-dark-bg overflow-auto">
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold text-dark-text">
-              Workspace Members
-            </h1>
-            <p className="text-dark-text-muted mt-1">
-              Manage who has access to your workspace
-            </p>
-          </div>
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            Invite Member
-          </button>
+    <div className="max-w-4xl mx-auto p-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-dark-text">
+            Workspace Members
+          </h1>
+          <p className="text-dark-text-muted mt-1">
+            Manage who has access to your workspace
+          </p>
+        </div>
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus size={18} />
+          Invite Member
+        </button>
+      </div>
+
+      <div className="bg-dark-surface rounded-lg border border-dark-border">
+        <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-dark-border text-sm font-medium text-dark-text-muted">
+          <div className="col-span-5">Member</div>
+          <div className="col-span-3">Role</div>
+          <div className="col-span-3">Joined</div>
+          <div className="col-span-1"></div>
         </div>
 
-        <div className="bg-dark-surface rounded-lg border border-dark-border">
-          <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-dark-border text-sm font-medium text-dark-text-muted">
-            <div className="col-span-5">Member</div>
-            <div className="col-span-3">Role</div>
-            <div className="col-span-3">Joined</div>
-            <div className="col-span-1"></div>
-          </div>
-
-          {members.map((member) => (
-            <div
-              key={member.id}
-              className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-dark-border last:border-b-0 items-center"
-            >
-              <div className="col-span-5 flex items-center gap-3">
-                <Avatar name={member.name} size="md" />
-                <div>
-                  <div className="text-dark-text font-medium flex items-center gap-2">
-                    {member.name}
-                    {member.id === currentUser?.id && (
-                      <span className="text-xs text-dark-text-muted">
-                        (you)
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-dark-text-muted">
-                    {member.email}
-                  </div>
+        {members.map((member) => (
+          <div
+            key={member.id}
+            className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-dark-border last:border-b-0 items-center"
+          >
+            <div className="col-span-5 flex items-center gap-3">
+              <Avatar name={member.name} size="md" />
+              <div>
+                <div className="text-dark-text font-medium flex items-center gap-2">
+                  {member.name}
+                  {member.id === currentUser?.id && (
+                    <span className="text-xs text-dark-text-muted">(you)</span>
+                  )}
+                </div>
+                <div className="text-sm text-dark-text-muted">
+                  {member.email}
                 </div>
               </div>
+            </div>
 
-              <div className="col-span-3 relative">
-                {member.id === currentUser?.id ? (
-                  <RoleBadge role={member.role} />
-                ) : (
-                  <div className="relative">
-                    <button
-                      onClick={() =>
-                        setRoleDropdownOpen(
-                          roleDropdownOpen === member.id ? null : member.id,
-                        )
-                      }
-                      className="flex items-center gap-1 hover:bg-dark-hover rounded px-2 py-1 transition-colors"
-                    >
-                      <RoleBadge role={member.role} />
-                      <ChevronDown size={14} className="text-dark-text-muted" />
-                    </button>
-
-                    {roleDropdownOpen === member.id && (
-                      <div className="absolute top-full left-0 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg z-10 py-1 min-w-[120px]">
-                        {(["owner", "member", "guest"] as Role[]).map(
-                          (role) => (
-                            <button
-                              key={role}
-                              onClick={() => handleRoleChange(member.id, role)}
-                              className={clsx(
-                                "w-full px-3 py-2 text-left text-sm hover:bg-dark-hover transition-colors",
-                                member.role === role
-                                  ? "text-blue-400"
-                                  : "text-dark-text",
-                              )}
-                            >
-                              {role.charAt(0).toUpperCase() + role.slice(1)}
-                            </button>
-                          ),
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="col-span-3 text-sm text-dark-text-muted">
-                {new Date(member.insertedAt).toLocaleDateString()}
-              </div>
-
-              <div className="col-span-1 flex justify-end">
-                {member.id !== currentUser?.id && (
+            <div className="col-span-3 relative">
+              {member.id === currentUser?.id ? (
+                <RoleBadge role={member.role} />
+              ) : (
+                <div className="relative">
                   <button
-                    onClick={() => setMemberToDelete(member)}
-                    className="p-2 text-dark-text-muted hover:text-red-400 hover:bg-dark-hover rounded transition-colors"
-                    title="Remove member"
+                    onClick={() =>
+                      setRoleDropdownOpen(
+                        roleDropdownOpen === member.id ? null : member.id,
+                      )
+                    }
+                    className="flex items-center gap-1 hover:bg-dark-hover rounded px-2 py-1 transition-colors"
                   >
-                    <Trash2 size={16} />
+                    <RoleBadge role={member.role} />
+                    <ChevronDown size={14} className="text-dark-text-muted" />
                   </button>
-                )}
-              </div>
-            </div>
-          ))}
 
-          {members.length === 0 && (
-            <div className="px-4 py-8 text-center text-dark-text-muted">
-              No members found
+                  {roleDropdownOpen === member.id && (
+                    <div className="absolute top-full left-0 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg z-10 py-1 min-w-[120px]">
+                      {(["owner", "member", "guest"] as Role[]).map((role) => (
+                        <button
+                          key={role}
+                          onClick={() => handleRoleChange(member.id, role)}
+                          className={clsx(
+                            "w-full px-3 py-2 text-left text-sm hover:bg-dark-hover transition-colors",
+                            member.role === role
+                              ? "text-blue-400"
+                              : "text-dark-text",
+                          )}
+                        >
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+
+            <div className="col-span-3 text-sm text-dark-text-muted">
+              {new Date(member.insertedAt).toLocaleDateString()}
+            </div>
+
+            <div className="col-span-1 flex justify-end">
+              {member.id !== currentUser?.id && (
+                <button
+                  onClick={() => setMemberToDelete(member)}
+                  className="p-2 text-dark-text-muted hover:text-red-400 hover:bg-dark-hover rounded transition-colors"
+                  title="Remove member"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {members.length === 0 && (
+          <div className="px-4 py-8 text-center text-dark-text-muted">
+            No members found
+          </div>
+        )}
       </div>
 
       {showInviteModal && (

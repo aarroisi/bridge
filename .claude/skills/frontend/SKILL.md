@@ -36,6 +36,37 @@ ALWAYS start with writing tests before implementing features:
 
 ## Key Patterns
 
+### Never Use Browser Dialogs (alert, confirm, prompt)
+
+**NEVER** use browser native dialogs like `alert()`, `confirm()`, or `prompt()`. Always use the custom modal components:
+
+```typescript
+// ❌ WRONG - Native browser dialog
+if (!confirm("Delete this item?")) return;
+await deleteItem(id);
+
+// ✅ CORRECT - Use ConfirmModal component
+const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+// In JSX:
+<ConfirmModal
+  isOpen={showDeleteConfirm}
+  title="Delete Item"
+  message="Are you sure you want to delete this item? This action cannot be undone."
+  confirmText="Delete"
+  confirmVariant="danger"
+  onConfirm={handleDelete}
+  onCancel={() => setShowDeleteConfirm(false)}
+/>
+```
+
+The `ConfirmModal` component is located at `src/components/ui/ConfirmModal.tsx` and provides:
+
+- Consistent dark theme styling
+- Proper accessibility
+- Customizable title, message, and button text
+- Danger variant for destructive actions
+
 ### State Management with Zustand
 
 ```typescript

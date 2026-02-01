@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import {
   LayoutGrid,
@@ -8,6 +8,9 @@ import {
   Plus,
   GripVertical,
   Check,
+  MoreHorizontal,
+  Star,
+  Trash2,
 } from "lucide-react";
 import {
   DndContext,
@@ -38,6 +41,8 @@ import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { api } from "@/lib/api";
 import { User, Task } from "@/types";
 import { clsx } from "clsx";
@@ -131,6 +136,8 @@ function DroppableStatusSection({
 
 export function BoardView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId?: string }>();
   const { activeItem } = useUIStore();
   const {
     boards,
@@ -141,6 +148,8 @@ export function BoardView() {
     createTask,
     reorderTask,
     updateBoard,
+    deleteBoard,
+    toggleBoardStar,
   } = useBoardStore();
   const { messages, fetchMessages } = useChatStore();
   const { isOwner } = useAuthStore();
@@ -153,6 +162,7 @@ export function BoardView() {
   const [overStatusId, setOverStatusId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Get view mode, task and subtask IDs from URL
@@ -346,6 +356,22 @@ export function BoardView() {
       setTitleValue(board.name);
     }
     setEditingTitle(false);
+  };
+
+  const handleToggleStar = async () => {
+    if (!board) return;
+    await toggleBoardStar(board.id);
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!board) return;
+    await deleteBoard(board.id);
+    // Navigate back to project if board was inside a project, otherwise to boards list
+    if (projectId) {
+      navigate(`/projects/${projectId}`);
+    } else {
+      navigate("/boards");
+    }
   };
 
   const handleTaskClick = (taskId: string) => {
@@ -659,6 +685,35 @@ export function BoardView() {
           >
             <List size={18} />
           </button>
+          <Dropdown
+            align="right"
+            trigger={
+              <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
+                <MoreHorizontal size={18} />
+              </button>
+            }
+          >
+            <DropdownItem onClick={handleToggleStar}>
+              <span className="flex items-center gap-2">
+                <Star
+                  size={16}
+                  className={
+                    board?.starred ? "fill-yellow-400 text-yellow-400" : ""
+                  }
+                />
+                {board?.starred ? "Unstar" : "Star"}
+              </span>
+            </DropdownItem>
+            <DropdownItem
+              variant="danger"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <span className="flex items-center gap-2">
+                <Trash2 size={16} />
+                Delete Board
+              </span>
+            </DropdownItem>
+          </Dropdown>
         </div>
       </div>
 
@@ -735,6 +790,17 @@ export function BoardView() {
           onClose={() => setIsStatusManagerOpen(false)}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Board"
+        message={`Are you sure you want to delete "${board?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleDeleteBoard}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

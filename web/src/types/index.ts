@@ -32,6 +32,7 @@ export interface Project {
   startDate?: string;
   endDate?: string;
   items?: ProjectItem[];
+  createdBy?: EmbeddedUser | null;
   insertedAt: string;
   updatedAt: string;
 }

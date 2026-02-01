@@ -14,6 +14,7 @@ import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
 import { CreateProjectModal } from "@/components/features/CreateProjectModal";
+import { CreateBoardModal } from "@/components/features/CreateBoardModal";
 
 export function EmptyState() {
   const location = useLocation();
@@ -21,6 +22,7 @@ export function EmptyState() {
   const { success, error } = useToastStore();
 
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
 
   const createProject = useProjectStore((state) => state.createProject);
   const createBoard = useBoardStore((state) => state.createBoard);
@@ -57,10 +59,8 @@ export function EmptyState() {
           icon: Kanban,
           description: "Create boards to organize your tasks",
           actionText: "Create Board",
-          action: async () => {
-            const board = await createBoard("New Board");
-            success("Board created successfully");
-            navigate(`/boards/${board.id}`);
+          action: () => {
+            setShowCreateBoardModal(true);
           },
         };
       case "docs":
@@ -143,6 +143,18 @@ export function EmptyState() {
     }
   };
 
+  const handleCreateBoard = async (name: string) => {
+    try {
+      const board = await createBoard(name);
+      success("Board created successfully");
+      setShowCreateBoardModal(false);
+      navigate(`/boards/${board.id}`);
+    } catch (err) {
+      console.error("Failed to create board:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
+
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="text-center max-w-md">
@@ -168,6 +180,12 @@ export function EmptyState() {
         isOpen={showCreateProjectModal}
         onClose={() => setShowCreateProjectModal(false)}
         onSubmit={handleCreateProject}
+      />
+
+      <CreateBoardModal
+        isOpen={showCreateBoardModal}
+        onClose={() => setShowCreateBoardModal(false)}
+        onSubmit={handleCreateBoard}
       />
     </div>
   );

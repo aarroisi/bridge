@@ -45,12 +45,30 @@ defmodule BridgeWeb.ProjectJSON do
       updated_at: project.updated_at
     }
 
+    # Include created_by if preloaded
+    base =
+      if Ecto.assoc_loaded?(project.created_by) do
+        Map.put(base, :created_by, user_data(project.created_by))
+      else
+        base
+      end
+
     # Include items if preloaded
     if Ecto.assoc_loaded?(project.project_items) do
       Map.put(base, :items, Enum.map(project.project_items, &item_data/1))
     else
       base
     end
+  end
+
+  defp user_data(nil), do: nil
+
+  defp user_data(user) do
+    %{
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }
   end
 
   defp item_data(item) do

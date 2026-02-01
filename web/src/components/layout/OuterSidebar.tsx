@@ -5,7 +5,7 @@ import {
   FileText,
   Hash,
   MessageSquare,
-  Users,
+  Settings,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -88,16 +88,16 @@ export function OuterSidebar() {
 
       {isOwner() && (
         <button
-          onClick={() => navigate("/members")}
+          onClick={() => navigate("/settings")}
           className={clsx(
             "w-10 h-10 rounded-lg flex items-center justify-center transition-colors mb-2",
-            location.pathname === "/members"
+            location.pathname.startsWith("/settings")
               ? "bg-blue-600 text-white"
               : "text-dark-text-muted hover:bg-dark-surface hover:text-dark-text",
           )}
-          title="Workspace Members"
+          title="Workspace Settings"
         >
-          <Users size={20} />
+          <Settings size={20} />
         </button>
       )}
 

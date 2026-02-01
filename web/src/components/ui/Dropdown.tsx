@@ -56,14 +56,21 @@ export function Dropdown({
 
   return (
     <div ref={dropdownRef} className={clsx("relative", className)}>
-      <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+      >
+        {trigger}
+      </div>
 
       {isOpen && (
         <div
           className={clsx(
             "absolute z-50 min-w-48 py-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg",
             align === "left" ? "left-0" : "right-0",
-            position === "top" ? "bottom-full mb-2" : "top-full mt-2"
+            position === "top" ? "bottom-full mb-2" : "top-full mt-2",
           )}
         >
           {children}
@@ -95,7 +102,7 @@ export function DropdownItem({
         disabled && "opacity-50 cursor-not-allowed",
         variant === "danger"
           ? "text-red-400 hover:bg-red-500/10"
-          : "text-dark-text hover:bg-dark-border"
+          : "text-dark-text hover:bg-dark-border",
       )}
     >
       {children}

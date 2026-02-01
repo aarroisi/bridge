@@ -207,6 +207,12 @@ defmodule Bridge.Accounts do
     |> Repo.insert()
   end
 
+  def update_workspace(%Workspace{} = workspace, attrs) do
+    workspace
+    |> Workspace.changeset(attrs)
+    |> Repo.update()
+  end
+
   # Authentication functions
 
   @doc """

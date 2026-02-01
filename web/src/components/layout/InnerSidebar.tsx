@@ -19,6 +19,7 @@ import { useToastStore } from "@/stores/toastStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { Category } from "@/types";
 import { CreateProjectModal } from "@/components/features/CreateProjectModal";
+import { CreateBoardModal } from "@/components/features/CreateBoardModal";
 
 export function InnerSidebar() {
   const navigate = useNavigate();
@@ -29,6 +30,10 @@ export function InnerSidebar() {
   const toggleSection = useUIStore((state) => state.toggleSection);
   const { success, error } = useToastStore();
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [createBoardForProjectId, setCreateBoardForProjectId] = useState<
+    string | null
+  >(null);
   const [addItemDropdownProjectId, setAddItemDropdownProjectId] = useState<
     string | null
   >(null);
@@ -218,11 +223,9 @@ export function InnerSidebar() {
         // Navigate to new doc page
         navigate(`/projects/${projectId}/docs/new`);
       } else if (itemType === "board") {
-        // Create board and add to project
-        const board = await createBoard("New Board");
-        await addItemToProject(projectId, "board", board.id);
-        success("Board created successfully");
-        navigate(`/projects/${projectId}/boards/${board.id}`);
+        // Show modal to get board name
+        setCreateBoardForProjectId(projectId);
+        setShowCreateBoardModal(true);
       } else if (itemType === "channel") {
         // Create channel and add to project
         const channel = await createChannel("new-channel");
@@ -297,10 +300,9 @@ export function InnerSidebar() {
           setShowCreateProjectModal(true);
           return;
         case "boards":
-          const board = await createBoard("New Board");
-          success("Board created successfully");
-          await navigateToItem("boards", board.id);
-          break;
+          setCreateBoardForProjectId(null);
+          setShowCreateBoardModal(true);
+          return;
         case "docs":
           navigate("/docs/new");
           setActiveItem({ type: "docs", id: "new" });
@@ -333,6 +335,27 @@ export function InnerSidebar() {
       await navigateToItem("projects", project.id);
     } catch (err) {
       console.error("Failed to create project:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
+
+  const handleCreateBoard = async (name: string) => {
+    try {
+      const board = await createBoard(name);
+      if (createBoardForProjectId) {
+        // Add to project
+        await addItemToProject(createBoardForProjectId, "board", board.id);
+        success("Board created successfully");
+        setShowCreateBoardModal(false);
+        navigate(`/projects/${createBoardForProjectId}/boards/${board.id}`);
+      } else {
+        // Standalone board
+        success("Board created successfully");
+        setShowCreateBoardModal(false);
+        await navigateToItem("boards", board.id);
+      }
+    } catch (err) {
+      console.error("Failed to create board:", err);
       error("Error: " + (err as Error).message);
     }
   };
@@ -398,14 +421,8 @@ export function InnerSidebar() {
   const renderContent = () => {
     switch (activeCategory) {
       case "home":
-        return (
-          <div className="p-4">
-            <h3 className="text-sm font-semibold text-dark-text-muted mb-2">
-              Recent
-            </h3>
-            <p className="text-sm text-dark-text-muted">No recent items</p>
-          </div>
-        );
+        // No inner sidebar for home
+        return null;
 
       case "projects":
         return (
@@ -715,16 +732,32 @@ export function InnerSidebar() {
     }
   };
 
+  const content = renderContent();
+
+  // Don't render sidebar if there's no content (e.g., home page)
+  if (!content) {
+    return null;
+  }
+
   return (
     <>
       <div className="w-52 bg-dark-surface border-r border-dark-border overflow-y-auto flex-shrink-0 pt-4">
-        {renderContent()}
+        {content}
       </div>
 
       <CreateProjectModal
         isOpen={showCreateProjectModal}
         onClose={() => setShowCreateProjectModal(false)}
         onSubmit={handleCreateProject}
+      />
+
+      <CreateBoardModal
+        isOpen={showCreateBoardModal}
+        onClose={() => {
+          setShowCreateBoardModal(false);
+          setCreateBoardForProjectId(null);
+        }}
+        onSubmit={handleCreateBoard}
       />
     </>
   );

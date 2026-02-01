@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { MoreHorizontal, Star, Trash2 } from "lucide-react";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DiscussionView } from "@/components/features/DiscussionView";
 import { DiscussionThread } from "@/components/features/DiscussionThread";
 import { useChatStore } from "@/stores/chatStore";
@@ -8,8 +11,9 @@ import { useChannel } from "@/hooks/useChannel";
 import { Message as MessageType } from "@/types";
 
 export function ChatView() {
-  const { id } = useParams<{ id: string }>();
+  const { id, projectId } = useParams<{ id: string; projectId?: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { setActiveItem } = useUIStore();
   const [openThread, setOpenThread] = useState<MessageType | null>(null);
   const {
@@ -20,8 +24,11 @@ export function ChatView() {
     sendMessage,
     addMessage,
     hasMoreMessages,
+    deleteChannel,
+    toggleChannelStar,
   } = useChatStore();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Determine entity type from URL path
   const entityType = location.pathname.startsWith("/channels")
@@ -91,6 +98,22 @@ export function ChatView() {
     }
   };
 
+  const handleToggleStar = async () => {
+    if (!item || entityType !== "channel") return;
+    await toggleChannelStar(item.id);
+  };
+
+  const handleDeleteChannel = async () => {
+    if (!item || entityType !== "channel") return;
+    await deleteChannel(item.id);
+    // Navigate back to project if channel was inside a project, otherwise to channels list
+    if (projectId) {
+      navigate(`/projects/${projectId}`);
+    } else {
+      navigate("/channels");
+    }
+  };
+
   if (!item) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -107,10 +130,43 @@ export function ChatView() {
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-6 py-4 border-b border-dark-border">
+        <div className="px-6 py-4 border-b border-dark-border flex items-center justify-between">
           <h1 className="text-2xl font-bold text-dark-text">
             {entityType === "channel" ? "#" : ""} {item.name}
           </h1>
+          {entityType === "channel" && (
+            <Dropdown
+              align="right"
+              trigger={
+                <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
+                  <MoreHorizontal size={18} />
+                </button>
+              }
+            >
+              <DropdownItem onClick={handleToggleStar}>
+                <span className="flex items-center gap-2">
+                  <Star
+                    size={16}
+                    className={
+                      "starred" in item && item.starred
+                        ? "fill-yellow-400 text-yellow-400"
+                        : ""
+                    }
+                  />
+                  {"starred" in item && item.starred ? "Unstar" : "Star"}
+                </span>
+              </DropdownItem>
+              <DropdownItem
+                variant="danger"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 size={16} />
+                  Delete Channel
+                </span>
+              </DropdownItem>
+            </Dropdown>
+          )}
         </div>
 
         <DiscussionView
@@ -138,6 +194,17 @@ export function ChatView() {
           onSendReply={handleSendReply}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Channel"
+        message={`Are you sure you want to delete "#${item?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleDeleteChannel}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

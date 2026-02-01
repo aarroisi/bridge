@@ -20,12 +20,16 @@ import {
   Check,
   ArrowDown,
   X,
+  MoreHorizontal,
+  Star,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Message } from "@/components/features/Message";
 import { DiscussionThread } from "@/components/features/DiscussionThread";
 import { CommentEditor } from "@/components/features/CommentEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -42,7 +46,8 @@ export function DocView() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { docs, getDoc, updateDoc, createDoc } = useDocStore();
+  const { docs, getDoc, updateDoc, createDoc, deleteDoc, toggleDocStar } =
+    useDocStore();
   const { messages, fetchMessages, sendMessage, hasMoreMessages } =
     useChatStore();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -65,6 +70,7 @@ export function DocView() {
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -505,6 +511,22 @@ export function DocView() {
     }
   };
 
+  const handleToggleStar = async () => {
+    if (!doc) return;
+    await toggleDocStar(doc.id);
+  };
+
+  const handleDeleteDoc = async () => {
+    if (!doc) return;
+    await deleteDoc(doc.id);
+    // Navigate back to project if doc was inside a project, otherwise to docs list
+    if (projectIdParam) {
+      navigate(`/projects/${projectIdParam}`);
+    } else {
+      navigate("/docs");
+    }
+  };
+
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -600,16 +622,49 @@ export function DocView() {
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={handleEnterEditMode}
-                      className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0"
-                      title="Edit"
-                    >
-                      <Edit3 size={16} className="flex-shrink-0" />
-                      <span className="hidden lg:inline whitespace-nowrap">
-                        Edit
-                      </span>
-                    </button>
+                    <>
+                      <button
+                        onClick={handleEnterEditMode}
+                        className="flex items-center gap-2 p-2 lg:px-4 lg:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0"
+                        title="Edit"
+                      >
+                        <Edit3 size={16} className="flex-shrink-0" />
+                        <span className="hidden lg:inline whitespace-nowrap">
+                          Edit
+                        </span>
+                      </button>
+                      <Dropdown
+                        align="right"
+                        trigger={
+                          <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
+                            <MoreHorizontal size={18} />
+                          </button>
+                        }
+                      >
+                        <DropdownItem onClick={handleToggleStar}>
+                          <span className="flex items-center gap-2">
+                            <Star
+                              size={16}
+                              className={
+                                doc?.starred
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : ""
+                              }
+                            />
+                            {doc?.starred ? "Unstar" : "Star"}
+                          </span>
+                        </DropdownItem>
+                        <DropdownItem
+                          variant="danger"
+                          onClick={() => setShowDeleteConfirm(true)}
+                        >
+                          <span className="flex items-center gap-2">
+                            <Trash2 size={16} />
+                            Delete Doc
+                          </span>
+                        </DropdownItem>
+                      </Dropdown>
+                    </>
                   )}
                 </>
               )}
@@ -859,6 +914,17 @@ export function DocView() {
         confirmVariant="danger"
         onConfirm={handleConfirmCancel}
         onCancel={handleCancelCancelModal}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Doc"
+        message={`Are you sure you want to delete "${doc?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleDeleteDoc}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );

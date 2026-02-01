@@ -2,9 +2,11 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useBoardStore } from "@/stores/boardStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useAuthStore } from "@/stores/authStore";
 import { FileText, Kanban, MessageSquare } from "lucide-react";
 
 export function HomePage() {
+  const workspace = useAuthStore((state) => state.workspace);
   const projects = useProjectStore((state) => state.projects) || [];
   const boards = useBoardStore((state) => state.boards) || [];
   const docs = useDocStore((state) => state.docs) || [];
@@ -31,7 +33,10 @@ export function HomePage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
-      <h1 className="text-3xl font-bold text-dark-text mb-8">Home</h1>
+      <h1 className="text-3xl font-bold text-dark-text mb-2">
+        {workspace?.name || "Home"}
+      </h1>
+      <p className="text-dark-text-muted mb-8">Welcome to your workspace!</p>
 
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-dark-text mb-4">

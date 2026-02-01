@@ -69,6 +69,9 @@ defmodule BridgeWeb.ListController do
       |> Map.put("created_by_id", user.id)
 
     with {:ok, list} <- Lists.create_list(list_params) do
+      # Preload created_by for the response
+      list = Bridge.Repo.preload(list, :created_by)
+
       conn
       |> put_status(:created)
       |> render(:show, list: list)

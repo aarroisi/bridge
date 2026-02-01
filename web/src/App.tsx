@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
+import { SettingsLayout } from "./components/layout/SettingsLayout";
 import { HomePage } from "./pages/HomePage";
 import { EmptyState } from "./pages/EmptyState";
 import { ProjectPage } from "./pages/ProjectPage";
 import { BoardView } from "./pages/BoardView";
 import { DocView } from "./pages/DocView";
 import { ChatView } from "./pages/ChatView";
+import { GeneralSettingsPage } from "./pages/GeneralSettingsPage";
 import { WorkspaceMembersPage } from "./pages/WorkspaceMembersPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -187,11 +189,23 @@ function App() {
           }
         />
         <Route
-          path="/members"
+          path="/settings"
+          element={<Navigate to="/settings/general" replace />}
+        />
+        <Route
+          path="/settings/general"
           element={
-            <MainLayout>
+            <SettingsLayout>
+              <GeneralSettingsPage />
+            </SettingsLayout>
+          }
+        />
+        <Route
+          path="/settings/members"
+          element={
+            <SettingsLayout>
               <WorkspaceMembersPage />
-            </MainLayout>
+            </SettingsLayout>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -11,7 +11,12 @@ import {
   Pencil,
   Calendar,
   X,
+  Check,
 } from "lucide-react";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { CreateBoardModal } from "@/components/features/CreateBoardModal";
+import { format } from "date-fns";
 import { useProjectStore } from "@/stores/projectStore";
 import { useBoardStore } from "@/stores/boardStore";
 import { useDocStore } from "@/stores/docStore";
@@ -215,21 +220,39 @@ export function ProjectPage() {
   const { success, error } = useToastStore();
 
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState("");
+  const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] =
+    useState(false);
+  const [deleteItemConfirm, setDeleteItemConfirm] = useState<{
+    type: "board" | "doc" | "channel";
+    id: string;
+    name: string;
+  } | null>(null);
+  const [removeItemConfirm, setRemoveItemConfirm] = useState<{
+    type: "board" | "doc" | "channel";
+    id: string;
+    name: string;
+  } | null>(null);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
 
   const projects = useProjectStore((state) => state.projects);
   const updateProject = useProjectStore((state) => state.updateProject);
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const addItem = useProjectStore((state) => state.addItem);
+  const removeItem = useProjectStore((state) => state.removeItem);
 
   const boards = useBoardStore((state) => state.boards);
   const createBoard = useBoardStore((state) => state.createBoard);
+  const deleteBoard = useBoardStore((state) => state.deleteBoard);
 
   const docs = useDocStore((state) => state.docs);
+  const deleteDoc = useDocStore((state) => state.deleteDoc);
 
   const channels = useChatStore((state) => state.channels);
   const createChannel = useChatStore((state) => state.createChannel);
+  const deleteChannel = useChatStore((state) => state.deleteChannel);
 
   const project = projects.find((p) => p.id === id);
 
@@ -268,11 +291,8 @@ export function ProjectPage() {
     try {
       switch (type) {
         case "board": {
-          const board = await createBoard("New Board");
-          await addItem(id, "board", board.id);
-          success("Board created");
-          navigate(`/projects/${id}/boards/${board.id}`);
-          break;
+          setShowCreateBoardModal(true);
+          return;
         }
         case "doc": {
           // Navigate to new doc page within project context
@@ -305,7 +325,6 @@ export function ProjectPage() {
 
   const handleDeleteProject = async () => {
     if (!project) return;
-    if (!confirm(`Delete "${project.name}"? This cannot be undone.`)) return;
 
     try {
       await deleteProject(project.id);
@@ -341,6 +360,77 @@ export function ProjectPage() {
     });
   };
 
+  const handleStartEditingTitle = () => {
+    if (!project) return;
+    setTitleValue(project.name);
+    setEditingTitle(true);
+  };
+
+  const handleTitleSave = async () => {
+    if (!project || !titleValue.trim()) return;
+    try {
+      await updateProject(project.id, { name: titleValue.trim() });
+      setEditingTitle(false);
+    } catch (err) {
+      console.error("Failed to update project title:", err);
+      error("Failed to update title");
+    }
+  };
+
+  const handleRemoveFromProject = async (
+    type: "board" | "doc" | "channel",
+    itemId: string,
+  ) => {
+    if (!id) return;
+
+    try {
+      await removeItem(id, type, itemId);
+      success(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} removed from project`,
+      );
+    } catch (err) {
+      console.error("Failed to remove item:", err);
+      error("Failed to remove item");
+    }
+  };
+
+  const handleDeleteItem = async (
+    type: "board" | "doc" | "channel",
+    itemId: string,
+  ) => {
+    try {
+      switch (type) {
+        case "board":
+          await deleteBoard(itemId);
+          break;
+        case "doc":
+          await deleteDoc(itemId);
+          break;
+        case "channel":
+          await deleteChannel(itemId);
+          break;
+      }
+      success(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted`);
+    } catch (err) {
+      console.error("Failed to delete item:", err);
+      error("Failed to delete item");
+    }
+  };
+
+  const handleCreateBoard = async (name: string) => {
+    if (!id) return;
+    try {
+      const board = await createBoard(name);
+      await addItem(id, "board", board.id);
+      success("Board created");
+      setShowCreateBoardModal(false);
+      navigate(`/projects/${id}/boards/${board.id}`);
+    } catch (err) {
+      console.error("Failed to create board:", err);
+      error("Failed to create board");
+    }
+  };
+
   if (!project) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -366,16 +456,46 @@ export function ProjectPage() {
     const path = `/projects/${id}/${type}s/${item.id}`;
 
     return (
-      <button
+      <div
         key={item.id}
-        onClick={() => navigate(path)}
-        className="flex items-center gap-3 p-3 rounded-lg bg-dark-surface border border-dark-border hover:border-dark-hover transition-colors text-left w-full"
+        className="flex items-center gap-3 p-3 rounded-lg bg-dark-surface border border-dark-border hover:border-dark-hover transition-colors group"
       >
-        <div className="text-dark-text-muted">{icon}</div>
-        <div className="text-sm font-medium text-dark-text truncate">
-          {name}
-        </div>
-      </button>
+        <button
+          onClick={() => navigate(path)}
+          className="flex items-center gap-3 flex-1 text-left min-w-0"
+        >
+          <div className="text-dark-text-muted">{icon}</div>
+          <div className="text-sm font-medium text-dark-text truncate">
+            {name}
+          </div>
+        </button>
+        <Dropdown
+          align="right"
+          trigger={
+            <button className="p-1 rounded hover:bg-dark-hover text-dark-text-muted hover:text-dark-text transition-all">
+              <MoreHorizontal size={16} />
+            </button>
+          }
+        >
+          <DropdownItem
+            onClick={() => setRemoveItemConfirm({ type, id: item.id, name })}
+          >
+            <span className="flex items-center gap-2">
+              <X size={16} />
+              Remove from Project
+            </span>
+          </DropdownItem>
+          <DropdownItem
+            variant="danger"
+            onClick={() => setDeleteItemConfirm({ type, id: item.id, name })}
+          >
+            <span className="flex items-center gap-2">
+              <Trash2 size={16} />
+              Delete {type.charAt(0).toUpperCase() + type.slice(1)}
+            </span>
+          </DropdownItem>
+        </Dropdown>
+      </div>
     );
   };
 
@@ -383,7 +503,47 @@ export function ProjectPage() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-6 py-4 border-b border-dark-border flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-dark-text">{project.name}</h1>
+        {editingTitle ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleTitleSave();
+                } else if (e.key === "Escape") {
+                  setEditingTitle(false);
+                }
+              }}
+              autoFocus
+              className="text-2xl font-bold text-dark-text bg-transparent border-b-2 border-blue-500 focus:outline-none"
+            />
+            <button
+              onClick={handleTitleSave}
+              className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              title="Save title"
+            >
+              <Check size={16} />
+            </button>
+          </div>
+        ) : (
+          <div>
+            <h1
+              onClick={handleStartEditingTitle}
+              className="text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors"
+              title="Click to edit"
+            >
+              {project.name}
+            </h1>
+            {project.createdBy && (
+              <div className="text-sm text-dark-text-muted mt-1">
+                Added by {project.createdBy.name} on{" "}
+                {format(new Date(project.insertedAt), "MMM d, yyyy")}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
@@ -400,51 +560,39 @@ export function ProjectPage() {
               />
             )}
           </div>
-          <div className="relative">
-            <button
-              onClick={() => setShowProjectMenu(!showProjectMenu)}
-              className="p-2 hover:bg-dark-surface rounded-lg text-dark-text-muted hover:text-dark-text transition-colors"
+          <Dropdown
+            align="right"
+            trigger={
+              <button className="p-2 hover:bg-dark-surface rounded-lg text-dark-text-muted hover:text-dark-text transition-colors">
+                <MoreHorizontal size={20} />
+              </button>
+            }
+          >
+            <DropdownItem onClick={() => setShowEditModal(true)}>
+              <span className="flex items-center gap-2">
+                <Pencil size={16} />
+                Edit Project
+              </span>
+            </DropdownItem>
+            <DropdownItem onClick={handleToggleStar}>
+              <span className="flex items-center gap-2">
+                <Star
+                  size={16}
+                  className={project.starred ? "fill-yellow-400" : ""}
+                />
+                {project.starred ? "Unstar" : "Star"}
+              </span>
+            </DropdownItem>
+            <DropdownItem
+              variant="danger"
+              onClick={() => setShowDeleteProjectConfirm(true)}
             >
-              <MoreHorizontal size={20} />
-            </button>
-            {showProjectMenu && (
-              <div className="absolute top-full right-0 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-10 min-w-[160px]">
-                <button
-                  onClick={() => {
-                    setShowEditModal(true);
-                    setShowProjectMenu(false);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
-                >
-                  <Pencil size={16} />
-                  Edit Project
-                </button>
-                <button
-                  onClick={() => {
-                    handleToggleStar();
-                    setShowProjectMenu(false);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
-                >
-                  <Star
-                    size={16}
-                    className={project.starred ? "fill-yellow-400" : ""}
-                  />
-                  {project.starred ? "Unstar" : "Star"}
-                </button>
-                <button
-                  onClick={() => {
-                    handleDeleteProject();
-                    setShowProjectMenu(false);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-red-400"
-                >
-                  <Trash2 size={16} />
-                  Delete Project
-                </button>
-              </div>
-            )}
-          </div>
+              <span className="flex items-center gap-2">
+                <Trash2 size={16} />
+                Delete Project
+              </span>
+            </DropdownItem>
+          </Dropdown>
         </div>
       </div>
 
@@ -562,6 +710,59 @@ export function ProjectPage() {
           onClose={() => setShowEditModal(false)}
         />
       )}
+
+      {/* Delete Project Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteProjectConfirm}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleDeleteProject}
+        onCancel={() => setShowDeleteProjectConfirm(false)}
+      />
+
+      {/* Remove Item from Project Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!removeItemConfirm}
+        title="Remove from Project"
+        message={`Are you sure you want to remove "${removeItemConfirm?.name}" from this project?`}
+        confirmText="Remove"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (removeItemConfirm) {
+            handleRemoveFromProject(
+              removeItemConfirm.type,
+              removeItemConfirm.id,
+            );
+            setRemoveItemConfirm(null);
+          }
+        }}
+        onCancel={() => setRemoveItemConfirm(null)}
+      />
+
+      {/* Delete Item Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteItemConfirm}
+        title={`Delete ${deleteItemConfirm?.type ? deleteItemConfirm.type.charAt(0).toUpperCase() + deleteItemConfirm.type.slice(1) : ""}`}
+        message={`Are you sure you want to delete "${deleteItemConfirm?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (deleteItemConfirm) {
+            handleDeleteItem(deleteItemConfirm.type, deleteItemConfirm.id);
+            setDeleteItemConfirm(null);
+          }
+        }}
+        onCancel={() => setDeleteItemConfirm(null)}
+      />
+
+      {/* Create Board Modal */}
+      <CreateBoardModal
+        isOpen={showCreateBoardModal}
+        onClose={() => setShowCreateBoardModal(false)}
+        onSubmit={handleCreateBoard}
+      />
     </div>
   );
 }

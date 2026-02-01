@@ -25,6 +25,7 @@ defmodule Bridge.Projects do
     |> where([p], p.workspace_id == ^workspace_id)
     |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
+    |> preload(:created_by)
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -49,7 +50,7 @@ defmodule Bridge.Projects do
     |> where([p], p.workspace_id == ^workspace_id)
     |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
-    |> preload(:project_items)
+    |> preload([:project_items, :created_by])
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -67,6 +68,7 @@ defmodule Bridge.Projects do
     |> where([p], p.starred == true and p.workspace_id == ^workspace_id)
     |> filter_by_user_access(user)
     |> order_by([p], desc: p.id)
+    |> preload(:created_by)
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
@@ -87,6 +89,7 @@ defmodule Bridge.Projects do
   def get_project(id, workspace_id) do
     case Project
          |> where([p], p.workspace_id == ^workspace_id)
+         |> preload(:created_by)
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       project -> {:ok, project}
@@ -110,7 +113,7 @@ defmodule Bridge.Projects do
   def get_project_with_items(id, workspace_id) do
     case Project
          |> where([p], p.workspace_id == ^workspace_id)
-         |> preload(:project_items)
+         |> preload([:project_items, :created_by])
          |> Repo.get(id) do
       nil -> {:error, :not_found}
       project -> {:ok, project}

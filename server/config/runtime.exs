@@ -23,6 +23,27 @@ end
 config :bridge, BridgeWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# Cloudflare R2 Storage Configuration
+# R2 uses S3-compatible API with presigned URLs for all access
+if System.get_env("R2_ACCESS_KEY_ID") do
+  config :bridge, :r2,
+    access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
+    secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
+    bucket: System.get_env("R2_BUCKET"),
+    host: System.get_env("R2_HOST"),
+    region: System.get_env("R2_REGION", "auto")
+
+  config :ex_aws,
+    access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
+    secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
+    region: System.get_env("R2_REGION", "auto")
+
+  config :ex_aws, :s3,
+    scheme: "https://",
+    host: System.get_env("R2_HOST"),
+    region: System.get_env("R2_REGION", "auto")
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

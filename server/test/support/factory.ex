@@ -102,4 +102,18 @@ defmodule Bridge.Factory do
       read: false
     }
   end
+
+  def asset_factory do
+    %Bridge.Assets.Asset{
+      filename: sequence(:filename, &"file-#{&1}.png"),
+      content_type: "image/png",
+      size_bytes: Enum.random(1000..1_000_000),
+      storage_key: sequence(:storage_key, &"workspace/avatar/2026/02/#{&1}.png"),
+      asset_type: "avatar",
+      status: "pending",
+      # Default attachable - tests should override with actual item
+      attachable_type: "user",
+      attachable_id: nil
+    }
+  end
 end

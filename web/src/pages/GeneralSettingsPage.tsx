@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
+import { StorageUsage } from "@/components/features/StorageUsage";
 
 export function GeneralSettingsPage() {
   const { workspace, updateWorkspace } = useAuthStore();
@@ -124,6 +125,18 @@ export function GeneralSettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* Storage Usage Section */}
+      <div className="mt-12">
+        <h2 className="text-lg font-semibold text-dark-text mb-2">
+          Storage Usage
+        </h2>
+        <p className="text-dark-text-muted mb-4">
+          Track how much storage your workspace is using for uploaded files and
+          images.
+        </p>
+        <StorageUsage />
+      </div>
     </div>
   );
 }

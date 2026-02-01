@@ -111,8 +111,8 @@ defmodule BridgeWeb.AuthController do
   def update_me(conn, %{"user" => user_params}) do
     current_user = conn.assigns.current_user
 
-    # Only allow updating name and email
-    allowed_params = Map.take(user_params, ["name", "email"])
+    # Only allow updating name, email, and avatar
+    allowed_params = Map.take(user_params, ["name", "email", "avatar"])
 
     case Accounts.update_user(current_user, allowed_params) do
       {:ok, user} ->
@@ -123,6 +123,7 @@ defmodule BridgeWeb.AuthController do
             id: user.id,
             name: user.name,
             email: user.email,
+            avatar: user.avatar,
             role: user.role,
             workspace_id: user.workspace_id
           },

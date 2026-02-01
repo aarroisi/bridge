@@ -63,6 +63,13 @@ defmodule BridgeWeb.Router do
     patch("/notifications/:id/read", NotificationController, :mark_as_read)
     post("/notifications/read-all", NotificationController, :mark_all_as_read)
     get("/notifications/unread-count", NotificationController, :unread_count)
+
+    # Asset routes
+    post("/assets/request-upload", AssetController, :request_upload)
+    post("/assets/:id/confirm", AssetController, :confirm)
+    get("/assets/:id", AssetController, :show)
+    delete("/assets/:id", AssetController, :delete)
+    get("/workspace/storage", AssetController, :storage)
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

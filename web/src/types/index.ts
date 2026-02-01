@@ -207,3 +207,32 @@ export interface Notification {
   insertedAt: string;
   updatedAt: string;
 }
+
+// Asset types
+export type AssetType = "avatar" | "file";
+export type AssetStatus = "pending" | "active";
+
+export interface Asset {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  assetType: AssetType;
+  status: AssetStatus;
+  uploadedById: string;
+  url?: string;
+  insertedAt: string;
+  updatedAt: string;
+}
+
+export interface UploadRequest {
+  id: string;
+  uploadUrl: string;
+  storageKey: string;
+}
+
+export interface StorageUsage {
+  usedBytes: number;
+  quotaBytes: number;
+  availableBytes: number;
+}

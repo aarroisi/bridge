@@ -8,8 +8,11 @@ defmodule Bridge.Accounts.Workspace do
   schema "workspaces" do
     field(:name, :string)
     field(:slug, :string)
+    field(:storage_used_bytes, :integer, default: 0)
+    field(:storage_quota_bytes, :integer, default: 5_368_709_120)
 
     has_many(:users, Bridge.Accounts.User)
+    has_many(:assets, Bridge.Assets.Asset)
 
     timestamps()
   end

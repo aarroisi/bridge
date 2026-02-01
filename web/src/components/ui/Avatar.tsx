@@ -2,6 +2,7 @@ import { clsx } from "clsx";
 
 interface AvatarProps {
   name: string;
+  src?: string | null;
   size?: "xs" | "sm" | "md" | "lg";
   online?: boolean;
   className?: string;
@@ -41,22 +42,36 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function Avatar({ name, size = "md", online, className }: AvatarProps) {
+export function Avatar({
+  name,
+  src,
+  size = "md",
+  online,
+  className,
+}: AvatarProps) {
   const safeName = name || "Unknown User";
   const colorClass = getColorForName(safeName);
   const initials = getInitials(safeName);
 
   return (
     <div className={clsx("relative flex-shrink-0", className)}>
-      <div
-        className={clsx(
-          "rounded-full flex items-center justify-center font-medium text-white",
-          sizeClasses[size],
-          colorClass,
-        )}
-      >
-        {initials}
-      </div>
+      {src ? (
+        <img
+          src={src}
+          alt={safeName}
+          className={clsx("rounded-full object-cover", sizeClasses[size])}
+        />
+      ) : (
+        <div
+          className={clsx(
+            "rounded-full flex items-center justify-center font-medium text-white",
+            sizeClasses[size],
+            colorClass,
+          )}
+        >
+          {initials}
+        </div>
+      )}
       {online !== undefined && (
         <div
           className={clsx(

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
-import { Avatar } from "@/components/ui/Avatar";
+import { AvatarUpload } from "@/components/ui/AvatarUpload";
 import { Modal } from "@/components/ui/Modal";
 
 interface ProfileModalProps {
@@ -14,6 +14,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { success, error: showError } = useToastStore();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     if (isOpen && user) {
       setName(user.name);
       setEmail(user.email);
+      setAvatarUrl(user.avatar || null);
       setError(null);
     }
   }, [isOpen, user]);
@@ -33,7 +35,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     setError(null);
 
     try {
-      await updateProfile({ name, email });
+      const updates: { name?: string; email?: string; avatar?: string } = {};
+      if (name !== user.name) updates.name = name;
+      if (email !== user.email) updates.email = email;
+      if (avatarUrl !== user.avatar) updates.avatar = avatarUrl || "";
+
+      await updateProfile(updates);
       success("Profile updated successfully");
       onClose();
     } catch (err) {
@@ -46,13 +53,24 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     }
   };
 
-  const hasChanges = name !== user.name || email !== user.email;
+  const handleAvatarUpload = (asset: { id: string; url: string }) => {
+    setAvatarUrl(asset.url);
+  };
+
+  const hasChanges =
+    name !== user.name || email !== user.email || avatarUrl !== user.avatar;
 
   return (
     <Modal title="Edit Profile" onClose={onClose} size="md">
       <form onSubmit={handleSubmit} className="p-4 space-y-4">
         <div className="flex justify-center">
-          <Avatar name={name || user.name} size="lg" />
+          <AvatarUpload
+            name={name || user.name}
+            currentAvatarUrl={avatarUrl}
+            onUploadComplete={handleAvatarUpload}
+            onError={(msg) => showError(msg)}
+            size="lg"
+          />
         </div>
 
         <div>

@@ -35,3 +35,15 @@ config :phoenix, :plug_init_mode, :runtime
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Mock R2 storage configuration for tests
+config :bridge, :r2,
+  access_key_id: "test_access_key",
+  secret_access_key: "test_secret_key",
+  bucket: "test-bucket",
+  host: "test.r2.cloudflarestorage.com",
+  region: "auto",
+  public_url: "https://test-bucket.example.com"
+
+# Use mock storage in tests
+config :bridge, :storage_adapter, :mock

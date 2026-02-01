@@ -31,7 +31,11 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchMembers: () => Promise<void>;
-  updateProfile: (data: { name?: string; email?: string }) => Promise<void>;
+  updateProfile: (data: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+  }) => Promise<void>;
   updateWorkspace: (data: { name?: string; slug?: string }) => Promise<void>;
   // Permission helpers
   isOwner: () => boolean;
@@ -122,7 +126,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  updateProfile: async (data: { name?: string; email?: string }) => {
+  updateProfile: async (data: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+  }) => {
     const response = await api.put<{ user: User }>("/auth/me", { user: data });
     set({ user: response.user });
   },

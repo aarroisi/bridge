@@ -10,6 +10,12 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { createMentionExtension } from "@/lib/mention";
 import {
+  FileAttachment,
+  ImageBlock,
+  ImageGrid,
+  handleFilesUpload,
+} from "@/lib/tiptap";
+import {
   Bold,
   Italic,
   List,
@@ -24,6 +30,7 @@ import {
   MoreHorizontal,
   Star,
   Trash2,
+  Paperclip,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Message } from "@/components/features/Message";
@@ -77,6 +84,7 @@ export function DocView() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const doc = isNewDoc ? null : docs.find((d) => d.id === docId);
   const rawDocComments =
     docId && !isNewDoc && Array.isArray(messages[`doc:${docId}`])
@@ -108,6 +116,9 @@ export function DocView() {
       Placeholder.configure({
         placeholder: "Start writing...",
       }),
+      ImageBlock,
+      ImageGrid,
+      FileAttachment,
       createMentionExtension({ members: mentionMembers }),
     ],
     content: doc?.content || "",
@@ -116,6 +127,51 @@ export function DocView() {
       if (isEditing) {
         setEditedContent(editor.getHTML());
       }
+    },
+    editorProps: {
+      // Prevent auto-scrolling when selection changes
+      handleScrollToSelection: () => false,
+      handleDrop: (_view, event) => {
+        const files = event.dataTransfer?.files;
+        if (files && files.length > 0 && editor) {
+          // Can't upload files to unsaved docs
+          if (isNewDoc || !docId) {
+            error("Please save the document before uploading files");
+            return true;
+          }
+          event.preventDefault();
+          handleFilesUpload(editor, Array.from(files), {
+            onError: (msg) => error(msg),
+            attachableType: "doc",
+            attachableId: docId,
+          });
+          return true;
+        }
+        return false;
+      },
+      handlePaste: (_view, event) => {
+        const files = event.clipboardData?.files;
+        if (files && files.length > 0 && editor) {
+          // Can't upload files to unsaved docs
+          if (isNewDoc || !docId) {
+            error("Please save the document before uploading files");
+            return true;
+          }
+          const hasFiles = Array.from(files).some(
+            (file) => file.type.startsWith("image/") || file.size > 0,
+          );
+          if (hasFiles) {
+            event.preventDefault();
+            handleFilesUpload(editor, Array.from(files), {
+              onError: (msg) => error(msg),
+              attachableType: "doc",
+              attachableId: docId,
+            });
+            return true;
+          }
+        }
+        return false;
+      },
     },
   });
 
@@ -284,14 +340,20 @@ export function DocView() {
       setOpenThread(null);
       setIsEditing(true); // Always in edit mode for new docs
       if (editor) {
-        editor.commands.setContent("");
+        // Defer to avoid flushSync warning during React render
+        queueMicrotask(() => {
+          editor.commands.setContent("");
+        });
       }
     }
   }, [docId, isNewDoc, getDoc, fetchMessages, editor, searchParams]);
 
   useEffect(() => {
     if (editor && doc) {
-      editor.commands.setContent(doc.content);
+      // Defer to avoid flushSync warning during React render
+      queueMicrotask(() => {
+        editor.commands.setContent(doc.content);
+      });
       setEditedTitle(doc.title);
       setEditedContent(doc.content);
     }
@@ -370,7 +432,9 @@ export function DocView() {
     scrollContainer.addEventListener("scroll", handleScroll);
     handleScroll(); // Check initial state
 
-    return () => scrollContainer.removeEventListener("scroll", handleScroll);
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
   }, [docComments]); // Re-check when comments change
 
   const handleEnterEditMode = () => {
@@ -791,6 +855,37 @@ export function DocView() {
             >
               <Redo size={16} />
             </button>
+            <div className="w-px h-6 bg-dark-border mx-1" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 rounded text-dark-text-muted hover:bg-dark-surface transition-colors"
+              title="Upload file"
+            >
+              <Paperclip size={16} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files && files.length > 0 && editor) {
+                  // Can't upload files to unsaved docs
+                  if (isNewDoc || !docId) {
+                    error("Please save the document before uploading files");
+                    e.target.value = "";
+                    return;
+                  }
+                  handleFilesUpload(editor, Array.from(files), {
+                    onError: (msg) => error(msg),
+                    attachableType: "doc",
+                    attachableId: docId,
+                  });
+                }
+                e.target.value = "";
+              }}
+            />
           </div>
         )}
 

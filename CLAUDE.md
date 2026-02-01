@@ -20,6 +20,10 @@ cd server && mix test           cd web && npx playwright test
 4. **E2E Testing**: Use `keyboard.insertText()` for React inputs, NOT `fill()`
 5. **Toast Notifications**: Always show toast after successful backend mutations (create, update, delete) using `useToastStore`
 6. **API Params**: Send params directly without nested wrappers - use `{name, email}` NOT `{user: {name, email}}`
+7. **Product Spec First**: All product decisions must be documented in `.claude/skills/product/SKILL.md`. When a discussion hints at product behavior or business rules:
+   - **Update** the spec if it's a new decision
+   - **Debate** if it conflicts with existing spec - don't silently override
+   - This keeps decisions aligned and auditable
 
 ## Documentation
 
@@ -29,11 +33,13 @@ Detailed guides organized as skills in `.claude/skills/`:
 - `/architecture` - Patterns: error handling, controllers, multi-tenancy, UUIDs, pagination
 - `/testing` - TDD practices, factories, meaningful tests
 - `/e2e-testing` - Playwright + React gotchas (controlled inputs)
+- `/product` - Product specification and business rules (data ownership, user management, permissions)
 
 Background skills (auto-loaded by context):
 
 - `backend` - Elixir/Phoenix patterns when in `server/`
 - `frontend` - React/TypeScript patterns when in `web/`
+- `product` - Business rules when implementing features involving data ownership or user management
 
 ## Tech Stack
 

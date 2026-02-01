@@ -36,6 +36,34 @@ body {
   box-shadow: none !important;
 }
 
+/* Prevent scroll anchoring issues with node views */
+.ProseMirror .image-block-wrapper,
+.ProseMirror .image-grid-wrapper,
+.ProseMirror .file-attachment-wrapper {
+  overflow-anchor: none;
+}
+
+/* Prevent browser from auto-scrolling to caret on selection change */
+.flex-1.overflow-y-auto {
+  overflow-anchor: none;
+  scroll-behavior: auto;
+}
+
+/* Prevent scroll-into-view behavior for atom nodes */
+.ProseMirror .image-block-wrapper,
+.ProseMirror .image-grid-wrapper,
+.ProseMirror .file-attachment-wrapper {
+  scroll-margin: 0;
+  scroll-snap-align: none;
+}
+
+.ProseMirror .image-block-wrapper *,
+.ProseMirror .image-grid-wrapper *,
+.ProseMirror .file-attachment-wrapper * {
+  caret-color: transparent;
+  scroll-margin: 0;
+}
+
 /* Ensure cursor is visible */
 .ProseMirror p.is-editor-empty:first-child::before {
   color: #64748b;
@@ -230,4 +258,128 @@ body {
 
 .mention:hover {
   background-color: rgba(59, 130, 246, 0.3);
+}
+
+/* File attachment styles for TipTap */
+.file-attachment {
+  margin: 0.75rem 0;
+}
+
+.file-attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #e2e8f0;
+  transition: all 0.15s ease;
+  max-width: 100%;
+}
+
+.file-attachment-link:hover {
+  background-color: #334155;
+  border-color: #475569;
+}
+
+.file-attachment-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.file-attachment-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.file-attachment-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-attachment-size {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* Image styles in editor */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* Image block styles */
+.image-block-wrapper {
+  margin: 0.75rem 0;
+  text-align: center;
+}
+
+.image-block {
+  text-align: center;
+}
+
+.image-block-filename {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-block-caption {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+/* File attachment block styles */
+.file-attachment-wrapper {
+  margin: 0.75rem 0;
+  text-align: center;
+}
+
+.file-attachment-block {
+  text-align: left;
+}
+
+.file-attachment-link,
+.file-attachment-link:hover,
+.file-attachment-link:visited,
+.file-attachment-link:active {
+  text-decoration: none !important;
+}
+
+.file-attachment-name {
+  text-decoration: none !important;
+}
+
+.file-attachment-caption {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+/* Image grid styles */
+.image-grid-wrapper {
+  margin: 0.75rem 0;
+}
+
+.image-grid {
+  width: 100%;
+}
+
+.grid-image-item {
+  width: 100%;
 }

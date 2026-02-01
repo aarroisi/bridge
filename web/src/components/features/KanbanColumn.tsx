@@ -107,6 +107,7 @@ export function KanbanColumn({
 
       <div className="flex-1 overflow-y-auto space-y-2 p-1">
         <SortableContext
+          id={id}
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >

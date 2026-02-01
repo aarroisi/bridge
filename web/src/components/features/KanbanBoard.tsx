@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
+  closestCenter,
   pointerWithin,
   rectIntersection,
   KeyboardSensor,
@@ -12,6 +13,7 @@ import {
   DragEndEvent,
   DragOverEvent,
   CollisionDetection,
+  getFirstCollision,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
@@ -130,25 +132,33 @@ export function KanbanBoard({
     return groups;
   }, [tasks, sortedStatuses]);
 
-  // Custom collision detection that works better for kanban columns
-  const collisionDetection: CollisionDetection = (args) => {
-    // First, check for pointer collisions with droppable columns
-    const pointerCollisions = pointerWithin(args);
+  // Custom collision detection that works for both cross-column and within-column
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      // First use closestCenter for sortable items (better for reordering)
+      const closestCenterCollisions = closestCenter(args);
 
-    if (pointerCollisions.length > 0) {
-      // Prioritize column collisions over task collisions
-      const columnCollision = pointerCollisions.find((collision) =>
-        sortedStatuses.some((s) => s.id === collision.id),
-      );
-      if (columnCollision) {
-        return [columnCollision];
+      // Check if we have a collision with a task
+      const taskCollision = getFirstCollision(closestCenterCollisions, "id");
+      if (
+        taskCollision &&
+        !sortedStatuses.some((s) => s.id === taskCollision)
+      ) {
+        // It's a task collision - use it for precise positioning
+        return closestCenterCollisions;
       }
-      return pointerCollisions;
-    }
 
-    // Fallback to rect intersection
-    return rectIntersection(args);
-  };
+      // Use pointerWithin for column detection (cross-column moves)
+      const pointerCollisions = pointerWithin(args);
+      if (pointerCollisions.length > 0) {
+        return pointerCollisions;
+      }
+
+      // Fallback to rect intersection
+      return rectIntersection(args);
+    },
+    [sortedStatuses],
+  );
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find((t) => t.id === event.active.id);
@@ -222,21 +232,13 @@ export function KanbanBoard({
       targetStatusId = over.id as string;
       targetIndex = groupedTasks[targetStatusId]?.length || 0;
     } else {
-      // Dropped on another task
+      // Dropped on another task - insert at that task's position
       const overTask = tasks.find((t) => t.id === over.id);
       if (!overTask) return;
 
       targetStatusId = overTask.statusId;
       const columnTasks = groupedTasks[targetStatusId] || [];
       targetIndex = columnTasks.findIndex((t) => t.id === over.id);
-
-      // If dragging down in same column, adjust index
-      if (task.statusId === targetStatusId) {
-        const currentIndex = columnTasks.findIndex((t) => t.id === taskId);
-        if (currentIndex < targetIndex) {
-          targetIndex++;
-        }
-      }
     }
 
     // Only reorder if something changed

@@ -6,40 +6,43 @@ test.describe("Kanban Board", () => {
     await registerTestUser(page);
   });
 
-  async function createList(page: any) {
-    // Click on Lists category in outer sidebar
-    await page.getByTitle("Lists").click();
+  async function createBoard(page: any) {
+    // Click on Boards category in outer sidebar
+    await page.getByTitle("Boards").click();
 
-    // Wait for inner sidebar to show lists
-    await expect(page.getByText("All Lists")).toBeVisible();
+    // Wait for inner sidebar to show boards
+    await expect(page.getByText("All Boards")).toBeVisible();
 
-    // Click the + button next to "All Lists" to create a new list
+    // Click the + button next to "All Boards" to create a new board
     await page
       .locator("div")
-      .filter({ hasText: /^All Lists$/ })
+      .filter({ hasText: /^All Boards$/ })
       .locator("button")
       .click();
 
-    // Wait for the new list to be created and navigate to it
-    await page.waitForURL(/\/lists\/[a-f0-9-]+/);
+    // Wait for the new board to be created and navigate to it
+    await page.waitForURL(/\/boards\/[a-f0-9-]+/);
   }
 
-  test("should create a list and add tasks", async ({ page }) => {
-    await createList(page);
+  test("should create a board and add tasks", async ({ page }) => {
+    await createBoard(page);
 
     // Verify kanban columns are visible (default statuses: todo, doing, done)
     await expect(page.getByTestId("column-todo")).toBeVisible();
     await expect(page.getByTestId("column-doing")).toBeVisible();
     await expect(page.getByTestId("column-done")).toBeVisible();
 
-    // Add a task to todo column by clicking + button in that column
-    await page.getByTestId("column-todo").getByRole("button").click();
+    // Add a task to todo column by clicking Add task button in that column
+    await page
+      .getByTestId("column-todo")
+      .getByRole("button", { name: /add task/i })
+      .click();
 
     // Fill in task title in modal
     const taskInput = page.getByPlaceholder(/task title/i);
     await taskInput.focus();
     await page.keyboard.insertText("My First Task");
-    await page.getByRole("button", { name: /add task/i }).click();
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
 
     // Verify task appears
     await expect(page.getByText("My First Task")).toBeVisible();
@@ -48,24 +51,27 @@ test.describe("Kanban Board", () => {
   test("should display tasks in correct columns based on status", async ({
     page,
   }) => {
-    await createList(page);
+    await createBoard(page);
 
     // Add a task to todo
-    await page.getByTestId("column-todo").getByRole("button").click();
+    await page
+      .getByTestId("column-todo")
+      .getByRole("button", { name: /add task/i })
+      .click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Todo Task");
-    await page.getByRole("button", { name: /add task/i }).click();
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
 
     // Verify task is in todo column
     await expect(
       page.getByTestId("column-todo").getByText("Todo Task"),
     ).toBeVisible();
 
-    // Add a task to doing
-    await page.getByTestId("column-doing").getByRole("button").click();
+    // Add a task to doing (use the + button in header since "Add task" only shows in first column)
+    await page.getByTestId("column-doing").getByRole("button").last().click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Doing Task");
-    await page.getByRole("button", { name: /add task/i }).click();
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
 
     // Verify task is in doing column
     await expect(
@@ -74,14 +80,17 @@ test.describe("Kanban Board", () => {
   });
 
   test("should persist task order after page reload", async ({ page }) => {
-    await createList(page);
+    await createBoard(page);
 
     // Add multiple tasks
     for (const taskName of ["Task 1", "Task 2", "Task 3"]) {
-      await page.getByTestId("column-todo").getByRole("button").first().click();
+      await page
+        .getByTestId("column-todo")
+        .getByRole("button", { name: /add task/i })
+        .click();
       await page.getByPlaceholder(/task title/i).focus();
       await page.keyboard.insertText(taskName);
-      await page.getByRole("button", { name: /add task/i }).click();
+      await page.getByRole("button", { name: "Add Task", exact: true }).click();
       await page.waitForTimeout(300); // Wait for task to be created
     }
 
@@ -102,13 +111,16 @@ test.describe("Kanban Board", () => {
   test("should open task detail modal when clicking a task", async ({
     page,
   }) => {
-    await createList(page);
+    await createBoard(page);
 
     // Add a task
-    await page.getByTestId("column-todo").getByRole("button").click();
+    await page
+      .getByTestId("column-todo")
+      .getByRole("button", { name: /add task/i })
+      .click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Click Me Task");
-    await page.getByRole("button", { name: /add task/i }).click();
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
 
     // Click the task to open modal
     await page.getByText("Click Me Task").click();
@@ -124,13 +136,16 @@ test.describe("Kanban Board", () => {
   test("should change task status via detail modal dropdown", async ({
     page,
   }) => {
-    await createList(page);
+    await createBoard(page);
 
     // Add a task to todo
-    await page.getByTestId("column-todo").getByRole("button").click();
+    await page
+      .getByTestId("column-todo")
+      .getByRole("button", { name: /add task/i })
+      .click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("Status Test Task");
-    await page.getByRole("button", { name: /add task/i }).click();
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
 
     // Click the task to open modal
     await page.getByText("Status Test Task").click();
@@ -138,14 +153,14 @@ test.describe("Kanban Board", () => {
     // Click the status dropdown to open it
     await page
       .locator("button")
-      .filter({ hasText: /^todo$/ })
+      .filter({ hasText: /^TODO$/ })
       .first()
       .click();
 
-    // Select "doing" status
+    // Select "DOING" status
     await page
       .locator("button")
-      .filter({ hasText: /^doing$/ })
+      .filter({ hasText: /^DOING$/ })
       .click();
 
     // Click Save button to apply changes
@@ -163,24 +178,27 @@ test.describe("Kanban Board", () => {
     ).toBeVisible();
   });
 
-  test("should switch between board and list view", async ({ page }) => {
-    await createList(page);
+  test("should switch between board and table view", async ({ page }) => {
+    await createBoard(page);
 
     // Add a task
-    await page.getByTestId("column-todo").getByRole("button").click();
+    await page
+      .getByTestId("column-todo")
+      .getByRole("button", { name: /add task/i })
+      .click();
     await page.getByPlaceholder(/task title/i).focus();
     await page.keyboard.insertText("View Test Task");
-    await page.getByRole("button", { name: /add task/i }).click();
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
 
     // Verify we're in board view (columns visible)
     await expect(page.getByTestId("column-todo")).toBeVisible();
     await expect(page.getByTestId("column-doing")).toBeVisible();
     await expect(page.getByTestId("column-done")).toBeVisible();
 
-    // Switch to list view
-    await page.getByTitle("List view").click();
+    // Switch to table view
+    await page.getByTitle("Table view").click();
 
-    // Verify list view shows task
+    // Verify table view shows task
     await expect(page.getByText("View Test Task")).toBeVisible();
 
     // Switch back to board view

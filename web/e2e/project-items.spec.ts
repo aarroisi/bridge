@@ -160,7 +160,7 @@ test.describe("Project Items", () => {
     await expect(sidebar.getByText("Project Only Doc")).not.toBeVisible();
   });
 
-  test("should create list and channel in project with correct URLs", async ({
+  test("should create board and channel in project with correct URLs", async ({
     page,
   }) => {
     // Create a project
@@ -178,11 +178,11 @@ test.describe("Project Items", () => {
     // Store the project URL for later
     const projectUrl = page.url();
 
-    // Add a list
-    await page.getByRole("button", { name: /add list/i }).click();
+    // Add a board
+    await page.getByRole("button", { name: /add board/i }).click();
 
-    // Should redirect to the new list with nested URL
-    await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+\/lists\/[a-f0-9-]+/);
+    // Should redirect to the new board with nested URL
+    await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+\/boards\/[a-f0-9-]+/);
 
     // Projects icon should still be highlighted
     let projectsButton = page.locator('[title="Projects"]');
@@ -192,8 +192,8 @@ test.describe("Project Items", () => {
     await page.goto(projectUrl);
     await page.waitForURL(/\/projects\/[a-f0-9-]+$/);
 
-    // Verify list is shown in project page
-    await expect(page.getByText("New List").first()).toBeVisible();
+    // Verify board is shown in project page
+    await expect(page.getByText("New Board").first()).toBeVisible();
 
     // Add a channel via the dropdown menu (use exact match for the main Add Item button)
     await page.getByRole("button", { name: "Add Item", exact: true }).click();
@@ -215,7 +215,7 @@ test.describe("Project Items", () => {
 
     // Verify both items are in the sidebar under the project
     const sidebar = page.locator('[class*="w-52"]');
-    await expect(sidebar.getByText("New List")).toBeVisible();
+    await expect(sidebar.getByText("New Board")).toBeVisible();
     await expect(sidebar.getByText("new-channel")).toBeVisible();
   });
 

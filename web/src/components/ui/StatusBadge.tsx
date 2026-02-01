@@ -1,8 +1,8 @@
 import { clsx } from "clsx";
-import { ListStatus } from "@/types";
+import { BoardStatus } from "@/types";
 
 interface StatusBadgeProps {
-  status: ListStatus;
+  status: BoardStatus;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {

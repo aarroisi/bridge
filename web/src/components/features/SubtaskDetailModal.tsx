@@ -8,7 +8,7 @@ import { DiscussionThread } from "./DiscussionThread";
 import { CommentEditor } from "./CommentEditor";
 import { RichTextNotesEditor } from "@/components/ui/RichTextNotesEditor";
 import { Subtask, Message as MessageType, User } from "@/types";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
 import { clsx } from "clsx";
 
@@ -47,7 +47,7 @@ export function SubtaskDetailModal({
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
-  const { updateSubtask, deleteSubtask } = useListStore();
+  const { updateSubtask, deleteSubtask } = useBoardStore();
   const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
 
   const selectedAssignee = workspaceMembers.find(

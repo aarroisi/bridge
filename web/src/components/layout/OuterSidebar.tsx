@@ -1,7 +1,7 @@
 import {
   Home,
   FolderKanban,
-  ListTodo,
+  Kanban,
   FileText,
   Hash,
   MessageSquare,
@@ -17,7 +17,7 @@ import { ProfileMenu } from "@/components/features/ProfileMenu";
 const categories: { id: Category; icon: any; label: string }[] = [
   { id: "home", icon: Home, label: "Home" },
   { id: "projects", icon: FolderKanban, label: "Projects" },
-  { id: "lists", icon: ListTodo, label: "Lists" },
+  { id: "boards", icon: Kanban, label: "Boards" },
   { id: "docs", icon: FileText, label: "Docs" },
   { id: "channels", icon: Hash, label: "Channels" },
   { id: "dms", icon: MessageSquare, label: "Direct Messages" },
@@ -55,7 +55,7 @@ export function OuterSidebar() {
     if (path === "/") return "home";
     // All /projects/* routes (including nested /projects/:id/docs/:docId) are projects
     if (path.startsWith("/projects")) return "projects";
-    if (path.startsWith("/lists")) return "lists";
+    if (path.startsWith("/boards")) return "boards";
     if (path.startsWith("/docs")) return "docs";
     if (path.startsWith("/channels")) return "channels";
     if (path.startsWith("/dms")) return "dms";

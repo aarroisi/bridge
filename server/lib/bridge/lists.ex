@@ -10,9 +10,9 @@ defmodule Bridge.Lists do
   alias Bridge.Chat.Message
 
   @default_statuses [
-    %{name: "todo", color: "#6b7280", position: 0, is_done: false},
-    %{name: "doing", color: "#3b82f6", position: 1, is_done: false},
-    %{name: "done", color: "#22c55e", position: 2, is_done: true}
+    %{name: "TODO", color: "#6b7280", position: 0, is_done: false},
+    %{name: "DOING", color: "#3b82f6", position: 1, is_done: false},
+    %{name: "DONE", color: "#22c55e", position: 2, is_done: true}
   ]
 
   # ============================================================================

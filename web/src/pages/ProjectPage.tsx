@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ListTodo,
+  Kanban,
   FileText,
   Hash,
   Plus,
@@ -13,13 +13,13 @@ import {
   X,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
-import { List, Doc, Channel } from "@/types";
+import { Board, Doc, Channel } from "@/types";
 
-type ItemType = "list" | "doc" | "channel";
+type ItemType = "board" | "doc" | "channel";
 
 interface AddItemMenuProps {
   onAdd: (type: ItemType) => void;
@@ -31,13 +31,13 @@ function AddItemMenu({ onAdd, onClose }: AddItemMenuProps) {
     <div className="absolute top-full left-0 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-10 min-w-[160px]">
       <button
         onClick={() => {
-          onAdd("list");
+          onAdd("board");
           onClose();
         }}
         className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
       >
-        <ListTodo size={16} />
-        New List
+        <Kanban size={16} />
+        New Board
       </button>
       <button
         onClick={() => {
@@ -223,8 +223,8 @@ export function ProjectPage() {
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const addItem = useProjectStore((state) => state.addItem);
 
-  const lists = useListStore((state) => state.lists);
-  const createList = useListStore((state) => state.createList);
+  const boards = useBoardStore((state) => state.boards);
+  const createBoard = useBoardStore((state) => state.createBoard);
 
   const docs = useDocStore((state) => state.docs);
 
@@ -236,12 +236,12 @@ export function ProjectPage() {
   // Get items from project_items and resolve to actual entities
   const projectItems = project?.items || [];
 
-  const projectLists = useMemo(() => {
-    const listIds = projectItems
-      .filter((i) => i.itemType === "list")
+  const projectBoards = useMemo(() => {
+    const boardIds = projectItems
+      .filter((i) => i.itemType === "board")
       .map((i) => i.itemId);
-    return lists.filter((l) => listIds.includes(l.id));
-  }, [projectItems, lists]);
+    return boards.filter((b) => boardIds.includes(b.id));
+  }, [projectItems, boards]);
 
   const projectDocs = useMemo(() => {
     const docIds = projectItems
@@ -258,7 +258,7 @@ export function ProjectPage() {
   }, [projectItems, channels]);
 
   const hasItems =
-    projectLists.length > 0 ||
+    projectBoards.length > 0 ||
     projectDocs.length > 0 ||
     projectChannels.length > 0;
 
@@ -267,11 +267,11 @@ export function ProjectPage() {
 
     try {
       switch (type) {
-        case "list": {
-          const list = await createList("New List");
-          await addItem(id, "list", list.id);
-          success("List created");
-          navigate(`/projects/${id}/lists/${list.id}`);
+        case "board": {
+          const board = await createBoard("New Board");
+          await addItem(id, "board", board.id);
+          success("Board created");
+          navigate(`/projects/${id}/boards/${board.id}`);
           break;
         }
         case "doc": {
@@ -350,13 +350,13 @@ export function ProjectPage() {
   }
 
   const renderItem = (
-    item: List | Doc | Channel,
-    type: "list" | "doc" | "channel",
+    item: Board | Doc | Channel,
+    type: "board" | "doc" | "channel",
   ) => {
-    const name = type === "doc" ? (item as Doc).title : (item as List).name;
+    const name = type === "doc" ? (item as Doc).title : (item as Board).name;
     const icon =
-      type === "list" ? (
-        <ListTodo size={18} />
+      type === "board" ? (
+        <Kanban size={18} />
       ) : type === "doc" ? (
         <FileText size={18} />
       ) : (
@@ -485,15 +485,15 @@ export function ProjectPage() {
               No items yet
             </h2>
             <p className="text-dark-text-muted mb-6 max-w-sm">
-              Add lists, docs, or channels to organize your project.
+              Add boards, docs, or channels to organize your project.
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => handleAddItem("list")}
+                onClick={() => handleAddItem("board")}
                 className="flex items-center gap-2 px-4 py-2 bg-dark-surface border border-dark-border hover:border-dark-hover rounded-lg text-sm text-dark-text transition-colors"
               >
-                <ListTodo size={16} />
-                Add List
+                <Kanban size={16} />
+                Add Board
               </button>
               <button
                 onClick={() => handleAddItem("doc")}
@@ -513,14 +513,14 @@ export function ProjectPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {projectLists.length > 0 && (
+            {projectBoards.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-dark-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <ListTodo size={14} />
-                  Lists
+                  <Kanban size={14} />
+                  Boards
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {projectLists.map((list) => renderItem(list, "list"))}
+                  {projectBoards.map((board) => renderItem(board, "board"))}
                 </div>
               </div>
             )}

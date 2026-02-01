@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FolderKanban,
-  ListTodo,
+  Kanban,
   FileText,
   Hash,
   MessageSquare,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Category } from "@/types";
 import { useProjectStore } from "@/stores/projectStore";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
 import { CreateProjectModal } from "@/components/features/CreateProjectModal";
@@ -23,14 +23,14 @@ export function EmptyState() {
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
   const createProject = useProjectStore((state) => state.createProject);
-  const createList = useListStore((state) => state.createList);
+  const createBoard = useBoardStore((state) => state.createBoard);
   const createChannel = useChatStore((state) => state.createChannel);
 
   // Determine category from URL
   const getCurrentCategory = (): Category => {
     const path = location.pathname;
     if (path.startsWith("/projects")) return "projects";
-    if (path.startsWith("/lists")) return "lists";
+    if (path.startsWith("/boards")) return "boards";
     if (path.startsWith("/docs")) return "docs";
     if (path.startsWith("/channels")) return "channels";
     if (path.startsWith("/dms")) return "dms";
@@ -51,16 +51,16 @@ export function EmptyState() {
             setShowCreateProjectModal(true);
           },
         };
-      case "lists":
+      case "boards":
         return {
-          title: "Lists",
-          icon: ListTodo,
-          description: "Create lists to organize your tasks",
-          actionText: "Create List",
+          title: "Boards",
+          icon: Kanban,
+          description: "Create boards to organize your tasks",
+          actionText: "Create Board",
           action: async () => {
-            const list = await createList("New List");
-            success("List created successfully");
-            navigate(`/lists/${list.id}`);
+            const board = await createBoard("New Board");
+            success("Board created successfully");
+            navigate(`/boards/${board.id}`);
           },
         };
       case "docs":

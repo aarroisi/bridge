@@ -18,11 +18,11 @@ import { RichTextNotesEditor } from "@/components/ui/RichTextNotesEditor";
 import {
   Task,
   Subtask,
-  ListStatus,
+  BoardStatus,
   Message as MessageType,
   User,
 } from "@/types";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
 import { clsx } from "clsx";
 
@@ -30,7 +30,7 @@ interface TaskDetailModalProps {
   task: Task;
   subtasks: Subtask[];
   comments: MessageType[];
-  statuses: ListStatus[];
+  statuses: BoardStatus[];
   workspaceMembers?: User[];
   onClose: () => void;
   onSubtaskClick?: (subtaskId: string) => void;
@@ -77,7 +77,7 @@ export function TaskDetailModal({
     createSubtask,
     deleteSubtask,
     deleteTask,
-  } = useListStore();
+  } = useBoardStore();
   const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
 
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position);

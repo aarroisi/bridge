@@ -291,8 +291,11 @@ defmodule Bridge.Projects do
 
   """
   def get_item_project_id(item_type, item_id) do
+    # Normalize "board" to "list" for database lookup (API uses "board", DB uses "list")
+    db_item_type = if item_type == "board", do: "list", else: item_type
+
     ProjectItem
-    |> where([pi], pi.item_type == ^item_type and pi.item_id == ^item_id)
+    |> where([pi], pi.item_type == ^db_item_type and pi.item_id == ^item_id)
     |> select([pi], pi.project_id)
     |> Repo.one()
   end

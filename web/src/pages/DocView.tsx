@@ -22,7 +22,6 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
-import { Avatar } from "@/components/ui/Avatar";
 import { Message } from "@/components/features/Message";
 import { DiscussionThread } from "@/components/features/DiscussionThread";
 import { CommentEditor } from "@/components/features/CommentEditor";

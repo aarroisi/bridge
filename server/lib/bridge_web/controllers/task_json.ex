@@ -41,7 +41,7 @@ defmodule BridgeWeb.TaskJSON do
       notes: task.notes,
       due_on: task.due_on,
       completed_at: task.completed_at,
-      list_id: task.list_id,
+      board_id: task.list_id,
       status_id: task.status_id,
       assignee_id: task.assignee_id,
       assignee: get_assignee(task),

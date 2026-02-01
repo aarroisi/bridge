@@ -4,7 +4,7 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { HomePage } from "./pages/HomePage";
 import { EmptyState } from "./pages/EmptyState";
 import { ProjectPage } from "./pages/ProjectPage";
-import { ListView } from "./pages/ListView";
+import { BoardView } from "./pages/BoardView";
 import { DocView } from "./pages/DocView";
 import { ChatView } from "./pages/ChatView";
 import { WorkspaceMembersPage } from "./pages/WorkspaceMembersPage";
@@ -13,14 +13,14 @@ import { LoginPage } from "./pages/LoginPage";
 import { ToastContainer } from "./components/ui/Toast";
 import { useAuthStore } from "./stores/authStore";
 import { useProjectStore } from "./stores/projectStore";
-import { useListStore } from "./stores/listStore";
+import { useBoardStore } from "./stores/boardStore";
 import { useDocStore } from "./stores/docStore";
 import { useChatStore } from "./stores/chatStore";
 
 function App() {
   const { checkAuth, isAuthenticated, isLoading } = useAuthStore();
   const { fetchProjects } = useProjectStore();
-  const { fetchLists } = useListStore();
+  const { fetchBoards } = useBoardStore();
   const { fetchDocs } = useDocStore();
   const { fetchChannels, fetchDirectMessages } = useChatStore();
 
@@ -31,7 +31,7 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchProjects();
-      fetchLists();
+      fetchBoards();
       fetchDocs();
       fetchChannels();
       fetchDirectMessages();
@@ -39,7 +39,7 @@ function App() {
   }, [
     isAuthenticated,
     fetchProjects,
-    fetchLists,
+    fetchBoards,
     fetchDocs,
     fetchChannels,
     fetchDirectMessages,
@@ -99,10 +99,10 @@ function App() {
         />
         {/* Nested routes for project items */}
         <Route
-          path="/projects/:projectId/lists/:id"
+          path="/projects/:projectId/boards/:id"
           element={
             <MainLayout>
-              <ListView />
+              <BoardView />
             </MainLayout>
           }
         />
@@ -123,7 +123,7 @@ function App() {
           }
         />
         <Route
-          path="/lists"
+          path="/boards"
           element={
             <MainLayout>
               <EmptyState />
@@ -131,10 +131,10 @@ function App() {
           }
         />
         <Route
-          path="/lists/:id"
+          path="/boards/:id"
           element={
             <MainLayout>
-              <ListView />
+              <BoardView />
             </MainLayout>
           }
         />

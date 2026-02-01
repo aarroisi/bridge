@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Trash2, GripVertical, ChevronDown, Undo2 } from "lucide-react";
-import { ListStatus, Task } from "@/types";
-import { useListStore } from "@/stores/listStore";
+import { BoardStatus, Task } from "@/types";
+import { useBoardStore } from "@/stores/boardStore";
 import { Modal } from "@/components/ui/Modal";
 import { clsx } from "clsx";
 
 interface StatusManagerProps {
-  listId: string;
-  statuses: ListStatus[];
+  boardId: string;
+  statuses: BoardStatus[];
   tasks: Task[];
   onClose: () => void;
 }
@@ -35,13 +35,13 @@ interface LocalStatus {
 }
 
 export function StatusManager({
-  listId,
+  boardId,
   statuses,
   tasks,
   onClose,
 }: StatusManagerProps) {
   const { createStatus, updateStatus, deleteStatus, reorderStatuses } =
-    useListStore();
+    useBoardStore();
 
   // Local state for batched changes
   const [localStatuses, setLocalStatuses] = useState<LocalStatus[]>(() =>
@@ -262,14 +262,14 @@ export function StatusManager({
       for (const status of localStatuses.filter(
         (s) => s.isDeleted && !s.isNew,
       )) {
-        await deleteStatus(status.id, listId);
+        await deleteStatus(status.id, boardId);
       }
 
       // Process new statuses
       for (const status of localStatuses.filter(
         (s) => s.isNew && !s.isDeleted,
       )) {
-        await createStatus(listId, {
+        await createStatus(boardId, {
           name: status.name,
           color: status.color,
         });
@@ -296,7 +296,7 @@ export function StatusManager({
       const newOrder = finalStatuses.filter((s) => !s.isNew).map((s) => s.id);
 
       if (JSON.stringify(originalOrder) !== JSON.stringify(newOrder)) {
-        await reorderStatuses(listId, newOrder);
+        await reorderStatuses(boardId, newOrder);
       }
 
       onClose();

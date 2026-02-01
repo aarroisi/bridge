@@ -13,10 +13,14 @@ defmodule BridgeWeb.ProjectItemJSON do
     %{
       id: item.id,
       project_id: item.project_id,
-      item_type: item.item_type,
+      # API uses "board", DB stores "list"
+      item_type: normalize_item_type(item.item_type),
       item_id: item.item_id,
       inserted_at: item.inserted_at,
       updated_at: item.updated_at
     }
   end
+
+  defp normalize_item_type("list"), do: "board"
+  defp normalize_item_type(other), do: other
 end

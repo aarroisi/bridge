@@ -53,7 +53,7 @@ export function KanbanColumn({
         )}
         style={bgStyle}
         onClick={onToggleCollapse}
-        data-testid={`column-${title}`}
+        data-testid={`column-${title.toLowerCase()}`}
       >
         <ChevronsLeftRight size={16} className="text-dark-text-muted mb-3" />
         <div className="text-dark-text-muted font-medium text-lg mb-2">
@@ -77,7 +77,7 @@ export function KanbanColumn({
         isHighlighted && "bg-blue-500/10",
       )}
       style={bgStyle}
-      data-testid={`column-${title}`}
+      data-testid={`column-${title.toLowerCase()}`}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1">

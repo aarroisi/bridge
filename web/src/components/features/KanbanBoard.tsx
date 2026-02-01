@@ -16,12 +16,12 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
-import { ListStatus, Task } from "@/types";
-import { useListStore } from "@/stores/listStore";
+import { BoardStatus, Task } from "@/types";
+import { useBoardStore } from "@/stores/boardStore";
 
 interface KanbanBoardProps {
   tasks: Task[];
-  statuses: ListStatus[];
+  statuses: BoardStatus[];
   onTaskClick: (taskId: string) => void;
   onAddTask: (statusId: string) => void;
   selectedTaskId: string | null;
@@ -41,7 +41,7 @@ export function KanbanBoard({
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(
     new Set(),
   );
-  const { reorderTask } = useListStore();
+  const { reorderTask } = useBoardStore();
 
   // Find the done status ID to default it to collapsed
   const doneStatusId = useMemo(() => {

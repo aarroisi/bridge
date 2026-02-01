@@ -33,7 +33,7 @@ import { KanbanBoard } from "@/components/features/KanbanBoard";
 import { TaskDetailModal } from "@/components/features/TaskDetailModal";
 import { SubtaskDetailModal } from "@/components/features/SubtaskDetailModal";
 import { StatusManager } from "@/components/features/StatusManager";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -42,7 +42,7 @@ import { api } from "@/lib/api";
 import { User, Task } from "@/types";
 import { clsx } from "clsx";
 
-// Sortable task row component for list view
+// Sortable task row component for table view
 function SortableTaskRow({
   task,
   isSelected,
@@ -96,7 +96,7 @@ function SortableTaskRow({
   );
 }
 
-// Droppable status section for list view
+// Droppable status section for table view
 function DroppableStatusSection({
   statusId,
   isHighlighted,
@@ -129,19 +129,19 @@ function DroppableStatusSection({
   );
 }
 
-export function ListView() {
+export function BoardView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeItem } = useUIStore();
   const {
-    lists,
+    boards,
     tasks,
     subtasks,
     fetchTasks,
     fetchSubtasks,
     createTask,
     reorderTask,
-    updateList,
-  } = useListStore();
+    updateBoard,
+  } = useBoardStore();
   const { messages, fetchMessages } = useChatStore();
   const { isOwner } = useAuthStore();
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -156,11 +156,11 @@ export function ListView() {
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Get view mode, task and subtask IDs from URL
-  const viewMode = (searchParams.get("view") as "board" | "list") || "board";
+  const viewMode = (searchParams.get("view") as "board" | "table") || "board";
   const selectedTaskId = searchParams.get("task");
   const selectedSubtaskId = searchParams.get("subtask");
 
-  const setViewMode = (mode: "board" | "list") => {
+  const setViewMode = (mode: "board" | "table") => {
     const newParams = new URLSearchParams(searchParams);
     if (mode === "board") {
       newParams.delete("view"); // Default, no need to store
@@ -170,13 +170,13 @@ export function ListView() {
     setSearchParams(newParams);
   };
 
-  const listId = activeItem?.id;
-  const list = Array.isArray(lists)
-    ? lists.find((l) => l.id === listId)
+  const boardId = activeItem?.id;
+  const board = Array.isArray(boards)
+    ? boards.find((b) => b.id === boardId)
     : undefined;
-  const rawListTasks = listId ? tasks[listId] : undefined;
-  const listTasks = Array.isArray(rawListTasks) ? rawListTasks : [];
-  const selectedTask = listTasks.find((t) => t.id === selectedTaskId);
+  const rawBoardTasks = boardId ? tasks[boardId] : undefined;
+  const boardTasks = Array.isArray(rawBoardTasks) ? rawBoardTasks : [];
+  const selectedTask = boardTasks.find((t) => t.id === selectedTaskId);
   const taskSubtasks = selectedTaskId ? subtasks[selectedTaskId] || [] : [];
   const selectedSubtask = taskSubtasks.find((s) => s.id === selectedSubtaskId);
 
@@ -194,23 +194,23 @@ export function ListView() {
 
   // Sort statuses by position
   const sortedStatuses = useMemo(
-    () => [...(list?.statuses || [])].sort((a, b) => a.position - b.position),
-    [list?.statuses],
+    () => [...(board?.statuses || [])].sort((a, b) => a.position - b.position),
+    [board?.statuses],
   );
 
   // Group tasks by statusId and sort by position
   const groupedTasks = useMemo(() => {
     const groups: Record<string, Task[]> = {};
     for (const status of sortedStatuses) {
-      groups[status.id] = listTasks
+      groups[status.id] = boardTasks
         .filter((t) => t.statusId === status.id)
         .sort((a, b) => a.position - b.position);
     }
     return groups;
-  }, [listTasks, sortedStatuses]);
+  }, [boardTasks, sortedStatuses]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    const task = listTasks.find((t) => t.id === event.active.id);
+    const task = boardTasks.find((t) => t.id === event.active.id);
     setActiveTask(task || null);
     setOverStatusId(null);
   };
@@ -222,7 +222,7 @@ export function ListView() {
       return;
     }
 
-    const activeTask = listTasks.find((t) => t.id === active.id);
+    const activeTask = boardTasks.find((t) => t.id === active.id);
     if (!activeTask) {
       setOverStatusId(null);
       return;
@@ -234,7 +234,7 @@ export function ListView() {
     if (overId.startsWith("status-")) {
       targetStatusId = overId.replace("status-", "");
     } else {
-      const overTask = listTasks.find((t) => t.id === overId);
+      const overTask = boardTasks.find((t) => t.id === overId);
       if (overTask) {
         targetStatusId = overTask.statusId;
       }
@@ -256,7 +256,7 @@ export function ListView() {
     if (!over) return;
 
     const taskId = active.id as string;
-    const task = listTasks.find((t) => t.id === taskId);
+    const task = boardTasks.find((t) => t.id === taskId);
     if (!task) return;
 
     // Determine target status and index
@@ -271,7 +271,7 @@ export function ListView() {
       targetIndex = groupedTasks[targetStatusId]?.length || 0;
     } else {
       // Dropped on another task
-      const overTask = listTasks.find((t) => t.id === overId);
+      const overTask = boardTasks.find((t) => t.id === overId);
       if (!overTask) return;
 
       targetStatusId = overTask.statusId;
@@ -289,10 +289,10 @@ export function ListView() {
   };
 
   useEffect(() => {
-    if (listId) {
-      fetchTasks(listId);
+    if (boardId) {
+      fetchTasks(boardId);
     }
-  }, [listId, fetchTasks]);
+  }, [boardId, fetchTasks]);
 
   useEffect(() => {
     if (selectedTaskId) {
@@ -332,18 +332,18 @@ export function ListView() {
   }, [editingTitle]);
 
   const handleStartEditingTitle = () => {
-    if (list) {
-      setTitleValue(list.name);
+    if (board) {
+      setTitleValue(board.name);
       setEditingTitle(true);
     }
   };
 
   const handleTitleSave = async () => {
-    if (!list) return;
-    if (titleValue.trim() && titleValue !== list.name) {
-      await updateList(list.id, { name: titleValue.trim() });
+    if (!board) return;
+    if (titleValue.trim() && titleValue !== board.name) {
+      await updateBoard(board.id, { name: titleValue.trim() });
     } else {
-      setTitleValue(list.name);
+      setTitleValue(board.name);
     }
     setEditingTitle(false);
   };
@@ -375,9 +375,9 @@ export function ListView() {
   };
 
   const handleCreateTask = async () => {
-    if (!newTaskTitle.trim() || !listId || !newTaskStatusId) return;
+    if (!newTaskTitle.trim() || !boardId || !newTaskStatusId) return;
 
-    await createTask(listId, {
+    await createTask(boardId, {
       title: newTaskTitle.trim(),
       statusId: newTaskStatusId,
     });
@@ -386,10 +386,10 @@ export function ListView() {
     setNewTaskTitle("");
   };
 
-  if (!list) {
+  if (!board) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-dark-text-muted">Select a list to view tasks</p>
+        <p className="text-dark-text-muted">Select a board to view tasks</p>
       </div>
     );
   }
@@ -397,8 +397,8 @@ export function ListView() {
   const renderBoardView = () => (
     <div className="flex-1 overflow-hidden">
       <KanbanBoard
-        tasks={listTasks}
-        statuses={list?.statuses || []}
+        tasks={boardTasks}
+        statuses={board?.statuses || []}
         onTaskClick={handleTaskClick}
         onAddTask={handleAddTask}
         selectedTaskId={selectedTaskId}
@@ -406,9 +406,9 @@ export function ListView() {
     </div>
   );
 
-  const renderListView = () => {
+  const renderTableView = () => {
     // Also include tasks with no status (shouldn't happen but just in case)
-    const tasksWithoutStatus = listTasks.filter(
+    const tasksWithoutStatus = boardTasks.filter(
       (task) => !sortedStatuses.some((s) => s.id === task.statusId),
     );
 
@@ -596,7 +596,7 @@ export function ListView() {
                 if (e.key === "Enter") {
                   handleTitleSave();
                 } else if (e.key === "Escape") {
-                  setTitleValue(list.name);
+                  setTitleValue(board.name);
                   setEditingTitle(false);
                 }
               }}
@@ -617,12 +617,12 @@ export function ListView() {
               className="text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors"
               title="Click to edit"
             >
-              {list.name}
+              {board.name}
             </h1>
-            {list.createdBy && (
+            {board.createdBy && (
               <div className="text-sm text-dark-text-muted mt-1">
-                Added by {list.createdBy.name} on{" "}
-                {format(new Date(list.insertedAt), "MMM d, yyyy")}
+                Added by {board.createdBy.name} on{" "}
+                {format(new Date(board.insertedAt), "MMM d, yyyy")}
               </div>
             )}
           </div>
@@ -648,21 +648,21 @@ export function ListView() {
             <LayoutGrid size={18} />
           </button>
           <button
-            onClick={() => setViewMode("list")}
+            onClick={() => setViewMode("table")}
             className={clsx(
               "p-2 rounded transition-colors",
-              viewMode === "list"
+              viewMode === "table"
                 ? "bg-blue-600 text-white"
                 : "text-dark-text-muted hover:bg-dark-surface",
             )}
-            title="List view"
+            title="Table view"
           >
             <List size={18} />
           </button>
         </div>
       </div>
 
-      {viewMode === "board" ? renderBoardView() : renderListView()}
+      {viewMode === "board" ? renderBoardView() : renderTableView()}
 
       {/* Task Detail Modal */}
       {selectedTask && (
@@ -670,7 +670,7 @@ export function ListView() {
           task={selectedTask}
           subtasks={taskSubtasks}
           comments={messages[`task:${selectedTaskId}`] || []}
-          statuses={list?.statuses || []}
+          statuses={board?.statuses || []}
           workspaceMembers={workspaceMembers}
           onClose={handleCloseTask}
           onSubtaskClick={handleSubtaskClick}
@@ -727,11 +727,11 @@ export function ListView() {
       )}
 
       {/* Status Manager Modal */}
-      {isStatusManagerOpen && list && (
+      {isStatusManagerOpen && board && (
         <StatusManager
-          listId={list.id}
-          statuses={list.statuses || []}
-          tasks={listTasks}
+          boardId={board.id}
+          statuses={board.statuses || []}
+          tasks={boardTasks}
           onClose={() => setIsStatusManagerOpen(false)}
         />
       )}

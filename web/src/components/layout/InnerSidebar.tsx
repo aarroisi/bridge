@@ -3,7 +3,7 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  ListTodo,
+  Kanban,
   FileText,
   Hash,
 } from "lucide-react";
@@ -12,7 +12,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useUIStore } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -56,19 +56,19 @@ export function InnerSidebar() {
 
   // Get all item IDs that belong to projects (for determining category)
   const projectItemIds = useMemo(() => {
-    const listIds = new Set<string>();
+    const boardIds = new Set<string>();
     const docIds = new Set<string>();
     const channelIds = new Set<string>();
 
     projects.forEach((p) => {
       (p.items || []).forEach((item) => {
-        if (item.itemType === "list") listIds.add(item.itemId);
+        if (item.itemType === "board") boardIds.add(item.itemId);
         if (item.itemType === "doc") docIds.add(item.itemId);
         if (item.itemType === "channel") channelIds.add(item.itemId);
       });
     });
 
-    return { listIds, docIds, channelIds };
+    return { boardIds, docIds, channelIds };
   }, [projects]);
 
   // Determine active category from URL
@@ -78,7 +78,7 @@ export function InnerSidebar() {
     if (path === "/") return "home";
     // All /projects/* routes (including nested /projects/:id/docs/:docId) are projects
     if (path.startsWith("/projects")) return "projects";
-    if (path.startsWith("/lists")) return "lists";
+    if (path.startsWith("/boards")) return "boards";
     if (path.startsWith("/docs")) return "docs";
     if (path.startsWith("/channels")) return "channels";
     if (path.startsWith("/dms")) return "dms";
@@ -95,7 +95,7 @@ export function InnerSidebar() {
     // Handle nested project routes: /projects/:projectId/docs/:docId
     if (pathParts[0] === "projects" && pathParts.length >= 4) {
       const projectId = pathParts[1];
-      const itemType = pathParts[2]; // "docs", "lists", "channels"
+      const itemType = pathParts[2]; // "docs", "boards", "channels"
       const itemId = pathParts[3];
       if (itemId && itemId !== "new") {
         return {
@@ -193,8 +193,8 @@ export function InnerSidebar() {
 
   const createProject = useProjectStore((state) => state.createProject);
   const addItemToProject = useProjectStore((state) => state.addItem);
-  const lists = useListStore((state) => state.lists) || [];
-  const createList = useListStore((state) => state.createList);
+  const boards = useBoardStore((state) => state.boards) || [];
+  const createBoard = useBoardStore((state) => state.createBoard);
   const docs = useDocStore((state) => state.docs) || [];
   const channels = useChatStore((state) => state.channels) || [];
   const directMessages = useChatStore((state) => state.directMessages) || [];
@@ -203,7 +203,7 @@ export function InnerSidebar() {
   // Handler to add item to a specific project
   const handleAddItemToProject = async (
     projectId: string,
-    itemType: "list" | "doc" | "channel",
+    itemType: "board" | "doc" | "channel",
   ) => {
     setAddItemDropdownProjectId(null);
 
@@ -217,12 +217,12 @@ export function InnerSidebar() {
       if (itemType === "doc") {
         // Navigate to new doc page
         navigate(`/projects/${projectId}/docs/new`);
-      } else if (itemType === "list") {
-        // Create list and add to project
-        const list = await createList("New List");
-        await addItemToProject(projectId, "list", list.id);
-        success("List created successfully");
-        navigate(`/projects/${projectId}/lists/${list.id}`);
+      } else if (itemType === "board") {
+        // Create board and add to project
+        const board = await createBoard("New Board");
+        await addItemToProject(projectId, "board", board.id);
+        success("Board created successfully");
+        navigate(`/projects/${projectId}/boards/${board.id}`);
       } else if (itemType === "channel") {
         // Create channel and add to project
         const channel = await createChannel("new-channel");
@@ -238,7 +238,7 @@ export function InnerSidebar() {
 
   // Ensure all are arrays
   const safeProjects = Array.isArray(projects) ? projects : [];
-  const safeLists = Array.isArray(lists) ? lists : [];
+  const safeBoards = Array.isArray(boards) ? boards : [];
   const safeDocs = Array.isArray(docs) ? docs : [];
   const safeChannels = Array.isArray(channels) ? channels : [];
   const safeDirectMessages = Array.isArray(directMessages)
@@ -246,8 +246,8 @@ export function InnerSidebar() {
     : [];
 
   // Filter items without project for main views (use projectItemIds from above)
-  const workspaceLists = safeLists.filter(
-    (l) => !projectItemIds.listIds.has(l.id),
+  const workspaceBoards = safeBoards.filter(
+    (b) => !projectItemIds.boardIds.has(b.id),
   );
   const workspaceDocs = safeDocs.filter(
     (d) => !projectItemIds.docIds.has(d.id),
@@ -257,12 +257,12 @@ export function InnerSidebar() {
   );
 
   // Helper to get items for a specific project
-  const getProjectLists = (projectId: string) => {
+  const getProjectBoards = (projectId: string) => {
     const project = safeProjects.find((p) => p.id === projectId);
-    const listIds = (project?.items || [])
-      .filter((i) => i.itemType === "list")
+    const boardIds = (project?.items || [])
+      .filter((i) => i.itemType === "board")
       .map((i) => i.itemId);
-    return safeLists.filter((l) => listIds.includes(l.id));
+    return safeBoards.filter((b) => boardIds.includes(b.id));
   };
   const getProjectDocs = (projectId: string) => {
     const project = safeProjects.find((p) => p.id === projectId);
@@ -296,10 +296,10 @@ export function InnerSidebar() {
         case "projects":
           setShowCreateProjectModal(true);
           return;
-        case "lists":
-          const list = await createList("New List");
-          success("List created successfully");
-          await navigateToItem("lists", list.id);
+        case "boards":
+          const board = await createBoard("New Board");
+          success("Board created successfully");
+          await navigateToItem("boards", board.id);
           break;
         case "docs":
           navigate("/docs/new");
@@ -384,8 +384,8 @@ export function InnerSidebar() {
 
   const getItemIcon = (type: string) => {
     switch (type) {
-      case "lists":
-        return <ListTodo size={16} />;
+      case "boards":
+        return <Kanban size={16} />;
       case "docs":
         return <FileText size={16} />;
       case "channels":
@@ -422,11 +422,11 @@ export function InnerSidebar() {
             </div>
             <div className="mt-1">
               {safeProjects.map((project) => {
-                const projectLists = getProjectLists(project.id);
+                const projectBoards = getProjectBoards(project.id);
                 const projectDocs = getProjectDocs(project.id);
                 const projectChannels = getProjectChannels(project.id);
                 const hasItems =
-                  projectLists.length > 0 ||
+                  projectBoards.length > 0 ||
                   projectDocs.length > 0 ||
                   projectChannels.length > 0;
                 const isProjectActive = activeProjectId === project.id;
@@ -479,12 +479,12 @@ export function InnerSidebar() {
                           >
                             <button
                               onClick={() =>
-                                handleAddItemToProject(project.id, "list")
+                                handleAddItemToProject(project.id, "board")
                               }
                               className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-hover text-dark-text"
                             >
-                              <ListTodo size={14} />
-                              New List
+                              <Kanban size={14} />
+                              New Board
                             </button>
                             <button
                               onClick={() =>
@@ -510,13 +510,13 @@ export function InnerSidebar() {
                     </div>
                     {hasItems && isProjectActive && (
                       <div className="ml-6 border-l border-dark-border">
-                        {projectLists.map((list) => {
-                          const isActive = activeItemId === list.id;
+                        {projectBoards.map((board) => {
+                          const isActive = activeItemId === board.id;
                           return (
                             <button
-                              key={list.id}
+                              key={board.id}
                               onClick={() =>
-                                navigateToItem("lists", list.id, project.id)
+                                navigateToItem("boards", board.id, project.id)
                               }
                               className={clsx(
                                 "w-full pl-3 pr-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
@@ -525,8 +525,8 @@ export function InnerSidebar() {
                                   : "text-dark-text-muted",
                               )}
                             >
-                              <ListTodo size={14} className="flex-shrink-0" />
-                              <span className="truncate">{list.name}</span>
+                              <Kanban size={14} className="flex-shrink-0" />
+                              <span className="truncate">{board.name}</span>
                             </button>
                           );
                         })}
@@ -583,12 +583,12 @@ export function InnerSidebar() {
           </div>
         );
 
-      case "lists":
+      case "boards":
         return (
           <div>
-            {renderStarred(workspaceLists, "lists")}
+            {renderStarred(workspaceBoards, "boards")}
             <div className="px-3 py-1.5 text-xs font-semibold text-dark-text-muted uppercase tracking-wider flex items-center justify-between">
-              All Lists
+              All Boards
               <button
                 onClick={handleCreateItem}
                 className="hover:text-dark-text"
@@ -597,17 +597,18 @@ export function InnerSidebar() {
               </button>
             </div>
             <div className="mt-1">
-              {workspaceLists.map((list) => (
+              {workspaceBoards.map((board) => (
                 <button
-                  key={list.id}
-                  onClick={() => navigateToItem("lists", list.id)}
+                  key={board.id}
+                  onClick={() => navigateToItem("boards", board.id)}
                   className={clsx(
                     "w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-dark-surface transition-colors",
-                    activeItemId === list.id && "bg-dark-surface text-blue-400",
+                    activeItemId === board.id &&
+                      "bg-dark-surface text-blue-400",
                   )}
                 >
-                  <ListTodo size={16} />
-                  <span className="truncate">{list.name}</span>
+                  <Kanban size={16} />
+                  <span className="truncate">{board.name}</span>
                 </button>
               ))}
             </div>

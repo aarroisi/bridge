@@ -56,10 +56,14 @@ defmodule BridgeWeb.ProjectJSON do
   defp item_data(item) do
     %{
       id: item.id,
-      item_type: item.item_type,
+      # API uses "board", DB stores "list"
+      item_type: normalize_item_type(item.item_type),
       item_id: item.item_id
     }
   end
+
+  defp normalize_item_type("list"), do: "board"
+  defp normalize_item_type(other), do: other
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

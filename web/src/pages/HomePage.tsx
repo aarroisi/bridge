@@ -1,18 +1,18 @@
 import { useProjectStore } from "@/stores/projectStore";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
-import { FileText, ListTodo, MessageSquare } from "lucide-react";
+import { FileText, Kanban, MessageSquare } from "lucide-react";
 
 export function HomePage() {
   const projects = useProjectStore((state) => state.projects) || [];
-  const lists = useListStore((state) => state.lists) || [];
+  const boards = useBoardStore((state) => state.boards) || [];
   const docs = useDocStore((state) => state.docs) || [];
   const channels = useChatStore((state) => state.channels) || [];
 
   // Ensure all values are arrays
   const safeProjects = Array.isArray(projects) ? projects : [];
-  const safeLists = Array.isArray(lists) ? lists : [];
+  const safeBoards = Array.isArray(boards) ? boards : [];
   const safeDocs = Array.isArray(docs) ? docs : [];
   const safeChannels = Array.isArray(channels) ? channels : [];
 
@@ -20,7 +20,9 @@ export function HomePage() {
     ...safeProjects
       .filter((p) => p.starred)
       .map((p) => ({ ...p, type: "project" })),
-    ...safeLists.filter((l) => l.starred).map((l) => ({ ...l, type: "list" })),
+    ...safeBoards
+      .filter((b) => b.starred)
+      .map((b) => ({ ...b, type: "board" })),
     ...safeDocs.filter((d) => d.starred).map((d) => ({ ...d, type: "doc" })),
     ...safeChannels
       .filter((c) => c.starred)
@@ -45,8 +47,8 @@ export function HomePage() {
                 className="p-4 bg-dark-surface border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  {item.type === "list" && (
-                    <ListTodo size={16} className="text-blue-400" />
+                  {item.type === "board" && (
+                    <Kanban size={16} className="text-blue-400" />
                   )}
                   {item.type === "doc" && (
                     <FileText size={16} className="text-green-400" />
@@ -84,9 +86,9 @@ export function HomePage() {
           </div>
           <div className="p-4 bg-dark-surface border border-dark-border rounded-lg">
             <div className="text-2xl font-bold text-green-400 mb-1">
-              {safeLists.length}
+              {safeBoards.length}
             </div>
-            <div className="text-sm text-dark-text-muted">Lists</div>
+            <div className="text-sm text-dark-text-muted">Boards</div>
           </div>
           <div className="p-4 bg-dark-surface border border-dark-border rounded-lg">
             <div className="text-2xl font-bold text-purple-400 mb-1">

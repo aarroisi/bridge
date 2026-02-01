@@ -42,11 +42,12 @@ defmodule BridgeWeb.TaskController do
   end
 
   defp get_authorization_resource(conn, :create_item) do
-    # For create, we need to get the list's project_id via project_items
-    list_id = conn.params["list_id"]
+    # For create, we need to get the board's project_id via project_items
+    # Accept both board_id and list_id for backwards compatibility
+    board_id = conn.params["board_id"] || conn.params["list_id"]
 
-    if list_id do
-      Projects.get_item_project_id("list", list_id)
+    if board_id do
+      Projects.get_item_project_id("board", board_id)
     else
       nil
     end
@@ -57,26 +58,52 @@ defmodule BridgeWeb.TaskController do
   end
 
   def index(conn, params) do
-    case params["list_id"] do
-      list_id when is_binary(list_id) ->
+    # Accept both board_id and list_id for backwards compatibility
+    board_id = params["board_id"] || params["list_id"]
+
+    case board_id do
+      id when is_binary(id) ->
         opts = BridgeWeb.PaginationHelpers.build_pagination_opts(params)
-        page = Lists.list_tasks(list_id, opts)
+        page = Lists.list_tasks(id, opts)
         render(conn, :index, page: page)
 
       _ ->
-        # If no list_id provided, return empty result
+        # If no board_id provided, return empty result
         render(conn, :index, tasks: [])
     end
   end
 
   def create(conn, params) do
     current_user = conn.assigns.current_user
-    task_params = Map.put(params, "created_by_id", current_user.id)
+
+    # Accept both boardId and listId, convert to list_id for internal use
+    task_params =
+      params
+      |> Map.put("created_by_id", current_user.id)
+      |> normalize_board_id()
 
     with {:ok, task} <- Lists.create_task(task_params) do
       conn
       |> put_status(:created)
       |> render(:show, task: task)
+    end
+  end
+
+  # Convert boardId to list_id for internal use
+  defp normalize_board_id(params) do
+    cond do
+      Map.has_key?(params, "boardId") ->
+        params
+        |> Map.put("list_id", params["boardId"])
+        |> Map.delete("boardId")
+
+      Map.has_key?(params, "board_id") ->
+        params
+        |> Map.put("list_id", params["board_id"])
+        |> Map.delete("board_id")
+
+      true ->
+        params
     end
   end
 

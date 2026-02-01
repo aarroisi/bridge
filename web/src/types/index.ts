@@ -38,12 +38,12 @@ export interface Project {
 
 export interface ProjectItem {
   id: string;
-  itemType: "list" | "doc" | "channel";
+  itemType: "board" | "doc" | "channel";
   itemId: string;
 }
 
-// List Status type
-export interface ListStatus {
+// Board Status type
+export interface BoardStatus {
   id: string;
   name: string;
   color: string;
@@ -51,12 +51,12 @@ export interface ListStatus {
   isDone: boolean;
 }
 
-// List types
-export interface List {
+// Board types
+export interface Board {
   id: string;
   name: string;
   starred: boolean;
-  statuses?: ListStatus[];
+  statuses?: BoardStatus[];
   createdById: string;
   createdBy?: EmbeddedUser | null;
   insertedAt: string;
@@ -72,10 +72,10 @@ export interface EmbeddedUser {
 
 export interface Task {
   id: string;
-  listId: string;
+  boardId: string;
   title: string;
   statusId: string;
-  status?: ListStatus;
+  status?: BoardStatus;
   position: number;
   assigneeId?: string | null;
   assignee?: EmbeddedUser | null;
@@ -173,7 +173,7 @@ export type ViewMode = "board" | "list";
 export type Category =
   | "home"
   | "projects"
-  | "lists"
+  | "boards"
   | "docs"
   | "channels"
   | "dms";

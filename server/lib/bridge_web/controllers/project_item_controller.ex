@@ -44,8 +44,10 @@ defmodule BridgeWeb.ProjectItemController do
 
   def create(conn, %{"item_type" => item_type, "item_id" => item_id}) do
     project = conn.assigns.project
+    # Normalize "board" to "list" for database storage
+    db_item_type = normalize_item_type(item_type)
 
-    with {:ok, item} <- Projects.add_item(project.id, item_type, item_id) do
+    with {:ok, item} <- Projects.add_item(project.id, db_item_type, item_id) do
       conn
       |> put_status(:created)
       |> render(:show, item: item)
@@ -55,9 +57,14 @@ defmodule BridgeWeb.ProjectItemController do
   def delete(conn, %{"id" => id}) do
     # id is in format "type:item_id"
     [item_type, item_id] = String.split(id, ":")
+    # Normalize "board" to "list" for database lookup
+    db_item_type = normalize_item_type(item_type)
 
-    with {:ok, _item} <- Projects.remove_item(item_type, item_id) do
+    with {:ok, _item} <- Projects.remove_item(db_item_type, item_id) do
       send_resp(conn, :no_content, "")
     end
   end
+
+  defp normalize_item_type("board"), do: "list"
+  defp normalize_item_type(other), do: other
 end

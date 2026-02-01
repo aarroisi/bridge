@@ -1,38 +1,38 @@
 import { create } from "zustand";
-import { List, ListStatus, Task, Subtask, PaginatedResponse } from "@/types";
+import { Board, BoardStatus, Task, Subtask, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 import { celebrateTaskCompletion } from "@/lib/confetti";
 
-interface ListState {
-  lists: List[];
+interface BoardState {
+  boards: Board[];
   tasks: Record<string, Task[]>;
   subtasks: Record<string, Subtask[]>;
   isLoading: boolean;
   hasMore: boolean;
   afterCursor: string | null;
 
-  // List operations
-  fetchLists: (loadMore?: boolean) => Promise<void>;
-  createList: (name: string) => Promise<List>;
-  updateList: (id: string, data: Partial<List>) => Promise<void>;
-  deleteList: (id: string) => Promise<void>;
-  toggleListStar: (id: string) => Promise<void>;
+  // Board operations
+  fetchBoards: (loadMore?: boolean) => Promise<void>;
+  createBoard: (name: string) => Promise<Board>;
+  updateBoard: (id: string, data: Partial<Board>) => Promise<void>;
+  deleteBoard: (id: string) => Promise<void>;
+  toggleBoardStar: (id: string) => Promise<void>;
 
   // Status operations
   createStatus: (
-    listId: string,
+    boardId: string,
     data: { name: string; color: string },
-  ) => Promise<ListStatus>;
+  ) => Promise<BoardStatus>;
   updateStatus: (
     id: string,
-    data: Partial<Pick<ListStatus, "name" | "color">>,
+    data: Partial<Pick<BoardStatus, "name" | "color">>,
   ) => Promise<void>;
-  deleteStatus: (id: string, listId: string) => Promise<void>;
-  reorderStatuses: (listId: string, statusIds: string[]) => Promise<void>;
+  deleteStatus: (id: string, boardId: string) => Promise<void>;
+  reorderStatuses: (boardId: string, statusIds: string[]) => Promise<void>;
 
   // Task operations
-  fetchTasks: (listId: string) => Promise<void>;
-  createTask: (listId: string, data: Partial<Task>) => Promise<Task>;
+  fetchTasks: (boardId: string) => Promise<void>;
+  createTask: (boardId: string, data: Partial<Task>) => Promise<Task>;
   updateTask: (id: string, data: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   reorderTask: (
@@ -48,16 +48,16 @@ interface ListState {
   deleteSubtask: (id: string) => Promise<void>;
 }
 
-export const useListStore = create<ListState>((set, get) => ({
-  lists: [],
+export const useBoardStore = create<BoardState>((set, get) => ({
+  boards: [],
   tasks: {},
   subtasks: {},
   isLoading: false,
   hasMore: true,
   afterCursor: null,
 
-  // List operations
-  fetchLists: async (loadMore = false) => {
+  // Board operations
+  fetchBoards: async (loadMore = false) => {
     const { afterCursor, isLoading } = get();
 
     if (isLoading || (loadMore && !afterCursor)) return;
@@ -69,64 +69,67 @@ export const useListStore = create<ListState>((set, get) => ({
         params.after = afterCursor;
       }
 
-      const response = await api.get<PaginatedResponse<List>>("/lists", params);
+      const response = await api.get<PaginatedResponse<Board>>(
+        "/boards",
+        params,
+      );
 
       set((state) => ({
-        lists: loadMore ? [...state.lists, ...response.data] : response.data,
+        boards: loadMore ? [...state.boards, ...response.data] : response.data,
         afterCursor: response.metadata.after,
         hasMore: response.metadata.after !== null,
         isLoading: false,
       }));
     } catch (error) {
-      console.error("Failed to fetch lists:", error);
-      set({ lists: [], isLoading: false, hasMore: false });
+      console.error("Failed to fetch boards:", error);
+      set({ boards: [], isLoading: false, hasMore: false });
     }
   },
 
-  createList: async (name: string) => {
-    const list = await api.post<List>("/lists", { name });
+  createBoard: async (name: string) => {
+    const board = await api.post<Board>("/boards", { name });
     set((state) => ({
-      lists: [...(Array.isArray(state.lists) ? state.lists : []), list],
+      boards: [...(Array.isArray(state.boards) ? state.boards : []), board],
     }));
-    return list;
+    return board;
   },
 
-  updateList: async (id: string, data: Partial<List>) => {
-    const list = await api.patch<List>(`/lists/${id}`, data);
+  updateBoard: async (id: string, data: Partial<Board>) => {
+    const board = await api.patch<Board>(`/boards/${id}`, data);
     set((state) => ({
-      lists: state.lists.map((l) => (l.id === id ? list : l)),
+      boards: state.boards.map((b) => (b.id === id ? board : b)),
     }));
   },
 
-  deleteList: async (id: string) => {
-    await api.delete(`/lists/${id}`);
+  deleteBoard: async (id: string) => {
+    await api.delete(`/boards/${id}`);
     set((state) => ({
-      lists: state.lists.filter((l) => l.id !== id),
+      boards: state.boards.filter((b) => b.id !== id),
       tasks: { ...state.tasks, [id]: [] },
     }));
   },
 
-  toggleListStar: async (id: string) => {
-    const list = get().lists.find((l) => l.id === id);
-    if (list) {
-      await get().updateList(id, { starred: !list.starred });
+  toggleBoardStar: async (id: string) => {
+    const board = get().boards.find((b) => b.id === id);
+    if (board) {
+      await get().updateBoard(id, { starred: !board.starred });
     }
   },
 
   // Status operations
   createStatus: async (
-    listId: string,
+    boardId: string,
     data: { name: string; color: string },
   ) => {
-    const status = await api.post<ListStatus>(
-      `/lists/${listId}/statuses`,
+    const status = await api.post<BoardStatus>(
+      `/boards/${boardId}/statuses`,
       data,
     );
     set((state) => ({
-      lists: state.lists.map((l) =>
-        l.id === listId
-          ? { ...l, statuses: [...(l.statuses || []), status] }
-          : l,
+      boards: state.boards.map((b) =>
+        b.id === boardId
+          ? { ...b, statuses: [...(b.statuses || []), status] }
+          : b,
       ),
     }));
     return status;
@@ -134,70 +137,70 @@ export const useListStore = create<ListState>((set, get) => ({
 
   updateStatus: async (
     id: string,
-    data: Partial<Pick<ListStatus, "name" | "color">>,
+    data: Partial<Pick<BoardStatus, "name" | "color">>,
   ) => {
-    const status = await api.patch<ListStatus>(`/statuses/${id}`, data);
+    const status = await api.patch<BoardStatus>(`/statuses/${id}`, data);
     set((state) => ({
-      lists: state.lists.map((l) => ({
-        ...l,
-        statuses: l.statuses?.map((s) => (s.id === id ? status : s)),
+      boards: state.boards.map((b) => ({
+        ...b,
+        statuses: b.statuses?.map((s) => (s.id === id ? status : s)),
       })),
     }));
   },
 
-  deleteStatus: async (id: string, listId: string) => {
+  deleteStatus: async (id: string, boardId: string) => {
     await api.delete(`/statuses/${id}`);
     set((state) => ({
-      lists: state.lists.map((l) =>
-        l.id === listId
-          ? { ...l, statuses: l.statuses?.filter((s) => s.id !== id) }
-          : l,
+      boards: state.boards.map((b) =>
+        b.id === boardId
+          ? { ...b, statuses: b.statuses?.filter((s) => s.id !== id) }
+          : b,
       ),
     }));
     // Refetch tasks since some may have been moved to a different status
-    await get().fetchTasks(listId);
+    await get().fetchTasks(boardId);
   },
 
-  reorderStatuses: async (listId: string, statusIds: string[]) => {
-    await api.put(`/lists/${listId}/statuses/reorder`, {
+  reorderStatuses: async (boardId: string, statusIds: string[]) => {
+    await api.put(`/boards/${boardId}/statuses/reorder`, {
       status_ids: statusIds,
     });
     // Update local state with new positions
     set((state) => ({
-      lists: state.lists.map((l) => {
-        if (l.id !== listId || !l.statuses) return l;
+      boards: state.boards.map((b) => {
+        if (b.id !== boardId || !b.statuses) return b;
         const reorderedStatuses = statusIds
           .map((id, index) => {
-            const status = l.statuses!.find((s) => s.id === id);
+            const status = b.statuses!.find((s) => s.id === id);
             return status ? { ...status, position: index } : null;
           })
-          .filter((s): s is ListStatus => s !== null);
-        return { ...l, statuses: reorderedStatuses };
+          .filter((s): s is BoardStatus => s !== null);
+        return { ...b, statuses: reorderedStatuses };
       }),
     }));
   },
 
   // Task operations
-  fetchTasks: async (listId: string) => {
+  fetchTasks: async (boardId: string) => {
     try {
       const response = await api.get<PaginatedResponse<Task>>(
-        `/tasks?list_id=${listId}`,
+        `/tasks?board_id=${boardId}`,
       );
       set((state) => ({
-        tasks: { ...state.tasks, [listId]: response.data },
+        tasks: { ...state.tasks, [boardId]: response.data },
       }));
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
     }
   },
 
-  createTask: async (listId: string, data: Partial<Task>) => {
-    const task = await api.post<Task>(`/tasks`, { ...data, listId });
+  createTask: async (boardId: string, data: Partial<Task>) => {
+    const task = await api.post<Task>(`/tasks`, { ...data, boardId });
     set((state) => ({
       tasks: {
         ...state.tasks,
-        [listId]: [
-          ...(Array.isArray(state.tasks[listId]) ? state.tasks[listId] : []),
+        [boardId]: [
+          ...(Array.isArray(state.tasks[boardId]) ? state.tasks[boardId] : []),
           task,
         ],
       },
@@ -226,14 +229,14 @@ export const useListStore = create<ListState>((set, get) => ({
     }
 
     set((state) => {
-      const listId = task.listId;
-      const existingTasks = Array.isArray(state.tasks[listId])
-        ? state.tasks[listId]
+      const boardId = task.boardId;
+      const existingTasks = Array.isArray(state.tasks[boardId])
+        ? state.tasks[boardId]
         : [];
       return {
         tasks: {
           ...state.tasks,
-          [listId]: existingTasks.map((t) => (t.id === id ? task : t)),
+          [boardId]: existingTasks.map((t) => (t.id === id ? task : t)),
         },
       };
     });
@@ -243,9 +246,9 @@ export const useListStore = create<ListState>((set, get) => ({
     await api.delete(`/tasks/${id}`);
     set((state) => {
       const newTasks = { ...state.tasks };
-      Object.keys(newTasks).forEach((listId) => {
-        if (Array.isArray(newTasks[listId])) {
-          newTasks[listId] = newTasks[listId].filter((t) => t.id !== id);
+      Object.keys(newTasks).forEach((boardId) => {
+        if (Array.isArray(newTasks[boardId])) {
+          newTasks[boardId] = newTasks[boardId].filter((t) => t.id !== id);
         }
       });
       return { tasks: newTasks };
@@ -259,33 +262,33 @@ export const useListStore = create<ListState>((set, get) => ({
   ) => {
     const state = get();
 
-    // Find the task and its list
+    // Find the task and its board
     let task: Task | undefined;
-    let listId: string | undefined;
-    let list: List | undefined;
+    let boardId: string | undefined;
+    let board: Board | undefined;
 
-    for (const [lid, tasks] of Object.entries(state.tasks)) {
+    for (const [bid, tasks] of Object.entries(state.tasks)) {
       const found = tasks.find((t) => t.id === taskId);
       if (found) {
         task = found;
-        listId = lid;
-        list = state.lists.find((l) => l.id === lid);
+        boardId = bid;
+        board = state.boards.find((b) => b.id === bid);
         break;
       }
     }
 
-    if (!task || !listId) return;
+    if (!task || !boardId) return;
 
     // Check if moving to a DONE status (for celebration)
     const oldStatusIsDone = task.status?.isDone;
-    const newStatus = list?.statuses?.find((s) => s.id === newStatusId);
+    const newStatus = board?.statuses?.find((s) => s.id === newStatusId);
     const newStatusIsDone = newStatus?.isDone;
 
-    const listTasks = state.tasks[listId] || [];
+    const boardTasks = state.tasks[boardId] || [];
 
     // Optimistic update: reorder tasks locally
     // 1. Remove task from its current position
-    const tasksWithoutMoved = listTasks.filter((t) => t.id !== taskId);
+    const tasksWithoutMoved = boardTasks.filter((t) => t.id !== taskId);
 
     // 2. Get tasks in the target status, sorted by position
     const targetStatusTasks = tasksWithoutMoved
@@ -309,7 +312,7 @@ export const useListStore = create<ListState>((set, get) => ({
     const updatedTasks = [...otherTasks, ...updatedTargetTasks];
 
     set((state) => ({
-      tasks: { ...state.tasks, [listId!]: updatedTasks },
+      tasks: { ...state.tasks, [boardId!]: updatedTasks },
     }));
 
     try {
@@ -325,11 +328,11 @@ export const useListStore = create<ListState>((set, get) => ({
       }
 
       // Refetch to get accurate positions from server
-      await get().fetchTasks(listId);
+      await get().fetchTasks(boardId);
     } catch (error) {
       console.error("Failed to reorder task:", error);
       // Revert on error by refetching
-      await get().fetchTasks(listId);
+      await get().fetchTasks(boardId);
     }
   },
 
@@ -365,11 +368,11 @@ export const useListStore = create<ListState>((set, get) => ({
           ? { ...task, subtaskCount: totalCount, subtaskDoneCount: doneCount }
           : task;
 
-      // Update tasks in both state.tasks and state.lists
+      // Update tasks in both state.tasks and state.boards
       const newTasks = { ...state.tasks };
-      Object.keys(newTasks).forEach((listId) => {
-        if (Array.isArray(newTasks[listId])) {
-          newTasks[listId] = newTasks[listId].map(updateTaskCounts);
+      Object.keys(newTasks).forEach((boardId) => {
+        if (Array.isArray(newTasks[boardId])) {
+          newTasks[boardId] = newTasks[boardId].map(updateTaskCounts);
         }
       });
 
@@ -379,10 +382,6 @@ export const useListStore = create<ListState>((set, get) => ({
           [taskId]: updatedSubtasks,
         },
         tasks: newTasks,
-        lists: (state.lists || []).map((list) => ({
-          ...list,
-          tasks: (list.tasks || []).map(updateTaskCounts),
-        })),
       };
     });
     return subtask;
@@ -403,11 +402,11 @@ export const useListStore = create<ListState>((set, get) => ({
       const updateTaskCounts = (task: Task) =>
         task.id === taskId ? { ...task, subtaskDoneCount: doneCount } : task;
 
-      // Update tasks in both state.tasks and state.lists
+      // Update tasks in both state.tasks and state.boards
       const newTasks = { ...state.tasks };
-      Object.keys(newTasks).forEach((listId) => {
-        if (Array.isArray(newTasks[listId])) {
-          newTasks[listId] = newTasks[listId].map(updateTaskCounts);
+      Object.keys(newTasks).forEach((boardId) => {
+        if (Array.isArray(newTasks[boardId])) {
+          newTasks[boardId] = newTasks[boardId].map(updateTaskCounts);
         }
       });
 
@@ -417,10 +416,6 @@ export const useListStore = create<ListState>((set, get) => ({
           [taskId]: updatedSubtasks,
         },
         tasks: newTasks,
-        lists: (state.lists || []).map((list) => ({
-          ...list,
-          tasks: (list.tasks || []).map(updateTaskCounts),
-        })),
       };
     });
   },
@@ -445,9 +440,8 @@ export const useListStore = create<ListState>((set, get) => ({
         }
       });
 
-      // Update task counts in both state.tasks and state.lists
+      // Update task counts in state.tasks
       let updatedTasks = state.tasks;
-      let updatedLists = state.lists;
 
       if (targetTaskId) {
         const remainingSubtasks = newSubtasks[targetTaskId] || [];
@@ -460,22 +454,16 @@ export const useListStore = create<ListState>((set, get) => ({
             : task;
 
         updatedTasks = { ...state.tasks };
-        Object.keys(updatedTasks).forEach((listId) => {
-          if (Array.isArray(updatedTasks[listId])) {
-            updatedTasks[listId] = updatedTasks[listId].map(updateTaskCounts);
+        Object.keys(updatedTasks).forEach((boardId) => {
+          if (Array.isArray(updatedTasks[boardId])) {
+            updatedTasks[boardId] = updatedTasks[boardId].map(updateTaskCounts);
           }
         });
-
-        updatedLists = (state.lists || []).map((list) => ({
-          ...list,
-          tasks: (list.tasks || []).map(updateTaskCounts),
-        }));
       }
 
       return {
         subtasks: newSubtasks,
         tasks: updatedTasks,
-        lists: updatedLists,
       };
     });
   },

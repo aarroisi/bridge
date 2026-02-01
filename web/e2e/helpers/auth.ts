@@ -12,7 +12,7 @@ export async function loginAsTestUser(page: Page) {
   await page.getByRole("button", { name: /sign in/i }).click();
 
   // Wait for redirect to home/authenticated page
-  await page.waitForURL(/\/(home|projects|docs|lists|$)/);
+  await page.waitForURL(/\/(home|projects|docs|boards|$)/);
 }
 
 export async function registerTestUser(page: Page) {
@@ -36,5 +36,5 @@ export async function registerTestUser(page: Page) {
   await page.getByRole("button", { name: /create workspace/i }).click();
 
   // Wait for redirect
-  await page.waitForURL(/\/(home|projects|docs|lists|$)/);
+  await page.waitForURL(/\/(home|projects|docs|boards|$)/);
 }

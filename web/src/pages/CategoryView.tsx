@@ -1,12 +1,12 @@
 import { useLocation } from "react-router-dom";
 import { useProjectStore } from "@/stores/projectStore";
-import { useListStore } from "@/stores/listStore";
+import { useBoardStore } from "@/stores/boardStore";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { Category } from "@/types";
 import {
   FolderKanban,
-  ListTodo,
+  Kanban,
   FileText,
   Hash,
   MessageSquare,
@@ -22,11 +22,11 @@ export function CategoryView() {
   const projectsLoading = useProjectStore((state) => state.isLoading);
   const fetchProjects = useProjectStore((state) => state.fetchProjects);
 
-  const rawLists = useListStore((state) => state.lists);
-  const lists = Array.isArray(rawLists) ? rawLists : [];
-  const listsHasMore = useListStore((state) => state.hasMore);
-  const listsLoading = useListStore((state) => state.isLoading);
-  const fetchLists = useListStore((state) => state.fetchLists);
+  const rawBoards = useBoardStore((state) => state.boards);
+  const boards = Array.isArray(rawBoards) ? rawBoards : [];
+  const boardsHasMore = useBoardStore((state) => state.hasMore);
+  const boardsLoading = useBoardStore((state) => state.isLoading);
+  const fetchBoards = useBoardStore((state) => state.fetchBoards);
 
   const rawDocs = useDocStore((state) => state.docs);
   const docs = Array.isArray(rawDocs) ? rawDocs : [];
@@ -54,7 +54,7 @@ export function CategoryView() {
   const getCurrentCategory = (): Category => {
     const path = location.pathname;
     if (path.startsWith("/projects")) return "projects";
-    if (path.startsWith("/lists")) return "lists";
+    if (path.startsWith("/boards")) return "boards";
     if (path.startsWith("/docs")) return "docs";
     if (path.startsWith("/channels")) return "channels";
     if (path.startsWith("/dms")) return "dms";
@@ -75,15 +75,15 @@ export function CategoryView() {
           onLoadMore: () => fetchProjects(true),
           emptyMessage: "No projects yet. Create one to get started!",
         };
-      case "lists":
+      case "boards":
         return {
-          title: "Lists",
-          icon: ListTodo,
-          items: lists,
-          hasMore: listsHasMore,
-          isLoading: listsLoading,
-          onLoadMore: () => fetchLists(true),
-          emptyMessage: "No lists yet. Create one to organize your tasks!",
+          title: "Boards",
+          icon: Kanban,
+          items: boards,
+          hasMore: boardsHasMore,
+          isLoading: boardsLoading,
+          onLoadMore: () => fetchBoards(true),
+          emptyMessage: "No boards yet. Create one to organize your tasks!",
         };
       case "docs":
         return {

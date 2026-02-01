@@ -20,12 +20,12 @@ interface ProjectState {
   toggleStar: (id: string) => Promise<void>;
   addItem: (
     projectId: string,
-    itemType: "list" | "doc" | "channel",
+    itemType: "board" | "doc" | "channel",
     itemId: string,
   ) => Promise<ProjectItem>;
   removeItem: (
     projectId: string,
-    itemType: "list" | "doc" | "channel",
+    itemType: "board" | "doc" | "channel",
     itemId: string,
   ) => Promise<void>;
 }
@@ -105,7 +105,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   addItem: async (
     projectId: string,
-    itemType: "list" | "doc" | "channel",
+    itemType: "board" | "doc" | "channel",
     itemId: string,
   ) => {
     const item = await api.post<ProjectItem>(`/projects/${projectId}/items`, {
@@ -123,7 +123,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   removeItem: async (
     projectId: string,
-    itemType: "list" | "doc" | "channel",
+    itemType: "board" | "doc" | "channel",
     itemId: string,
   ) => {
     await api.delete(`/projects/${projectId}/items/${itemType}:${itemId}`);

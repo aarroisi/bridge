@@ -15,6 +15,7 @@ defmodule BridgeWeb.ListStatusJSON do
       name: status.name,
       color: status.color,
       position: status.position,
+      is_done: status.is_done,
       list_id: status.list_id,
       inserted_at: status.inserted_at,
       updated_at: status.updated_at

@@ -26,9 +26,10 @@ defmodule BridgeWeb.SubtaskJSON do
     %{
       id: subtask.id,
       title: subtask.title,
-      status: subtask.status,
+      is_completed: subtask.is_completed,
       notes: subtask.notes,
       due_on: subtask.due_on,
+      completed_at: subtask.completed_at,
       task_id: subtask.task_id,
       assignee_id: subtask.assignee_id,
       assignee: get_assignee(subtask),

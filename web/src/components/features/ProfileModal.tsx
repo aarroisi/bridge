@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Avatar } from "@/components/ui/Avatar";
+import { Modal } from "@/components/ui/Modal";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -49,81 +49,67 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const hasChanges = name !== user.name || email !== user.email;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      <div className="relative bg-dark-surface border border-dark-border rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="flex items-center justify-between p-4 border-b border-dark-border">
-          <h2 className="text-lg font-semibold text-dark-text">Edit Profile</h2>
-          <button
-            onClick={onClose}
-            className="text-dark-text-muted hover:text-dark-text transition-colors"
-          >
-            <X size={20} />
-          </button>
+    <Modal title="Edit Profile" onClose={onClose} size="md">
+      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <div className="flex justify-center">
+          <Avatar name={name || user.name} size="lg" />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div className="flex justify-center">
-            <Avatar name={name || user.name} size="lg" />
-          </div>
+        <div>
+          <label
+            htmlFor="profile-name"
+            className="block text-sm font-medium text-dark-text mb-1"
+          >
+            Name
+          </label>
+          <input
+            id="profile-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Your name"
+            required
+          />
+        </div>
 
-          <div>
-            <label
-              htmlFor="profile-name"
-              className="block text-sm font-medium text-dark-text mb-1"
-            >
-              Name
-            </label>
-            <input
-              id="profile-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Your name"
-              required
-            />
-          </div>
+        <div>
+          <label
+            htmlFor="profile-email"
+            className="block text-sm font-medium text-dark-text mb-1"
+          >
+            Email
+          </label>
+          <input
+            id="profile-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="your@email.com"
+            required
+          />
+        </div>
 
-          <div>
-            <label
-              htmlFor="profile-email"
-              className="block text-sm font-medium text-dark-text mb-1"
-            >
-              Email
-            </label>
-            <input
-              id="profile-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="your@email.com"
-              required
-            />
-          </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <div className="flex gap-3 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-dark-bg hover:bg-dark-border text-dark-text transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!hasChanges || isLoading}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex gap-3 justify-end pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-dark-bg hover:bg-dark-border text-dark-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!hasChanges || isLoading}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

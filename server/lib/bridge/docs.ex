@@ -96,9 +96,12 @@ defmodule Bridge.Docs do
 
   """
   def create_doc(attrs \\ %{}) do
-    %Doc{}
-    |> Doc.changeset(attrs)
-    |> Repo.insert()
+    case %Doc{}
+         |> Doc.changeset(attrs)
+         |> Repo.insert() do
+      {:ok, doc} -> {:ok, Repo.preload(doc, :author)}
+      error -> error
+    end
   end
 
   @doc """

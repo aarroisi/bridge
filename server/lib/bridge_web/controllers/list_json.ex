@@ -62,7 +62,8 @@ defmodule BridgeWeb.ListJSON do
       id: status.id,
       name: status.name,
       color: status.color,
-      position: status.position
+      position: status.position,
+      is_done: status.is_done
     }
   end
 

@@ -9,6 +9,7 @@ defmodule Bridge.Lists.ListStatus do
     field(:name, :string)
     field(:color, :string, default: "#6b7280")
     field(:position, :integer, default: 0)
+    field(:is_done, :boolean, default: false)
 
     belongs_to(:list, Bridge.Lists.List)
     has_many(:tasks, Bridge.Lists.Task, foreign_key: :status_id)
@@ -19,7 +20,7 @@ defmodule Bridge.Lists.ListStatus do
   @doc false
   def changeset(status, attrs) do
     status
-    |> cast(attrs, [:name, :color, :position, :list_id])
+    |> cast(attrs, [:name, :color, :position, :list_id, :is_done])
     |> validate_required([:name, :list_id])
     |> uppercase_name()
     |> validate_format(:color, ~r/^#[0-9a-fA-F]{6}$/, message: "must be a valid hex color")

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { List, ListStatus, Task, Subtask, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
+import { celebrateTaskCompletion } from "@/lib/confetti";
 
 interface ListState {
   lists: List[];
@@ -205,7 +206,25 @@ export const useListStore = create<ListState>((set, get) => ({
   },
 
   updateTask: async (id: string, data: Partial<Task>) => {
+    const state = get();
+
+    // Find the old task to check if status changed
+    let oldTask: Task | undefined;
+    for (const tasks of Object.values(state.tasks)) {
+      const found = tasks.find((t) => t.id === id);
+      if (found) {
+        oldTask = found;
+        break;
+      }
+    }
+
     const task = await api.patch<Task>(`/tasks/${id}`, data);
+
+    // Celebrate if task was just completed (status changed to done)
+    if (task.status?.isDone && oldTask && !oldTask.status?.isDone) {
+      celebrateTaskCompletion();
+    }
+
     set((state) => {
       const listId = task.listId;
       const existingTasks = Array.isArray(state.tasks[listId])
@@ -243,17 +262,24 @@ export const useListStore = create<ListState>((set, get) => ({
     // Find the task and its list
     let task: Task | undefined;
     let listId: string | undefined;
+    let list: List | undefined;
 
     for (const [lid, tasks] of Object.entries(state.tasks)) {
       const found = tasks.find((t) => t.id === taskId);
       if (found) {
         task = found;
         listId = lid;
+        list = state.lists.find((l) => l.id === lid);
         break;
       }
     }
 
     if (!task || !listId) return;
+
+    // Check if moving to a DONE status (for celebration)
+    const oldStatusIsDone = task.status?.isDone;
+    const newStatus = list?.statuses?.find((s) => s.id === newStatusId);
+    const newStatusIsDone = newStatus?.isDone;
 
     const listTasks = state.tasks[listId] || [];
 
@@ -293,6 +319,11 @@ export const useListStore = create<ListState>((set, get) => ({
         status_id: newStatusId,
       });
 
+      // Celebrate if task was just completed (moved to done status)
+      if (newStatusIsDone && !oldStatusIsDone) {
+        celebrateTaskCompletion();
+      }
+
       // Refetch to get accurate positions from server
       await get().fetchTasks(listId);
     } catch (error) {
@@ -321,17 +352,39 @@ export const useListStore = create<ListState>((set, get) => ({
 
   createSubtask: async (taskId: string, data: Partial<Subtask>) => {
     const subtask = await api.post<Subtask>(`/subtasks`, { ...data, taskId });
-    set((state) => ({
-      subtasks: {
-        ...state.subtasks,
-        [taskId]: [
-          ...(Array.isArray(state.subtasks[taskId])
-            ? state.subtasks[taskId]
-            : []),
-          subtask,
-        ],
-      },
-    }));
+    set((state) => {
+      const existingSubtasks = Array.isArray(state.subtasks[taskId])
+        ? state.subtasks[taskId]
+        : [];
+      const updatedSubtasks = [...existingSubtasks, subtask];
+      const totalCount = updatedSubtasks.length;
+      const doneCount = updatedSubtasks.filter((s) => s.isCompleted).length;
+
+      const updateTaskCounts = (task: Task) =>
+        task.id === taskId
+          ? { ...task, subtaskCount: totalCount, subtaskDoneCount: doneCount }
+          : task;
+
+      // Update tasks in both state.tasks and state.lists
+      const newTasks = { ...state.tasks };
+      Object.keys(newTasks).forEach((listId) => {
+        if (Array.isArray(newTasks[listId])) {
+          newTasks[listId] = newTasks[listId].map(updateTaskCounts);
+        }
+      });
+
+      return {
+        subtasks: {
+          ...state.subtasks,
+          [taskId]: updatedSubtasks,
+        },
+        tasks: newTasks,
+        lists: (state.lists || []).map((list) => ({
+          ...list,
+          tasks: (list.tasks || []).map(updateTaskCounts),
+        })),
+      };
+    });
     return subtask;
   },
 
@@ -342,16 +395,47 @@ export const useListStore = create<ListState>((set, get) => ({
       const existingSubtasks = Array.isArray(state.subtasks[taskId])
         ? state.subtasks[taskId]
         : [];
+      const updatedSubtasks = existingSubtasks.map((s) =>
+        s.id === id ? subtask : s,
+      );
+      const doneCount = updatedSubtasks.filter((s) => s.isCompleted).length;
+
+      const updateTaskCounts = (task: Task) =>
+        task.id === taskId ? { ...task, subtaskDoneCount: doneCount } : task;
+
+      // Update tasks in both state.tasks and state.lists
+      const newTasks = { ...state.tasks };
+      Object.keys(newTasks).forEach((listId) => {
+        if (Array.isArray(newTasks[listId])) {
+          newTasks[listId] = newTasks[listId].map(updateTaskCounts);
+        }
+      });
+
       return {
         subtasks: {
           ...state.subtasks,
-          [taskId]: existingSubtasks.map((s) => (s.id === id ? subtask : s)),
+          [taskId]: updatedSubtasks,
         },
+        tasks: newTasks,
+        lists: (state.lists || []).map((list) => ({
+          ...list,
+          tasks: (list.tasks || []).map(updateTaskCounts),
+        })),
       };
     });
   },
 
   deleteSubtask: async (id: string) => {
+    // Find the taskId before deleting
+    const state = get();
+    let targetTaskId: string | null = null;
+    Object.keys(state.subtasks).forEach((taskId) => {
+      if (Array.isArray(state.subtasks[taskId])) {
+        const found = state.subtasks[taskId].find((s) => s.id === id);
+        if (found) targetTaskId = taskId;
+      }
+    });
+
     await api.delete(`/subtasks/${id}`);
     set((state) => {
       const newSubtasks = { ...state.subtasks };
@@ -360,7 +444,39 @@ export const useListStore = create<ListState>((set, get) => ({
           newSubtasks[taskId] = newSubtasks[taskId].filter((s) => s.id !== id);
         }
       });
-      return { subtasks: newSubtasks };
+
+      // Update task counts in both state.tasks and state.lists
+      let updatedTasks = state.tasks;
+      let updatedLists = state.lists;
+
+      if (targetTaskId) {
+        const remainingSubtasks = newSubtasks[targetTaskId] || [];
+        const doneCount = remainingSubtasks.filter((s) => s.isCompleted).length;
+        const totalCount = remainingSubtasks.length;
+
+        const updateTaskCounts = (task: Task) =>
+          task.id === targetTaskId
+            ? { ...task, subtaskCount: totalCount, subtaskDoneCount: doneCount }
+            : task;
+
+        updatedTasks = { ...state.tasks };
+        Object.keys(updatedTasks).forEach((listId) => {
+          if (Array.isArray(updatedTasks[listId])) {
+            updatedTasks[listId] = updatedTasks[listId].map(updateTaskCounts);
+          }
+        });
+
+        updatedLists = (state.lists || []).map((list) => ({
+          ...list,
+          tasks: (list.tasks || []).map(updateTaskCounts),
+        }));
+      }
+
+      return {
+        subtasks: newSubtasks,
+        tasks: updatedTasks,
+        lists: updatedLists,
+      };
     });
   },
 }));

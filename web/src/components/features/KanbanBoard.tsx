@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -27,6 +27,8 @@ interface KanbanBoardProps {
   selectedTaskId: string | null;
 }
 
+const COLLAPSED_COLUMNS_KEY = "kanban-collapsed-columns";
+
 export function KanbanBoard({
   tasks,
   statuses,
@@ -36,7 +38,61 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overStatusId, setOverStatusId] = useState<string | null>(null);
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(
+    new Set(),
+  );
   const { reorderTask } = useListStore();
+
+  // Find the done status ID to default it to collapsed
+  const doneStatusId = useMemo(() => {
+    return statuses.find((s) => s.isDone)?.id;
+  }, [statuses]);
+
+  // Load collapsed state from localStorage on mount, defaulting done column to collapsed
+  useEffect(() => {
+    if (!doneStatusId) return;
+
+    try {
+      const saved = localStorage.getItem(COLLAPSED_COLUMNS_KEY);
+      if (saved) {
+        const parsed = new Set(JSON.parse(saved) as string[]);
+        // Always add done column to collapsed set (user can expand it manually)
+        parsed.add(doneStatusId);
+        setCollapsedColumns(parsed);
+      } else {
+        // Default done column to collapsed
+        setCollapsedColumns(new Set([doneStatusId]));
+      }
+    } catch {
+      // Ignore parse errors, default to done collapsed
+      setCollapsedColumns(new Set([doneStatusId]));
+    }
+  }, [doneStatusId]);
+
+  // Save collapsed state to localStorage
+  const saveCollapsedState = useCallback((columns: Set<string>) => {
+    try {
+      localStorage.setItem(COLLAPSED_COLUMNS_KEY, JSON.stringify([...columns]));
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const toggleColumnCollapse = useCallback(
+    (statusId: string) => {
+      setCollapsedColumns((prev) => {
+        const next = new Set(prev);
+        if (next.has(statusId)) {
+          next.delete(statusId);
+        } else {
+          next.add(statusId);
+        }
+        saveCollapsedState(next);
+        return next;
+      });
+    },
+    [saveCollapsedState],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -49,7 +105,15 @@ export function KanbanBoard({
     }),
   );
 
-  // Sort statuses by position
+  // Sort statuses by position, with done status always last
+  const sortedStatusesWithDoneLast = useMemo(() => {
+    const sorted = [...statuses].sort((a, b) => a.position - b.position);
+    const done = sorted.find((s) => s.isDone);
+    const regular = sorted.filter((s) => !s.isDone);
+    return done ? [...regular, done] : regular;
+  }, [statuses]);
+
+  // For collision detection, we still need all statuses
   const sortedStatuses = useMemo(
     () => [...statuses].sort((a, b) => a.position - b.position),
     [statuses],
@@ -185,34 +249,41 @@ export function KanbanBoard({
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={collisionDetection}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex h-full overflow-x-auto">
-        {sortedStatuses.map((status) => (
-          <KanbanColumn
-            key={status.id}
-            id={status.id}
-            title={status.name}
-            color={status.color}
-            tasks={groupedTasks[status.id] || []}
-            onTaskClick={onTaskClick}
-            onAddTask={onAddTask}
-            selectedTaskId={selectedTaskId}
-            isHighlighted={overStatusId === status.id}
-          />
-        ))}
-      </div>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex h-full">
+          <div className="flex-1 flex overflow-x-auto gap-2 p-2">
+            {sortedStatusesWithDoneLast.map((status, index) => (
+              <KanbanColumn
+                key={status.id}
+                id={status.id}
+                title={status.name}
+                color={status.color}
+                tasks={groupedTasks[status.id] || []}
+                onTaskClick={onTaskClick}
+                onAddTask={onAddTask}
+                selectedTaskId={selectedTaskId}
+                isHighlighted={overStatusId === status.id}
+                isFirstColumn={index === 0}
+                isCollapsed={collapsedColumns.has(status.id)}
+                onToggleCollapse={() => toggleColumnCollapse(status.id)}
+              />
+            ))}
+          </div>
+        </div>
 
-      <DragOverlay>
-        {activeTask ? (
-          <TaskCard task={activeTask} onClick={() => {}} isDragging />
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay>
+          {activeTask ? (
+            <TaskCard task={activeTask} onClick={() => {}} isDragging />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </>
   );
 }

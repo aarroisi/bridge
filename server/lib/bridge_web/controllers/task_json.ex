@@ -40,12 +40,16 @@ defmodule BridgeWeb.TaskJSON do
       position: task.position,
       notes: task.notes,
       due_on: task.due_on,
+      completed_at: task.completed_at,
       list_id: task.list_id,
       status_id: task.status_id,
       assignee_id: task.assignee_id,
       assignee: get_assignee(task),
       created_by_id: task.created_by_id,
       created_by: get_created_by(task),
+      subtask_count: get_subtask_count(task),
+      subtask_done_count: get_subtask_done_count(task),
+      comment_count: task.comment_count || 0,
       inserted_at: task.inserted_at,
       updated_at: task.updated_at
     }
@@ -56,7 +60,8 @@ defmodule BridgeWeb.TaskJSON do
         id: task.status.id,
         name: task.status.name,
         color: task.status.color,
-        position: task.status.position
+        position: task.status.position,
+        is_done: task.status.is_done
       })
     else
       base
@@ -72,6 +77,16 @@ defmodule BridgeWeb.TaskJSON do
     do: %{id: id, name: name, email: email}
 
   defp get_created_by(_), do: nil
+
+  defp get_subtask_count(%Task{subtasks: subtasks}) when is_list(subtasks),
+    do: length(subtasks)
+
+  defp get_subtask_count(_), do: 0
+
+  defp get_subtask_done_count(%Task{subtasks: subtasks}) when is_list(subtasks),
+    do: Enum.count(subtasks, & &1.is_completed)
+
+  defp get_subtask_done_count(_), do: 0
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

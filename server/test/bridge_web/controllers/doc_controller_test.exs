@@ -126,7 +126,7 @@ defmodule BridgeWeb.DocControllerTest do
       assert body["errors"]["title"]
     end
 
-    test "sets author to current user", %{conn: conn, user: user} do
+    test "sets created_by to current user", %{conn: conn, user: user} do
       doc_params = %{
         title: "Test Doc"
       }
@@ -136,7 +136,7 @@ defmodule BridgeWeb.DocControllerTest do
         |> post(~p"/api/docs", doc_params)
         |> json_response(201)
 
-      assert response["data"]["author_id"] == user.id
+      assert response["data"]["created_by"]["id"] == user.id
     end
 
     test "sets workspace to current user's workspace", %{

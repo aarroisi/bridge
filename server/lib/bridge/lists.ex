@@ -7,11 +7,12 @@ defmodule Bridge.Lists do
   alias Bridge.Repo
 
   alias Bridge.Lists.{List, ListStatus, Task, Subtask}
+  alias Bridge.Chat.Message
 
   @default_statuses [
-    %{name: "todo", color: "#6b7280", position: 0},
-    %{name: "doing", color: "#3b82f6", position: 1},
-    %{name: "done", color: "#22c55e", position: 2}
+    %{name: "todo", color: "#6b7280", position: 0, is_done: false},
+    %{name: "doing", color: "#3b82f6", position: 1, is_done: false},
+    %{name: "done", color: "#22c55e", position: 2, is_done: true}
   ]
 
   # ============================================================================
@@ -69,12 +70,43 @@ defmodule Bridge.Lists do
   def get_list(id, workspace_id) do
     case List
          |> where([l], l.workspace_id == ^workspace_id)
-         |> preload([:created_by, statuses: [], tasks: [:assignee, :created_by, :status]])
+         |> preload([
+           :created_by,
+           statuses: [],
+           tasks: [:assignee, :created_by, :status, :subtasks]
+         ])
          |> Repo.get(id) do
-      nil -> {:error, :not_found}
-      list -> {:ok, list}
+      nil ->
+        {:error, :not_found}
+
+      list ->
+        # Add comment counts to tasks
+        tasks_with_counts = add_comment_counts_to_tasks(list.tasks)
+        {:ok, %{list | tasks: tasks_with_counts}}
     end
   end
+
+  # Adds comment_count to a list of tasks
+  defp add_comment_counts_to_tasks(tasks) when is_list(tasks) do
+    task_ids = Enum.map(tasks, & &1.id)
+
+    # Get comment counts for all tasks in one query
+    counts =
+      from(m in Message,
+        where: m.entity_type == "task" and m.entity_id in ^task_ids,
+        group_by: m.entity_id,
+        select: {m.entity_id, count(m.id)}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    # Add counts to tasks
+    Enum.map(tasks, fn task ->
+      %{task | comment_count: Map.get(counts, task.id, 0)}
+    end)
+  end
+
+  defp add_comment_counts_to_tasks(tasks), do: tasks
 
   @doc """
   Creates a list.
@@ -195,22 +227,46 @@ defmodule Bridge.Lists do
 
   @doc """
   Creates a status for a list.
+  New statuses are inserted before the DONE status (if one exists).
   """
   def create_status(attrs \\ %{}) do
     list_id = attrs["list_id"] || attrs[:list_id]
 
-    # Get max position and add 1
-    max_position =
+    # Find the done status if it exists
+    done_status =
       ListStatus
-      |> where([s], s.list_id == ^list_id)
-      |> select([s], max(s.position))
-      |> Repo.one() || -1
+      |> where([s], s.list_id == ^list_id and s.is_done == true)
+      |> Repo.one()
 
-    attrs_with_position = Map.put(attrs, "position", max_position + 1)
+    Repo.transaction(fn ->
+      new_position =
+        if done_status do
+          # Insert before DONE status, bump DONE's position
+          ListStatus
+          |> where([s], s.id == ^done_status.id)
+          |> Repo.update_all(inc: [position: 1])
 
-    %ListStatus{}
-    |> ListStatus.changeset(attrs_with_position)
-    |> Repo.insert()
+          done_status.position
+        else
+          # No DONE status, insert at end
+          max_position =
+            ListStatus
+            |> where([s], s.list_id == ^list_id)
+            |> select([s], max(s.position))
+            |> Repo.one() || -1
+
+          max_position + 1
+        end
+
+      attrs_with_position = Map.put(attrs, "position", new_position)
+
+      case %ListStatus{}
+           |> ListStatus.changeset(attrs_with_position)
+           |> Repo.insert() do
+        {:ok, status} -> status
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -224,25 +280,60 @@ defmodule Bridge.Lists do
 
   @doc """
   Deletes a status. Tasks with this status will have their status_id set to nil.
+  Cannot delete a status marked as is_done.
   """
   def delete_status(%ListStatus{} = status) do
-    # Check if there are any tasks using this status
-    task_count =
-      Task
-      |> where([t], t.status_id == ^status.id)
-      |> Repo.aggregate(:count, :id)
-
-    if task_count > 0 do
-      {:error, :has_tasks}
+    # Cannot delete the DONE status
+    if status.is_done do
+      {:error, :is_done_status}
     else
-      Repo.delete(status)
+      # Check if there are any tasks using this status
+      task_count =
+        Task
+        |> where([t], t.status_id == ^status.id)
+        |> Repo.aggregate(:count, :id)
+
+      if task_count > 0 do
+        {:error, :has_tasks}
+      else
+        Repo.delete(status)
+      end
     end
   end
 
   @doc """
   Reorders statuses for a list by providing an ordered list of status IDs.
+  Validates that the DONE status (is_done: true) is always at the end.
   """
   def reorder_statuses(list_id, status_ids) when is_list(status_ids) do
+    # Fetch all statuses to validate
+    statuses =
+      ListStatus
+      |> where([s], s.list_id == ^list_id)
+      |> Repo.all()
+      |> Map.new(&{&1.id, &1})
+
+    # Find the done status
+    done_status = Enum.find(statuses, fn {_id, s} -> s.is_done end)
+
+    # Validate: if there's a done status, it must be last in the provided order
+    case done_status do
+      {done_id, _} ->
+        last_id = Elixir.List.last(status_ids)
+
+        if last_id != done_id do
+          {:error, :done_must_be_last}
+        else
+          do_reorder_statuses(list_id, status_ids)
+        end
+
+      nil ->
+        # No done status, proceed normally
+        do_reorder_statuses(list_id, status_ids)
+    end
+  end
+
+  defp do_reorder_statuses(list_id, status_ids) do
     Repo.transaction(fn ->
       status_ids
       |> Enum.with_index()
@@ -270,11 +361,16 @@ defmodule Bridge.Lists do
 
   """
   def list_tasks(list_id, opts \\ []) when is_binary(list_id) do
-    Task
-    |> where([t], t.list_id == ^list_id)
-    |> order_by([t], asc: t.position, desc: t.id)
-    |> preload([:list, :assignee, :created_by, :status, subtasks: [:assignee, :created_by]])
-    |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
+    page =
+      Task
+      |> where([t], t.list_id == ^list_id)
+      |> order_by([t], asc: t.position, desc: t.id)
+      |> preload([:list, :assignee, :created_by, :status, subtasks: [:assignee, :created_by]])
+      |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
+
+    # Add comment counts to tasks
+    tasks_with_counts = add_comment_counts_to_tasks(page.entries)
+    %{page | entries: tasks_with_counts}
   end
 
   @doc """
@@ -447,6 +543,9 @@ defmodule Bridge.Lists do
 
   """
   def update_task(%Task{} = task, attrs) do
+    # Check if status is changing and handle completed_at
+    attrs = maybe_update_task_completed_at(task, attrs)
+
     case task
          |> Task.changeset(attrs)
          |> Repo.update() do
@@ -455,6 +554,41 @@ defmodule Bridge.Lists do
 
       error ->
         error
+    end
+  end
+
+  # Check if new status is a "done" status and set/clear completed_at
+  defp maybe_update_task_completed_at(%Task{} = task, attrs) do
+    new_status_id = attrs[:status_id] || attrs["status_id"]
+
+    # Determine if attrs uses string keys or atom keys
+    use_string_keys = Map.has_key?(attrs, "status_id") || Map.has_key?(attrs, "title")
+    completed_at_key = if use_string_keys, do: "completed_at", else: :completed_at
+
+    cond do
+      # No status change
+      is_nil(new_status_id) ->
+        attrs
+
+      # Status is changing
+      new_status_id != task.status_id ->
+        new_status = Repo.get(ListStatus, new_status_id)
+
+        cond do
+          # Moving to a done status - set completed_at
+          new_status && new_status.is_done && is_nil(task.completed_at) ->
+            Map.put(attrs, completed_at_key, DateTime.utc_now())
+
+          # Moving away from done status - clear completed_at
+          new_status && !new_status.is_done && !is_nil(task.completed_at) ->
+            Map.put(attrs, completed_at_key, nil)
+
+          true ->
+            attrs
+        end
+
+      true ->
+        attrs
     end
   end
 
@@ -485,9 +619,13 @@ defmodule Bridge.Lists do
     # Calculate the new position based on neighbors
     calculated_position = calculate_position(task.list_id, new_status_id, target_index, task.id)
 
+    # Build attrs and check for completed_at update
+    attrs = %{position: calculated_position, status_id: new_status_id}
+    attrs = maybe_update_task_completed_at(task, attrs)
+
     result =
       task
-      |> Task.changeset(%{position: calculated_position, status_id: new_status_id})
+      |> Task.changeset(attrs)
       |> Repo.update()
 
     case result do
@@ -719,6 +857,9 @@ defmodule Bridge.Lists do
 
   """
   def update_subtask(%Subtask{} = subtask, attrs) do
+    # Check if status is changing and handle completed_at
+    attrs = maybe_update_subtask_completed_at(subtask, attrs)
+
     case subtask
          |> Subtask.changeset(attrs)
          |> Repo.update() do
@@ -727,6 +868,32 @@ defmodule Bridge.Lists do
 
       error ->
         error
+    end
+  end
+
+  # Check if subtask is_completed is changing and set/clear completed_at
+  defp maybe_update_subtask_completed_at(%Subtask{} = subtask, attrs) do
+    new_is_completed = attrs[:is_completed] || attrs["is_completed"]
+
+    # Determine if attrs uses string keys or atom keys
+    use_string_keys = Map.has_key?(attrs, "is_completed") || Map.has_key?(attrs, "title")
+    completed_at_key = if use_string_keys, do: "completed_at", else: :completed_at
+
+    cond do
+      # No is_completed change
+      is_nil(new_is_completed) ->
+        attrs
+
+      # Marking as completed - set completed_at
+      new_is_completed == true && subtask.is_completed != true ->
+        Map.put(attrs, completed_at_key, DateTime.utc_now())
+
+      # Marking as not completed - clear completed_at
+      new_is_completed == false && subtask.is_completed == true ->
+        Map.put(attrs, completed_at_key, nil)
+
+      true ->
+        attrs
     end
   end
 
@@ -777,11 +944,11 @@ defmodule Bridge.Lists do
 
   ## Examples
 
-      iex> update_subtask_status(subtask, "done")
+      iex> update_subtask_completion(subtask, true)
       {:ok, %Subtask{}}
 
   """
-  def update_subtask_status(%Subtask{} = subtask, status) do
-    update_subtask(subtask, %{status: status})
+  def update_subtask_completion(%Subtask{} = subtask, is_completed) do
+    update_subtask(subtask, %{is_completed: is_completed})
   end
 end

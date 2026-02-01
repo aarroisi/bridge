@@ -10,6 +10,8 @@ defmodule Bridge.Lists.Task do
     field(:position, :integer, default: 0)
     field(:notes, :string)
     field(:due_on, :date)
+    field(:completed_at, :utc_datetime_usec)
+    field(:comment_count, :integer, virtual: true, default: 0)
 
     belongs_to(:list, Bridge.Lists.List)
     belongs_to(:status, Bridge.Lists.ListStatus)
@@ -29,6 +31,7 @@ defmodule Bridge.Lists.Task do
       :position,
       :notes,
       :due_on,
+      :completed_at,
       :list_id,
       :status_id,
       :assignee_id,

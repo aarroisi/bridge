@@ -1,4 +1,4 @@
-import { Calendar, StickyNote } from "lucide-react";
+import { Calendar, CheckSquare, MessageSquare, StickyNote } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
 import { Task } from "@/types";
@@ -43,17 +43,40 @@ export function TaskCard({
           </div>
         )}
 
-        {task.notes && task.notes.replace(/<[^>]*>/g, "").trim() && (
-          <StickyNote size={12} title="Has notes" />
+        {task.subtaskCount > 0 && (
+          <div
+            className={clsx(
+              "flex items-center gap-1",
+              task.subtaskDoneCount === task.subtaskCount && "text-green-500",
+            )}
+          >
+            <CheckSquare size={12} />
+            <span>
+              {task.subtaskDoneCount}/{task.subtaskCount}
+            </span>
+          </div>
         )}
 
-        {task.createdBy && (
-          <span className="text-[11px]">
-            Added by {task.createdBy.name} on{" "}
-            {format(new Date(task.insertedAt), "MMM d")}
+        {task.commentCount > 0 && (
+          <div className="flex items-center gap-1">
+            <MessageSquare size={12} />
+            <span>{task.commentCount}</span>
+          </div>
+        )}
+
+        {task.notes && task.notes.replace(/<[^>]*>/g, "").trim() && (
+          <span title="Has notes">
+            <StickyNote size={12} />
           </span>
         )}
       </div>
+
+      {task.createdBy && (
+        <div className="text-[11px] text-dark-text-muted mt-2">
+          Added by {task.createdBy.name} on{" "}
+          {format(new Date(task.insertedAt), "MMM d")}
+        </div>
+      )}
     </div>
   );
 }

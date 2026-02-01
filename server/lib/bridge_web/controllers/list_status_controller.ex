@@ -87,6 +87,13 @@ defmodule BridgeWeb.ListStatusController do
       {:ok, _status} ->
         send_resp(conn, :no_content, "")
 
+      {:error, :is_done_status} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> Phoenix.Controller.json(%{
+          error: "Cannot delete the DONE status."
+        })
+
       {:error, :has_tasks} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -99,8 +106,16 @@ defmodule BridgeWeb.ListStatusController do
   def reorder(conn, %{"status_ids" => status_ids}) do
     list = conn.assigns.list
 
-    with {:ok, statuses} <- Lists.reorder_statuses(list.id, status_ids) do
-      render(conn, :index, statuses: statuses)
+    case Lists.reorder_statuses(list.id, status_ids) do
+      {:ok, statuses} ->
+        render(conn, :index, statuses: statuses)
+
+      {:error, :done_must_be_last} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> Phoenix.Controller.json(%{
+          error: "The DONE status must always be at the end."
+        })
     end
   end
 end

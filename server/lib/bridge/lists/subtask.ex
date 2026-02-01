@@ -7,9 +7,10 @@ defmodule Bridge.Lists.Subtask do
   @timestamps_opts [type: :utc_datetime_usec]
   schema "subtasks" do
     field(:title, :string)
-    field(:status, :string, default: "todo")
+    field(:is_completed, :boolean, default: false)
     field(:notes, :string)
     field(:due_on, :date)
+    field(:completed_at, :utc_datetime_usec)
 
     belongs_to(:task, Bridge.Lists.Task)
     belongs_to(:assignee, Bridge.Accounts.User)
@@ -21,8 +22,16 @@ defmodule Bridge.Lists.Subtask do
   @doc false
   def changeset(subtask, attrs) do
     subtask
-    |> cast(attrs, [:title, :status, :notes, :due_on, :task_id, :assignee_id, :created_by_id])
+    |> cast(attrs, [
+      :title,
+      :is_completed,
+      :notes,
+      :due_on,
+      :completed_at,
+      :task_id,
+      :assignee_id,
+      :created_by_id
+    ])
     |> validate_required([:title, :task_id, :created_by_id])
-    |> validate_inclusion(:status, ["todo", "doing", "done"])
   end
 end

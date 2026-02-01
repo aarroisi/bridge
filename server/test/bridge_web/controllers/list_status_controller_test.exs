@@ -8,13 +8,31 @@ defmodule BridgeWeb.ListStatusControllerTest do
 
     # Create default statuses for the list
     todo_status =
-      insert(:list_status, list_id: list.id, name: "todo", color: "#6b7280", position: 0)
+      insert(:list_status,
+        list_id: list.id,
+        name: "todo",
+        color: "#6b7280",
+        position: 0,
+        is_done: false
+      )
 
     doing_status =
-      insert(:list_status, list_id: list.id, name: "doing", color: "#3b82f6", position: 1)
+      insert(:list_status,
+        list_id: list.id,
+        name: "doing",
+        color: "#3b82f6",
+        position: 1,
+        is_done: false
+      )
 
     done_status =
-      insert(:list_status, list_id: list.id, name: "done", color: "#22c55e", position: 2)
+      insert(:list_status,
+        list_id: list.id,
+        name: "done",
+        color: "#22c55e",
+        position: 2,
+        is_done: true
+      )
 
     conn =
       build_conn()
@@ -92,7 +110,8 @@ defmodule BridgeWeb.ListStatusControllerTest do
         |> post(~p"/api/lists/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
         |> json_response(201)
 
-      assert response["data"]["name"] == "Review"
+      # Name is uppercased on create
+      assert response["data"]["name"] == "REVIEW"
       assert response["data"]["color"] == "#8b5cf6"
       assert response["data"]["list_id"] == list.id
     end
@@ -114,14 +133,15 @@ defmodule BridgeWeb.ListStatusControllerTest do
       assert status_id in status_ids
     end
 
-    test "new status is added at the end (highest position)", %{conn: conn, list: list} do
+    test "new status is added before DONE status", %{conn: conn, list: list} do
       response =
         conn
         |> post(~p"/api/lists/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
         |> json_response(201)
 
-      # Should be position 3 (after todo=0, doing=1, done=2)
-      assert response["data"]["position"] == 3
+      # Should be position 2 (before done which gets bumped to 3)
+      # todo=0, doing=1, new=2, done=3
+      assert response["data"]["position"] == 2
     end
 
     test "returns error with empty name", %{conn: conn, list: list} do
@@ -143,9 +163,15 @@ defmodule BridgeWeb.ListStatusControllerTest do
     end
 
     test "returns error with duplicate name in same list", %{conn: conn, list: list} do
+      # First create a status that will be uppercased
+      conn
+      |> post(~p"/api/lists/#{list.id}/statuses", %{name: "review", color: "#8b5cf6"})
+      |> json_response(201)
+
+      # Try to create another with same name (case-insensitive due to uppercasing)
       response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "todo", color: "#8b5cf6"})
+        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "REVIEW", color: "#ef4444"})
         |> json_response(422)
 
       # Unique constraint on [:list_id, :name] puts error on first field
@@ -169,7 +195,8 @@ defmodule BridgeWeb.ListStatusControllerTest do
         |> patch(~p"/api/statuses/#{todo_status.id}", %{name: "Backlog"})
         |> json_response(200)
 
-      assert response["data"]["name"] == "Backlog"
+      # Name is uppercased on save
+      assert response["data"]["name"] == "BACKLOG"
       assert response["data"]["color"] == todo_status.color
     end
 
@@ -189,7 +216,8 @@ defmodule BridgeWeb.ListStatusControllerTest do
         |> patch(~p"/api/statuses/#{todo_status.id}", %{name: "Backlog", color: "#ef4444"})
         |> json_response(200)
 
-      assert response["data"]["name"] == "Backlog"
+      # Name is uppercased on save
+      assert response["data"]["name"] == "BACKLOG"
       assert response["data"]["color"] == "#ef4444"
     end
 
@@ -229,19 +257,19 @@ defmodule BridgeWeb.ListStatusControllerTest do
   end
 
   describe "delete" do
-    test "deletes status", %{conn: conn, done_status: done_status} do
+    test "deletes non-done status", %{conn: conn, doing_status: doing_status} do
       conn
-      |> delete(~p"/api/statuses/#{done_status.id}")
+      |> delete(~p"/api/statuses/#{doing_status.id}")
       |> response(204)
     end
 
     test "deleted status no longer appears in index", %{
       conn: conn,
       list: list,
-      done_status: done_status
+      doing_status: doing_status
     } do
       conn
-      |> delete(~p"/api/statuses/#{done_status.id}")
+      |> delete(~p"/api/statuses/#{doing_status.id}")
       |> response(204)
 
       index_response =
@@ -250,26 +278,34 @@ defmodule BridgeWeb.ListStatusControllerTest do
         |> json_response(200)
 
       status_ids = Enum.map(index_response["data"], & &1["id"])
-      refute done_status.id in status_ids
+      refute doing_status.id in status_ids
     end
 
-    test "tasks with deleted status are moved to first status", %{
+    test "cannot delete DONE status", %{conn: conn, done_status: done_status} do
+      response =
+        conn
+        |> delete(~p"/api/statuses/#{done_status.id}")
+        |> json_response(422)
+
+      assert response["error"] == "Cannot delete the DONE status."
+    end
+
+    test "cannot delete status with tasks", %{
       conn: conn,
       user: user,
       list: list,
-      todo_status: todo_status,
-      done_status: done_status
+      doing_status: doing_status
     } do
-      # Create a task with done status
-      task = insert(:task, list_id: list.id, status_id: done_status.id, created_by_id: user.id)
+      # Create a task with doing status
+      _task = insert(:task, list_id: list.id, status_id: doing_status.id, created_by_id: user.id)
 
-      conn
-      |> delete(~p"/api/statuses/#{done_status.id}")
-      |> response(204)
+      response =
+        conn
+        |> delete(~p"/api/statuses/#{doing_status.id}")
+        |> json_response(422)
 
-      # Verify task was moved to first status (todo)
-      updated_task = Bridge.Repo.get!(Bridge.Lists.Task, task.id)
-      assert updated_task.status_id == todo_status.id
+      assert response["error"] ==
+               "Cannot delete status that has tasks. Move or delete the tasks first."
     end
 
     test "returns 404 for non-existent status", %{conn: conn} do
@@ -290,15 +326,15 @@ defmodule BridgeWeb.ListStatusControllerTest do
   end
 
   describe "reorder" do
-    test "reorders statuses", %{
+    test "reorders statuses with DONE at end", %{
       conn: conn,
       list: list,
       todo_status: todo_status,
       doing_status: doing_status,
       done_status: done_status
     } do
-      # Reorder to: done, todo, doing
-      new_order = [done_status.id, todo_status.id, doing_status.id]
+      # Reorder to: doing, todo, done (done must be last)
+      new_order = [doing_status.id, todo_status.id, done_status.id]
 
       response =
         conn
@@ -316,7 +352,8 @@ defmodule BridgeWeb.ListStatusControllerTest do
       doing_status: doing_status,
       done_status: done_status
     } do
-      new_order = [done_status.id, doing_status.id, todo_status.id]
+      # Reorder to: doing, todo, done (done must be last)
+      new_order = [doing_status.id, todo_status.id, done_status.id]
 
       conn
       |> put(~p"/api/lists/#{list.id}/statuses/reorder", %{status_ids: new_order})
@@ -329,6 +366,24 @@ defmodule BridgeWeb.ListStatusControllerTest do
 
       positions = index_response["data"] |> Enum.sort_by(& &1["position"]) |> Enum.map(& &1["id"])
       assert positions == new_order
+    end
+
+    test "rejects reorder when DONE is not last", %{
+      conn: conn,
+      list: list,
+      todo_status: todo_status,
+      doing_status: doing_status,
+      done_status: done_status
+    } do
+      # Try to reorder with done not at the end
+      invalid_order = [done_status.id, todo_status.id, doing_status.id]
+
+      response =
+        conn
+        |> put(~p"/api/lists/#{list.id}/statuses/reorder", %{status_ids: invalid_order})
+        |> json_response(422)
+
+      assert response["error"] == "The DONE status must always be at the end."
     end
 
     test "returns 404 for list from another workspace", %{conn: conn} do

@@ -48,6 +48,7 @@ export interface ListStatus {
   name: string;
   color: string;
   position: number;
+  isDone: boolean;
 }
 
 // List types
@@ -81,7 +82,11 @@ export interface Task {
   createdById: string;
   createdBy?: EmbeddedUser | null;
   dueOn?: string | null;
+  completedAt?: string | null;
   notes?: string | null;
+  subtaskCount: number;
+  subtaskDoneCount: number;
+  commentCount: number;
   insertedAt: string;
   updatedAt: string;
 }
@@ -89,14 +94,15 @@ export interface Task {
 export interface Subtask {
   id: string;
   taskId: string;
+  isCompleted: boolean;
   title: string;
-  status: "todo" | "doing" | "done";
   assigneeId?: string | null;
   assignee?: EmbeddedUser | null;
   createdById: string;
   createdBy?: EmbeddedUser | null;
   notes?: string | null;
   dueOn?: string | null;
+  completedAt?: string | null;
   insertedAt: string;
   updatedAt: string;
 }

@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Modal } from "./Modal";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -33,22 +33,8 @@ export function ConfirmModal({
       : "bg-blue-600 hover:bg-blue-700";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-
-      {/* Modal */}
-      <div className="relative bg-dark-surface border border-dark-border rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        <div className="flex items-start justify-between mb-4">
-          <h2 className="text-xl font-semibold text-dark-text">{title}</h2>
-          <button
-            onClick={onCancel}
-            className="text-dark-text-muted hover:text-dark-text transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
+    <Modal title={title} onClose={onCancel} size="md">
+      <div className="p-6">
         <p className="text-dark-text-muted mb-6">{message}</p>
 
         <div className="flex gap-3 justify-end">
@@ -74,6 +60,6 @@ export function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

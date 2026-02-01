@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import {
   LayoutGrid,
   List,
-  X,
   Settings,
   Plus,
   GripVertical,
@@ -38,6 +37,7 @@ import { useListStore } from "@/stores/listStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
+import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import { User, Task } from "@/types";
 import { clsx } from "clsx";
@@ -689,17 +689,12 @@ export function ListView() {
 
       {/* Add Task Modal */}
       {isAddingTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-surface border border-dark-border rounded-lg p-6 w-96">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-dark-text">Add Task</h3>
-              <button
-                onClick={() => setIsAddingTask(false)}
-                className="text-dark-text-muted hover:text-dark-text"
-              >
-                <X size={20} />
-              </button>
-            </div>
+        <Modal
+          title="Add Task"
+          onClose={() => setIsAddingTask(false)}
+          className="w-96"
+        >
+          <div className="p-6">
             <input
               type="text"
               value={newTaskTitle}
@@ -728,7 +723,7 @@ export function ListView() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Status Manager Modal */}

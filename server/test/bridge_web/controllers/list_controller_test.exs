@@ -22,7 +22,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       response =
         conn
-        |> get(~p"/api/lists")
+        |> get(~p"/api/boards")
         |> json_response(200)
 
       list_ids = Enum.map(response["data"], & &1["id"])
@@ -40,7 +40,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       response =
         conn
-        |> get(~p"/api/lists")
+        |> get(~p"/api/boards")
         |> json_response(200)
 
       list_ids = Enum.map(response["data"], & &1["id"])
@@ -50,7 +50,7 @@ defmodule BridgeWeb.ListControllerTest do
     test "returns empty list when no lists exist", %{conn: conn} do
       response =
         conn
-        |> get(~p"/api/lists")
+        |> get(~p"/api/boards")
         |> json_response(200)
 
       assert response["data"] == []
@@ -67,7 +67,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       response =
         conn
-        |> get(~p"/api/lists?limit=2")
+        |> get(~p"/api/boards?limit=2")
         |> json_response(200)
 
       assert length(response["data"]) == 2
@@ -81,10 +81,11 @@ defmodule BridgeWeb.ListControllerTest do
     test "creates list with valid attributes using flat params", %{conn: conn} do
       response =
         conn
-        |> post(~p"/api/lists", %{name: "New List", starred: false})
+        |> post(~p"/api/boards", %{name: "New List", prefix: "NL", starred: false})
         |> json_response(201)
 
       assert response["data"]["name"] == "New List"
+      assert response["data"]["prefix"] == "NL"
       assert response["data"]["starred"] == false
       assert response["data"]["id"]
     end
@@ -92,14 +93,14 @@ defmodule BridgeWeb.ListControllerTest do
     test "created list appears in index", %{conn: conn} do
       create_response =
         conn
-        |> post(~p"/api/lists", %{name: "Test List"})
+        |> post(~p"/api/boards", %{name: "Test List", prefix: "TL"})
         |> json_response(201)
 
       list_id = create_response["data"]["id"]
 
       index_response =
         conn
-        |> get(~p"/api/lists")
+        |> get(~p"/api/boards")
         |> json_response(200)
 
       list_ids = Enum.map(index_response["data"], & &1["id"])
@@ -109,10 +110,33 @@ defmodule BridgeWeb.ListControllerTest do
     test "returns error with invalid attributes", %{conn: conn} do
       response =
         conn
-        |> post(~p"/api/lists", %{name: ""})
+        |> post(~p"/api/boards", %{name: "", prefix: "NL"})
         |> json_response(422)
 
       assert response["errors"]["name"]
+    end
+
+    test "returns error with invalid prefix format", %{conn: conn} do
+      response =
+        conn
+        |> post(~p"/api/boards", %{name: "Test", prefix: "a"})
+        |> json_response(422)
+
+      assert response["errors"]["prefix"]
+    end
+
+    test "returns error with duplicate prefix in same workspace", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      insert(:list, workspace_id: workspace.id, prefix: "DUP")
+
+      response =
+        conn
+        |> post(~p"/api/boards", %{name: "Another", prefix: "DUP"})
+        |> json_response(422)
+
+      assert response["errors"]["prefix"]
     end
 
     test "sets workspace to current user's workspace", %{
@@ -123,7 +147,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       create_response =
         conn
-        |> post(~p"/api/lists", %{name: "Test List"})
+        |> post(~p"/api/boards", %{name: "Test List", prefix: "TL"})
         |> json_response(201)
 
       list_id = create_response["data"]["id"]
@@ -131,7 +155,7 @@ defmodule BridgeWeb.ListControllerTest do
       # Verify the list appears in current workspace's list
       index_response =
         conn
-        |> get(~p"/api/lists")
+        |> get(~p"/api/boards")
         |> json_response(200)
 
       list_ids = Enum.map(index_response["data"], & &1["id"])
@@ -146,7 +170,7 @@ defmodule BridgeWeb.ListControllerTest do
     test "sets created_by_id to current user", %{conn: conn, user: user} do
       response =
         conn
-        |> post(~p"/api/lists", %{name: "My List"})
+        |> post(~p"/api/boards", %{name: "My List", prefix: "ML"})
         |> json_response(201)
 
       list = Bridge.Repo.get!(Bridge.Lists.List, response["data"]["id"])
@@ -160,7 +184,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       response =
         conn
-        |> get(~p"/api/lists/#{list.id}")
+        |> get(~p"/api/boards/#{list.id}")
         |> json_response(200)
 
       assert response["data"]["id"] == list.id
@@ -170,7 +194,7 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns 404 for non-existent list", %{conn: conn} do
       conn
-      |> get(~p"/api/lists/00000000-0000-0000-0000-000000000000")
+      |> get(~p"/api/boards/00000000-0000-0000-0000-000000000000")
       |> json_response(404)
     end
 
@@ -179,7 +203,7 @@ defmodule BridgeWeb.ListControllerTest do
       other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
-      |> get(~p"/api/lists/#{other_list.id}")
+      |> get(~p"/api/boards/#{other_list.id}")
       |> json_response(404)
     end
   end
@@ -198,7 +222,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       response =
         conn
-        |> put(~p"/api/lists/#{list.id}", %{name: "New Name", starred: true})
+        |> put(~p"/api/boards/#{list.id}", %{name: "New Name", starred: true})
         |> json_response(200)
 
       assert response["data"]["name"] == "New Name"
@@ -212,12 +236,12 @@ defmodule BridgeWeb.ListControllerTest do
       list = insert(:list, workspace_id: workspace.id, name: "Old Name")
 
       conn
-      |> put(~p"/api/lists/#{list.id}", %{name: "Updated Name"})
+      |> put(~p"/api/boards/#{list.id}", %{name: "Updated Name"})
       |> json_response(200)
 
       show_response =
         conn
-        |> get(~p"/api/lists/#{list.id}")
+        |> get(~p"/api/boards/#{list.id}")
         |> json_response(200)
 
       assert show_response["data"]["name"] == "Updated Name"
@@ -231,7 +255,7 @@ defmodule BridgeWeb.ListControllerTest do
 
       response =
         conn
-        |> put(~p"/api/lists/#{list.id}", %{name: ""})
+        |> put(~p"/api/boards/#{list.id}", %{name: ""})
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -239,7 +263,7 @@ defmodule BridgeWeb.ListControllerTest do
 
     test "returns 404 for non-existent list", %{conn: conn} do
       conn
-      |> put(~p"/api/lists/00000000-0000-0000-0000-000000000000", %{name: "New Name"})
+      |> put(~p"/api/boards/00000000-0000-0000-0000-000000000000", %{name: "New Name"})
       |> json_response(404)
     end
 
@@ -248,7 +272,7 @@ defmodule BridgeWeb.ListControllerTest do
       other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
-      |> put(~p"/api/lists/#{other_list.id}", %{name: "Hacked Name"})
+      |> put(~p"/api/boards/#{other_list.id}", %{name: "Hacked Name"})
       |> json_response(404)
     end
   end
@@ -258,7 +282,7 @@ defmodule BridgeWeb.ListControllerTest do
       list = insert(:list, workspace_id: workspace.id)
 
       conn
-      |> delete(~p"/api/lists/#{list.id}")
+      |> delete(~p"/api/boards/#{list.id}")
       |> response(204)
     end
 
@@ -269,12 +293,12 @@ defmodule BridgeWeb.ListControllerTest do
       list = insert(:list, workspace_id: workspace.id)
 
       conn
-      |> delete(~p"/api/lists/#{list.id}")
+      |> delete(~p"/api/boards/#{list.id}")
       |> response(204)
 
       index_response =
         conn
-        |> get(~p"/api/lists")
+        |> get(~p"/api/boards")
         |> json_response(200)
 
       list_ids = Enum.map(index_response["data"], & &1["id"])
@@ -285,17 +309,17 @@ defmodule BridgeWeb.ListControllerTest do
       list = insert(:list, workspace_id: workspace.id)
 
       conn
-      |> delete(~p"/api/lists/#{list.id}")
+      |> delete(~p"/api/boards/#{list.id}")
       |> response(204)
 
       conn
-      |> get(~p"/api/lists/#{list.id}")
+      |> get(~p"/api/boards/#{list.id}")
       |> json_response(404)
     end
 
     test "returns 404 for non-existent list", %{conn: conn} do
       conn
-      |> delete(~p"/api/lists/00000000-0000-0000-0000-000000000000")
+      |> delete(~p"/api/boards/00000000-0000-0000-0000-000000000000")
       |> json_response(404)
     end
 
@@ -304,7 +328,7 @@ defmodule BridgeWeb.ListControllerTest do
       other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
-      |> delete(~p"/api/lists/#{other_list.id}")
+      |> delete(~p"/api/boards/#{other_list.id}")
       |> json_response(404)
     end
   end

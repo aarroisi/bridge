@@ -13,6 +13,11 @@ interface DiscussionThreadProps {
     text: string,
     quoteId?: string,
   ) => Promise<void>;
+  fileUpload?: {
+    attachableType: string;
+    attachableId: string;
+    onError: (msg: string) => void;
+  };
 }
 
 export function DiscussionThread({
@@ -20,6 +25,7 @@ export function DiscussionThread({
   threadMessages,
   onClose,
   onSendReply,
+  fileUpload,
 }: DiscussionThreadProps) {
   const [replyText, setReplyText] = useState("");
   const [quoteTarget, setQuoteTarget] = useState<MessageType | null>(null);
@@ -83,7 +89,7 @@ export function DiscussionThread({
         onClick={onClose}
       />
 
-      <div className="absolute lg:relative top-0 right-0 bottom-0 w-[calc(100%-15rem)] lg:w-96 bg-dark-surface border-l border-dark-border flex flex-col z-50">
+      <div className="absolute lg:relative top-0 right-0 bottom-0 w-[calc(100%-15rem)] lg:w-[28rem] bg-dark-surface border-l border-dark-border flex flex-col z-50">
         <div className="px-4 py-3 border-b border-dark-border flex items-center justify-between">
           <h3 className="font-semibold text-dark-text">Thread</h3>
           <button
@@ -98,6 +104,7 @@ export function DiscussionThread({
           <Message
             message={parentMessage}
             className="border-b border-dark-border"
+            fileUpload={fileUpload}
           />
 
           <div className="px-4 py-2 text-xs font-semibold text-dark-text-muted uppercase">
@@ -111,6 +118,7 @@ export function DiscussionThread({
               message={message}
               quotedMessage={quotedMessages[message.id]}
               onQuote={() => setQuoteTarget(message)}
+              fileUpload={fileUpload}
             />
           ))}
         </div>
@@ -126,6 +134,7 @@ export function DiscussionThread({
             onCancelQuote={() => setQuoteTarget(null)}
             autoFocus
             variant="thread"
+            fileUpload={fileUpload}
           />
         </div>
       </div>

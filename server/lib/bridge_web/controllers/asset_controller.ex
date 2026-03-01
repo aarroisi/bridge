@@ -83,7 +83,7 @@ defmodule BridgeWeb.AssetController do
       {:error, :invalid_attachable_type} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> json(%{error: "Invalid attachable_type. Must be one of: doc, message, user"})
+        |> json(%{error: "Invalid attachable_type. Must be one of: doc, message, user, task, channel, dm"})
 
       {:error, :attachable_not_found} ->
         conn

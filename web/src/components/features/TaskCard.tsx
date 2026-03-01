@@ -26,6 +26,11 @@ export function TaskCard({
         isDragging && "shadow-lg ring-2 ring-blue-500 opacity-90",
       )}
     >
+      {task.key && (
+        <span className="text-xs font-mono text-dark-text-muted mb-1 block">
+          {task.key}
+        </span>
+      )}
       <h4 className="font-medium text-dark-text text-sm mb-2">{task.title}</h4>
 
       <div className="flex items-center gap-3 text-xs text-dark-text-muted flex-wrap">
@@ -43,16 +48,16 @@ export function TaskCard({
           </div>
         )}
 
-        {task.subtaskCount > 0 && (
+        {task.childCount > 0 && (
           <div
             className={clsx(
               "flex items-center gap-1",
-              task.subtaskDoneCount === task.subtaskCount && "text-green-500",
+              task.childDoneCount === task.childCount && "text-green-500",
             )}
           >
             <CheckSquare size={12} />
             <span>
-              {task.subtaskDoneCount}/{task.subtaskCount}
+              {task.childDoneCount}/{task.childCount}
             </span>
           </div>
         )}

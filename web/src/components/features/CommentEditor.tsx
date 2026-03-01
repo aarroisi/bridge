@@ -1,51 +1,46 @@
-import {
-  useEffect,
-  forwardRef,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-} from "react";
-import { Bold, Italic, List, ListOrdered, Quote, X } from "lucide-react";
-import { useEditor, EditorContent, Extension } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import DOMPurify from "dompurify";
+import { useEffect, forwardRef, useMemo, useRef, useState } from "react";
+import { Quote, X } from "lucide-react";
 import { Message as MessageType } from "@/types";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/stores/authStore";
-import { createMentionExtension } from "@/lib/mention";
+import { ContentRenderer } from "@/lib/milkdown/ContentRenderer";
+import {
+  RichTextEditor,
+  type RichTextEditorHandle,
+} from "@/lib/milkdown/RichTextEditor";
+import { $prose } from "@milkdown/utils";
+import { Plugin, PluginKey } from "@milkdown/prose/state";
 
-// Custom extension to handle Enter key for submission
-// Checks if mention popup is active before submitting
-const createSubmitExtension = (
-  onSubmit: () => void,
+const submitPluginKey = new PluginKey("submit-on-enter");
+
+/**
+ * Creates a ProseMirror plugin that submits on Enter and inserts newline on Shift-Enter.
+ * Checks if mention popup is active before submitting.
+ */
+function createSubmitPlugin(
+  onSubmitRef: React.MutableRefObject<() => void>,
   isMentionActiveRef: React.MutableRefObject<boolean>,
-) =>
-  Extension.create({
-    name: "submitOnEnter",
-    priority: 1000, // High priority to run before StarterKit
-
-    addKeyboardShortcuts() {
-      return {
-        Enter: () => {
-          // Don't submit if mention popup is active
-          if (isMentionActiveRef.current) {
-            return false; // Let mention handle it
+) {
+  return $prose(() => {
+    return new Plugin({
+      key: submitPluginKey,
+      props: {
+        handleKeyDown(_view, event) {
+          if (event.key === "Enter" && !event.shiftKey) {
+            // Don't submit if mention popup is active
+            if (isMentionActiveRef.current) {
+              return false;
+            }
+            event.preventDefault();
+            onSubmitRef.current();
+            return true;
           }
-          onSubmit();
-          return true;
+          return false;
         },
-        "Shift-Enter": ({ editor }) => {
-          // Insert a hard break (new line)
-          editor.commands.first(({ commands }) => [
-            () => commands.newlineInCode(),
-            () => commands.splitBlock(),
-          ]);
-          return true;
-        },
-      };
-    },
+      },
+    });
   });
+}
 
 interface CommentEditorProps {
   value: string;
@@ -56,6 +51,11 @@ interface CommentEditorProps {
   onCancelQuote?: () => void;
   autoFocus?: boolean;
   variant?: "default" | "thread";
+  fileUpload?: {
+    attachableType: string;
+    attachableId: string;
+    onError: (msg: string) => void;
+  };
 }
 
 export const CommentEditor = forwardRef<
@@ -72,12 +72,15 @@ export const CommentEditor = forwardRef<
       onCancelQuote,
       autoFocus = false,
       variant = "default",
+      fileUpload,
     },
     ref,
   ) => {
     const { members } = useAuthStore();
     const onSubmitRef = useRef(onSubmit);
     const isMentionActiveRef = useRef(false);
+    const editorHandleRef = useRef<RichTextEditorHandle | null>(null);
+    const [hasContent, setHasContent] = useState(false);
 
     // Keep ref updated
     useEffect(() => {
@@ -97,77 +100,43 @@ export const CommentEditor = forwardRef<
       [members],
     );
 
-    // Memoize extensions to avoid recreating editor
-    const mentionExtension = useMemo(
-      () =>
-        createMentionExtension({
-          members: mentionMembers,
-          onActiveChange: (isActive) => {
-            isMentionActiveRef.current = isActive;
-          },
-        }),
-      [mentionMembers],
-    );
-
-    const submitExtension = useMemo(
-      () =>
-        createSubmitExtension(() => onSubmitRef.current(), isMentionActiveRef),
+    // Create submit plugin (memoized)
+    const submitPlugin = useMemo(
+      () => createSubmitPlugin(onSubmitRef, isMentionActiveRef),
       [],
     );
 
-    const editor = useEditor({
-      extensions: [
-        StarterKit,
-        Placeholder.configure({
-          placeholder,
-        }),
-        mentionExtension,
-        submitExtension,
-      ],
-      content: value,
-      editorProps: {
-        attributes: {
-          class:
-            "flex-1 bg-transparent text-dark-text placeholder:text-dark-text-muted focus:outline-none resize-none leading-6 text-base prose prose-invert max-w-none",
-        },
-      },
-      onUpdate: ({ editor }) => {
-        onChange(editor.getHTML());
-      },
-    });
-
-    // Expose editor focus method
-    useImperativeHandle(
-      ref,
-      () =>
-        ({
-          focus: () => editor?.commands.focus(),
-        }) as any,
-    );
-
-    // Update editor content when value changes externally
+    // Expose editor focus method via ref
     useEffect(() => {
-      if (editor && value !== editor.getHTML()) {
-        editor.commands.setContent(value);
+      if (ref && typeof ref === "object" && ref !== null) {
+        (ref as any).current = {
+          focus: () => editorHandleRef.current?.focus(),
+        };
       }
-    }, [value, editor]);
+    }, [ref]);
 
+    // Auto-focus
     useEffect(() => {
-      if (autoFocus && editor) {
+      if (autoFocus && editorHandleRef.current) {
         setTimeout(() => {
-          editor.commands.focus();
+          editorHandleRef.current?.focus();
         }, 100);
       }
-    }, [autoFocus, editor]);
+    }, [autoFocus]);
 
     // Focus when quoting message changes
     useEffect(() => {
-      if (quotingMessage && editor) {
+      if (quotingMessage && editorHandleRef.current) {
         setTimeout(() => {
-          editor.commands.focus();
+          editorHandleRef.current?.focus();
         }, 100);
       }
-    }, [quotingMessage, editor]);
+    }, [quotingMessage]);
+
+    const handleChange = (markdown: string) => {
+      onChange(markdown);
+      setHasContent(markdown.trim().length > 0);
+    };
 
     const isThread = variant === "thread";
     const containerBg = isThread ? "bg-dark-bg" : "bg-dark-surface";
@@ -176,69 +145,36 @@ export const CommentEditor = forwardRef<
       : "hover:bg-dark-bg";
     const quoteBg = isThread ? "bg-dark-surface" : "bg-dark-bg";
 
+    const sendButton = (
+      <button
+        onClick={onSubmit}
+        disabled={!hasContent}
+        className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+        title="Send"
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          className="transform rotate-45"
+        >
+          <path
+            d="M2 14L14 2M14 2H6M14 2V10"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    );
+
     return (
       <div
-        className={`border border-dark-border rounded-lg ${containerBg} transition-colors hover:border-gray-600 focus-within:!border-blue-500`}
+        className={`relative border border-dark-border rounded-lg overflow-hidden ${containerBg} transition-colors hover:border-gray-600 focus-within:!border-blue-500`}
       >
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-dark-border">
-          <button
-            onClick={() => editor?.chain().focus().toggleBold().run()}
-            className={clsx(
-              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
-              editor?.isActive("bold") && "bg-dark-border text-dark-text",
-            )}
-            title="Bold"
-            type="button"
-          >
-            <Bold size={18} />
-          </button>
-          <button
-            onClick={() => editor?.chain().focus().toggleItalic().run()}
-            className={clsx(
-              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
-              editor?.isActive("italic") && "bg-dark-border text-dark-text",
-            )}
-            title="Italic"
-            type="button"
-          >
-            <Italic size={18} />
-          </button>
-          <div className="w-px h-5 bg-dark-border mx-1" />
-          <button
-            onClick={() => editor?.chain().focus().toggleBulletList().run()}
-            className={clsx(
-              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
-              editor?.isActive("bulletList") && "bg-dark-border text-dark-text",
-            )}
-            title="Bullet List"
-            type="button"
-          >
-            <List size={18} />
-          </button>
-          <button
-            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-            className={clsx(
-              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
-              editor?.isActive("orderedList") &&
-                "bg-dark-border text-dark-text",
-            )}
-            title="Numbered List"
-            type="button"
-          >
-            <ListOrdered size={18} />
-          </button>
-          <button
-            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
-            className={clsx(
-              `p-1.5 rounded ${buttonHoverBg} transition-colors text-dark-text-muted hover:text-dark-text`,
-              editor?.isActive("blockquote") && "bg-dark-border text-dark-text",
-            )}
-            title="Quote"
-            type="button"
-          >
-            <Quote size={18} />
-          </button>
-        </div>
         {quotingMessage && onCancelQuote && (
           <div className={`px-3 py-2 border-b border-dark-border ${quoteBg}`}>
             <div className="flex items-start gap-2">
@@ -247,27 +183,9 @@ export const CommentEditor = forwardRef<
                   <Quote size={14} />
                   <span>Quoting {quotingMessage.userName}</span>
                 </div>
-                <div
+                <ContentRenderer
+                  content={quotingMessage.text}
                   className="text-dark-text-muted truncate prose prose-invert prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(quotingMessage.text, {
-                      ALLOWED_TAGS: [
-                        "p",
-                        "br",
-                        "strong",
-                        "em",
-                        "u",
-                        "s",
-                        "span",
-                      ],
-                      ALLOWED_ATTR: [
-                        "class",
-                        "data-id",
-                        "data-type",
-                        "data-label",
-                      ],
-                    }),
-                  }}
                 />
               </div>
               <button
@@ -280,32 +198,29 @@ export const CommentEditor = forwardRef<
             </div>
           </div>
         )}
-        <div className="flex items-start gap-2 px-3 py-3">
-          <div className="flex-1 min-h-[24px] max-h-[200px] overflow-y-auto">
-            <EditorContent editor={editor} />
-          </div>
-          <button
-            onClick={onSubmit}
-            disabled={!editor || !editor.getText().trim()}
-            className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-            title="Send"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="transform rotate-45"
-            >
-              <path
-                d="M2 14L14 2M14 2H6M14 2V10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+        <RichTextEditor
+          value={value}
+          onChange={handleChange}
+          placeholder={placeholder}
+          mentions={{
+            members: mentionMembers,
+            onActiveChange: (active) => {
+              isMentionActiveRef.current = active;
+            },
+          }}
+          fileUpload={fileUpload}
+          plugins={[submitPlugin]}
+          onReady={(handle) => {
+            editorHandleRef.current = handle;
+          }}
+          className={clsx(
+            "[&_.milkdown_.editor]:outline-none [&_.milkdown_.editor]:text-base [&_.milkdown_.editor]:text-dark-text",
+            "[&_.milkdown]:min-h-[24px] [&_.milkdown]:max-h-[200px] [&_.milkdown]:overflow-y-auto",
+            "[&_.milkdown_.editor]:pb-10",
+          )}
+        />
+        <div className="absolute bottom-2 right-2 z-10">
+          {sendButton}
         </div>
       </div>
     );

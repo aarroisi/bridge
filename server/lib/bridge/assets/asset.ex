@@ -8,7 +8,7 @@ defmodule Bridge.Assets.Asset do
 
   @asset_types ["avatar", "file"]
   @statuses ["pending", "active"]
-  @attachable_types ["doc", "message", "user"]
+  @attachable_types ["doc", "message", "user", "task", "channel", "dm"]
 
   schema "assets" do
     field(:filename, :string)

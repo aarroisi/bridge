@@ -1,22 +1,24 @@
 import { create } from "zustand";
-import { Board, BoardStatus, Task, Subtask, PaginatedResponse } from "@/types";
+import { Board, BoardStatus, Task, PaginatedResponse } from "@/types";
 import { api } from "@/lib/api";
 import { celebrateTaskCompletion } from "@/lib/confetti";
 
 interface BoardState {
   boards: Board[];
   tasks: Record<string, Task[]>;
-  subtasks: Record<string, Subtask[]>;
+  childTasks: Record<string, Task[]>;
   isLoading: boolean;
   hasMore: boolean;
   afterCursor: string | null;
 
   // Board operations
   fetchBoards: (loadMore?: boolean) => Promise<void>;
-  createBoard: (name: string) => Promise<Board>;
+  createBoard: (name: string, prefix: string) => Promise<Board>;
   updateBoard: (id: string, data: Partial<Board>) => Promise<void>;
   deleteBoard: (id: string) => Promise<void>;
   toggleBoardStar: (id: string) => Promise<void>;
+  suggestPrefix: (name: string) => Promise<string>;
+  checkPrefix: (prefix: string) => Promise<boolean>;
 
   // Status operations
   createStatus: (
@@ -41,17 +43,17 @@ interface BoardState {
     newIndex: number,
   ) => Promise<void>;
 
-  // Subtask operations
-  fetchSubtasks: (taskId: string) => Promise<void>;
-  createSubtask: (taskId: string, data: Partial<Subtask>) => Promise<Subtask>;
-  updateSubtask: (id: string, data: Partial<Subtask>) => Promise<void>;
-  deleteSubtask: (id: string) => Promise<void>;
+  // Child task operations
+  fetchChildTasks: (parentId: string) => Promise<void>;
+  createChildTask: (parentId: string, data: Partial<Task>) => Promise<Task>;
+  updateChildTask: (id: string, parentId: string, data: Partial<Task>) => Promise<void>;
+  deleteChildTask: (id: string, parentId: string) => Promise<void>;
 }
 
 export const useBoardStore = create<BoardState>((set, get) => ({
   boards: [],
   tasks: {},
-  subtasks: {},
+  childTasks: {},
   isLoading: false,
   hasMore: true,
   afterCursor: null,
@@ -86,8 +88,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
   },
 
-  createBoard: async (name: string) => {
-    const board = await api.post<Board>("/boards", { name });
+  createBoard: async (name: string, prefix: string) => {
+    const board = await api.post<Board>("/boards", { name, prefix });
     set((state) => ({
       boards: [...(Array.isArray(state.boards) ? state.boards : []), board],
     }));
@@ -114,6 +116,20 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (board) {
       await get().updateBoard(id, { starred: !board.starred });
     }
+  },
+
+  suggestPrefix: async (name: string) => {
+    const res = await api.get<{ prefix: string }>("/boards/suggest-prefix", {
+      name,
+    });
+    return res.prefix;
+  },
+
+  checkPrefix: async (prefix: string) => {
+    const res = await api.get<{ available: boolean }>("/boards/check-prefix", {
+      prefix,
+    });
+    return res.available;
   },
 
   // Status operations
@@ -336,134 +352,105 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
   },
 
-  // Subtask operations
-  fetchSubtasks: async (taskId: string) => {
+  // Child task operations
+  fetchChildTasks: async (parentId: string) => {
     try {
-      const response = await api.get<Subtask[]>(`/subtasks?task_id=${taskId}`);
-      // Ensure response is an array
-      const subtasks = Array.isArray(response) ? response : [];
+      const response = await api.get<Task[]>(
+        `/tasks?parent_id=${parentId}`,
+      );
+      const tasks = Array.isArray(response) ? response : [];
       set((state) => ({
-        subtasks: { ...state.subtasks, [taskId]: subtasks },
+        childTasks: { ...state.childTasks, [parentId]: tasks },
       }));
     } catch (error) {
-      console.error("Failed to fetch subtasks:", error);
+      console.error("Failed to fetch child tasks:", error);
       set((state) => ({
-        subtasks: { ...state.subtasks, [taskId]: [] },
+        childTasks: { ...state.childTasks, [parentId]: [] },
       }));
     }
   },
 
-  createSubtask: async (taskId: string, data: Partial<Subtask>) => {
-    const subtask = await api.post<Subtask>(`/subtasks`, { ...data, taskId });
+  createChildTask: async (parentId: string, data: Partial<Task>) => {
+    const task = await api.post<Task>(`/tasks`, { ...data, parentId });
     set((state) => {
-      const existingSubtasks = Array.isArray(state.subtasks[taskId])
-        ? state.subtasks[taskId]
+      const existing = Array.isArray(state.childTasks[parentId])
+        ? state.childTasks[parentId]
         : [];
-      const updatedSubtasks = [...existingSubtasks, subtask];
-      const totalCount = updatedSubtasks.length;
-      const doneCount = updatedSubtasks.filter((s) => s.isCompleted).length;
+      const updatedChildren = [...existing, task];
+      const totalCount = updatedChildren.length;
+      const doneCount = updatedChildren.filter((c) => c.isCompleted).length;
 
-      const updateTaskCounts = (task: Task) =>
-        task.id === taskId
-          ? { ...task, subtaskCount: totalCount, subtaskDoneCount: doneCount }
-          : task;
+      const updateParentCounts = (t: Task) =>
+        t.id === parentId
+          ? { ...t, childCount: totalCount, childDoneCount: doneCount }
+          : t;
 
-      // Update tasks in both state.tasks and state.boards
       const newTasks = { ...state.tasks };
       Object.keys(newTasks).forEach((boardId) => {
         if (Array.isArray(newTasks[boardId])) {
-          newTasks[boardId] = newTasks[boardId].map(updateTaskCounts);
+          newTasks[boardId] = newTasks[boardId].map(updateParentCounts);
         }
       });
 
       return {
-        subtasks: {
-          ...state.subtasks,
-          [taskId]: updatedSubtasks,
-        },
+        childTasks: { ...state.childTasks, [parentId]: updatedChildren },
         tasks: newTasks,
       };
     });
-    return subtask;
+    return task;
   },
 
-  updateSubtask: async (id: string, data: Partial<Subtask>) => {
-    const subtask = await api.patch<Subtask>(`/subtasks/${id}`, data);
+  updateChildTask: async (id: string, parentId: string, data: Partial<Task>) => {
+    const task = await api.patch<Task>(`/tasks/${id}`, data);
     set((state) => {
-      const taskId = subtask.taskId;
-      const existingSubtasks = Array.isArray(state.subtasks[taskId])
-        ? state.subtasks[taskId]
+      const existing = Array.isArray(state.childTasks[parentId])
+        ? state.childTasks[parentId]
         : [];
-      const updatedSubtasks = existingSubtasks.map((s) =>
-        s.id === id ? subtask : s,
-      );
-      const doneCount = updatedSubtasks.filter((s) => s.isCompleted).length;
+      const updatedChildren = existing.map((c) => (c.id === id ? task : c));
+      const doneCount = updatedChildren.filter((c) => c.isCompleted).length;
 
-      const updateTaskCounts = (task: Task) =>
-        task.id === taskId ? { ...task, subtaskDoneCount: doneCount } : task;
+      const updateParentCounts = (t: Task) =>
+        t.id === parentId ? { ...t, childDoneCount: doneCount } : t;
 
-      // Update tasks in both state.tasks and state.boards
       const newTasks = { ...state.tasks };
       Object.keys(newTasks).forEach((boardId) => {
         if (Array.isArray(newTasks[boardId])) {
-          newTasks[boardId] = newTasks[boardId].map(updateTaskCounts);
+          newTasks[boardId] = newTasks[boardId].map(updateParentCounts);
         }
       });
 
       return {
-        subtasks: {
-          ...state.subtasks,
-          [taskId]: updatedSubtasks,
-        },
+        childTasks: { ...state.childTasks, [parentId]: updatedChildren },
         tasks: newTasks,
       };
     });
   },
 
-  deleteSubtask: async (id: string) => {
-    // Find the taskId before deleting
-    const state = get();
-    let targetTaskId: string | null = null;
-    Object.keys(state.subtasks).forEach((taskId) => {
-      if (Array.isArray(state.subtasks[taskId])) {
-        const found = state.subtasks[taskId].find((s) => s.id === id);
-        if (found) targetTaskId = taskId;
-      }
-    });
-
-    await api.delete(`/subtasks/${id}`);
+  deleteChildTask: async (id: string, parentId: string) => {
+    await api.delete(`/tasks/${id}`);
     set((state) => {
-      const newSubtasks = { ...state.subtasks };
-      Object.keys(newSubtasks).forEach((taskId) => {
-        if (Array.isArray(newSubtasks[taskId])) {
-          newSubtasks[taskId] = newSubtasks[taskId].filter((s) => s.id !== id);
+      const existing = Array.isArray(state.childTasks[parentId])
+        ? state.childTasks[parentId]
+        : [];
+      const updatedChildren = existing.filter((c) => c.id !== id);
+      const totalCount = updatedChildren.length;
+      const doneCount = updatedChildren.filter((c) => c.isCompleted).length;
+
+      const updateParentCounts = (t: Task) =>
+        t.id === parentId
+          ? { ...t, childCount: totalCount, childDoneCount: doneCount }
+          : t;
+
+      const newTasks = { ...state.tasks };
+      Object.keys(newTasks).forEach((boardId) => {
+        if (Array.isArray(newTasks[boardId])) {
+          newTasks[boardId] = newTasks[boardId].map(updateParentCounts);
         }
       });
 
-      // Update task counts in state.tasks
-      let updatedTasks = state.tasks;
-
-      if (targetTaskId) {
-        const remainingSubtasks = newSubtasks[targetTaskId] || [];
-        const doneCount = remainingSubtasks.filter((s) => s.isCompleted).length;
-        const totalCount = remainingSubtasks.length;
-
-        const updateTaskCounts = (task: Task) =>
-          task.id === targetTaskId
-            ? { ...task, subtaskCount: totalCount, subtaskDoneCount: doneCount }
-            : task;
-
-        updatedTasks = { ...state.tasks };
-        Object.keys(updatedTasks).forEach((boardId) => {
-          if (Array.isArray(updatedTasks[boardId])) {
-            updatedTasks[boardId] = updatedTasks[boardId].map(updateTaskCounts);
-          }
-        });
-      }
-
       return {
-        subtasks: newSubtasks,
-        tasks: updatedTasks,
+        childTasks: { ...state.childTasks, [parentId]: updatedChildren },
+        tasks: newTasks,
       };
     });
   },

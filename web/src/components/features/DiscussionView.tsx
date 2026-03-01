@@ -23,6 +23,11 @@ interface DiscussionViewProps {
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
   highlightCommentId?: string | null;
+  fileUpload?: {
+    attachableType: string;
+    attachableId: string;
+    onError: (msg: string) => void;
+  };
 }
 
 export function DiscussionView({
@@ -40,6 +45,7 @@ export function DiscussionView({
   onLoadMore,
   isLoadingMore = false,
   highlightCommentId,
+  fileUpload,
 }: DiscussionViewProps) {
   const [_internalOpenThread, _setInternalOpenThread] =
     useState<MessageType | null>(null);
@@ -159,7 +165,7 @@ export function DiscussionView({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto relative" ref={scrollContainerRef}>
-        <div className="px-8 py-6 max-w-7xl mx-auto w-full">
+        <div className={`px-8 py-6 max-w-7xl mx-auto w-full ${topLevelMessages.length === 0 ? "min-h-full flex flex-col justify-center" : ""}`}>
           {hasMoreMessages && onLoadMore && (
             <div className="mb-4 flex justify-center">
               <button
@@ -182,6 +188,7 @@ export function DiscussionView({
                       onReply={() => setOpenThread(message)}
                       onQuote={() => handleQuote(message)}
                       onQuotedClick={handleQuotedClick}
+                      fileUpload={fileUpload}
                     />
                     {replies.length > 0 && (
                       <button
@@ -232,6 +239,7 @@ export function DiscussionView({
           placeholder={placeholder}
           quotingMessage={quotingMessage}
           onCancelQuote={() => setQuotingMessage(null)}
+          fileUpload={fileUpload}
         />
       </div>
     </div>

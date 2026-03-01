@@ -74,10 +74,11 @@ export function NotificationBell() {
           navigate(`/channels/${context.channelId}?comment=${messageId}`);
         } else if (context.dmId) {
           navigate(`/dms/${context.dmId}?comment=${messageId}`);
-        } else if (context.subtaskId && context.taskId) {
+        } else if (context.parentTaskId && context.taskId) {
+          // Child task notification — navigate to the parent task
           if (context.boardId) {
             navigate(
-              `/boards/${context.boardId}?task=${context.taskId}&subtask=${context.subtaskId}&comment=${messageId}`,
+              `/boards/${context.boardId}?task=${context.parentTaskId}&comment=${messageId}`,
             );
           }
         } else if (context.taskId) {
@@ -100,13 +101,6 @@ export function NotificationBell() {
           );
         }
         break;
-      case "subtask":
-        if (context.boardId && context.taskId) {
-          navigate(
-            `/boards/${context.boardId}?task=${context.taskId}&subtask=${context.subtaskId}&comment=${messageId}`,
-          );
-        }
-        break;
     }
 
     setIsOpen(false);
@@ -118,8 +112,6 @@ export function NotificationBell() {
     if (notification.entityType === "message") {
       if (context.channelName) {
         return `#${context.channelName}`;
-      } else if (context.subtaskTitle) {
-        return context.subtaskTitle;
       } else if (context.taskTitle) {
         return context.taskTitle;
       } else if (context.docTitle) {
@@ -130,8 +122,6 @@ export function NotificationBell() {
       return context.docTitle || "a document";
     } else if (notification.entityType === "task") {
       return context.taskTitle || "a task";
-    } else if (notification.entityType === "subtask") {
-      return context.subtaskTitle || "a subtask";
     }
     return "an item";
   };

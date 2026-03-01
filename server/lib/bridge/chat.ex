@@ -367,7 +367,7 @@ defmodule Bridge.Chat do
   end
 
   @doc """
-  Returns the list of messages for a specific entity (task, subtask, doc, channel, or dm).
+  Returns the list of messages for a specific entity (task, doc, channel, or dm).
 
   ## Examples
 

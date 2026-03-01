@@ -1,17 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   useParams,
   useLocation,
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { MoreHorizontal, Star, Trash2 } from "lucide-react";
+import { MoreHorizontal, Star, Trash2, Pencil, Check } from "lucide-react";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DiscussionView } from "@/components/features/DiscussionView";
 import { DiscussionThread } from "@/components/features/DiscussionThread";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useToastStore } from "@/stores/toastStore";
 import { useChannel } from "@/hooks/useChannel";
 import { Message as MessageType } from "@/types";
 
@@ -32,10 +33,15 @@ export function ChatView() {
     addMessage,
     hasMoreMessages,
     deleteChannel,
+    updateChannel,
     toggleChannelStar,
   } = useChatStore();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const { success, error: toastError } = useToastStore();
 
   // Determine entity type from URL path
   const entityType = location.pathname.startsWith("/channels")
@@ -121,6 +127,48 @@ export function ChatView() {
     }
   };
 
+  const slugify = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  };
+
+  const handleStartRename = () => {
+    if (!item) return;
+    setRenameValue(item.name);
+    setIsRenaming(true);
+    setTimeout(() => renameInputRef.current?.focus(), 50);
+  };
+
+  const handleRename = async () => {
+    if (!item || !entityId) return;
+    const slugged = slugify(renameValue);
+    if (!slugged) {
+      setIsRenaming(false);
+      return;
+    }
+    if (slugged !== item.name) {
+      try {
+        await updateChannel(entityId, { name: slugged });
+        success("Channel renamed");
+      } catch (err) {
+        toastError("Error: " + (err as Error).message);
+      }
+    }
+    setIsRenaming(false);
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleRename();
+    } else if (e.key === "Escape") {
+      setIsRenaming(false);
+    }
+  };
+
   if (!item) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -135,13 +183,39 @@ export function ChatView() {
   const threadMessages = chatMessages.filter((m) => m.parentId);
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <>
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-dark-border flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-dark-text">
-            {entityType === "channel" ? "#" : ""} {item.name}
-          </h1>
-          {entityType === "channel" && (
+          {isRenaming ? (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-dark-text-muted">#</span>
+              <input
+                ref={renameInputRef}
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(slugify(e.target.value))}
+                onKeyDown={handleRenameKeyDown}
+                onBlur={handleRename}
+                className="text-2xl font-bold text-dark-text bg-transparent border-b-2 border-blue-500 focus:outline-none"
+              />
+              <button
+                onClick={handleRename}
+                className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                title="Save"
+              >
+                <Check size={18} />
+              </button>
+            </div>
+          ) : (
+            <h1
+              className="text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors"
+              onClick={entityType === "channel" ? handleStartRename : undefined}
+              title={entityType === "channel" ? "Click to rename" : undefined}
+            >
+              {entityType === "channel" ? "#" : ""} {item.name}
+            </h1>
+          )}
+          {entityType === "channel" && !isRenaming && (
             <Dropdown
               align="right"
               trigger={
@@ -150,6 +224,12 @@ export function ChatView() {
                 </button>
               }
             >
+              <DropdownItem onClick={handleStartRename}>
+                <span className="flex items-center gap-2">
+                  <Pencil size={16} />
+                  Rename
+                </span>
+              </DropdownItem>
               <DropdownItem onClick={handleToggleStar}>
                 <span className="flex items-center gap-2">
                   <Star
@@ -191,16 +271,29 @@ export function ChatView() {
           onLoadMore={handleLoadMore}
           isLoadingMore={isLoadingMore}
           highlightCommentId={highlightCommentId}
+          fileUpload={entityId ? {
+            attachableType: entityType,
+            attachableId: entityId,
+            onError: (msg) => toastError(msg),
+          } : undefined}
         />
       </div>
 
       {openThread && (
-        <DiscussionThread
-          parentMessage={openThread}
-          threadMessages={threadMessages}
-          onClose={() => setOpenThread(null)}
-          onSendReply={handleSendReply}
-        />
+        <div className="fixed inset-0 z-[60] flex">
+          <div className="flex-1 bg-black/20" onClick={() => setOpenThread(null)} />
+          <DiscussionThread
+            parentMessage={openThread}
+            threadMessages={threadMessages}
+            onClose={() => setOpenThread(null)}
+            onSendReply={handleSendReply}
+            fileUpload={entityId ? {
+              attachableType: entityType,
+              attachableId: entityId,
+              onError: (msg) => toastError(msg),
+            } : undefined}
+          />
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
@@ -213,6 +306,6 @@ export function ChatView() {
         onConfirm={handleDeleteChannel}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-    </div>
+    </>
   );
 }

@@ -141,7 +141,7 @@ defmodule BridgeWeb.TaskControllerTest do
       assert response["data"]["status"]["id"] == todo_status.id
       assert response["data"]["status"]["name"] == "todo"
       assert response["data"]["notes"] == "Some notes"
-      assert response["data"]["list_id"] == list.id
+      assert response["data"]["board_id"] == list.id
       assert response["data"]["created_by_id"] == user.id
       assert response["data"]["id"]
       assert response["data"]["position"] == 1000
@@ -231,7 +231,7 @@ defmodule BridgeWeb.TaskControllerTest do
       assert response["data"]["title"] == "Test Task"
       assert response["data"]["status"]["id"] == doing_status.id
       assert response["data"]["status"]["name"] == "doing"
-      assert response["data"]["list_id"] == list.id
+      assert response["data"]["board_id"] == list.id
     end
 
     test "returns 404 for non-existent task", %{conn: conn} do

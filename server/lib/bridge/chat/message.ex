@@ -22,20 +22,19 @@ defmodule Bridge.Chat.Message do
     message
     |> cast(attrs, [:text, :entity_type, :entity_id, :user_id, :parent_id, :quote_id])
     |> validate_required([:text, :entity_type, :entity_id, :user_id])
-    |> validate_inclusion(:entity_type, ["task", "subtask", "doc", "channel", "dm"])
-    |> sanitize_html()
+    |> validate_inclusion(:entity_type, ["task", "doc", "channel", "dm"])
+    |> sanitize_content()
   end
 
-  # Sanitize HTML to prevent XSS attacks
-  defp sanitize_html(changeset) do
+  # Sanitize markdown content — strip dangerous HTML tags
+  defp sanitize_content(changeset) do
     case get_change(changeset, :text) do
       nil ->
         changeset
 
       text ->
-        # Use HTML5 scrubber which allows safe formatting tags
-        sanitized_text = HtmlSanitizeEx.html5(text)
-        put_change(changeset, :text, sanitized_text)
+        sanitized = Bridge.ContentSanitizer.sanitize_markdown(text)
+        put_change(changeset, :text, sanitized)
     end
   end
 end

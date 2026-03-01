@@ -119,39 +119,20 @@ defmodule Bridge.Mentions do
       "task" ->
         case Bridge.Lists.get_task(message.entity_id) do
           {:ok, task} ->
-            %{
+            base = %{
               taskId: message.entity_id,
               taskTitle: task.title,
               boardId: task.list_id
             }
 
-          _ ->
-            %{taskId: message.entity_id}
-        end
-
-      "subtask" ->
-        case Bridge.Lists.get_subtask(message.entity_id) do
-          {:ok, subtask} ->
-            task_result = Bridge.Lists.get_task(subtask.task_id)
-
-            base = %{
-              subtaskId: message.entity_id,
-              subtaskTitle: subtask.title,
-              taskId: subtask.task_id
-            }
-
-            case task_result do
-              {:ok, task} ->
-                base
-                |> Map.put(:boardId, task.list_id)
-                |> Map.put(:taskTitle, task.title)
-
-              _ ->
-                base
+            if task.parent_id do
+              Map.put(base, :parentTaskId, task.parent_id)
+            else
+              base
             end
 
           _ ->
-            %{subtaskId: message.entity_id}
+            %{taskId: message.entity_id}
         end
 
       "doc" ->

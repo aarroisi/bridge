@@ -5,24 +5,11 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import { createMentionExtension } from "@/lib/mention";
 import {
-  FileAttachment,
-  ImageBlock,
-  ImageGrid,
-  handleFilesUpload,
-} from "@/lib/tiptap";
+  RichTextEditor,
+  type RichTextEditorHandle,
+} from "@/lib/milkdown/RichTextEditor";
 import {
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Quote,
-  Undo,
-  Redo,
   Edit3,
   Check,
   ArrowDown,
@@ -30,7 +17,7 @@ import {
   MoreHorizontal,
   Star,
   Trash2,
-  Paperclip,
+  Quote,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Message } from "@/components/features/Message";
@@ -84,7 +71,7 @@ export function DocView() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorHandleRef = useRef<RichTextEditorHandle | null>(null);
   const doc = isNewDoc ? null : docs.find((d) => d.id === docId);
   const rawDocComments =
     docId && !isNewDoc && Array.isArray(messages[`doc:${docId}`])
@@ -109,71 +96,6 @@ export function DocView() {
       })),
     [members],
   );
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Placeholder.configure({
-        placeholder: "Start writing...",
-      }),
-      ImageBlock,
-      ImageGrid,
-      FileAttachment,
-      createMentionExtension({ members: mentionMembers }),
-    ],
-    content: doc?.content || "",
-    editable: isEditing,
-    onUpdate: ({ editor }) => {
-      if (isEditing) {
-        setEditedContent(editor.getHTML());
-      }
-    },
-    editorProps: {
-      // Prevent auto-scrolling when selection changes
-      handleScrollToSelection: () => false,
-      handleDrop: (_view, event) => {
-        const files = event.dataTransfer?.files;
-        if (files && files.length > 0 && editor) {
-          // Can't upload files to unsaved docs
-          if (isNewDoc || !docId) {
-            error("Please save the document before uploading files");
-            return true;
-          }
-          event.preventDefault();
-          handleFilesUpload(editor, Array.from(files), {
-            onError: (msg) => error(msg),
-            attachableType: "doc",
-            attachableId: docId,
-          });
-          return true;
-        }
-        return false;
-      },
-      handlePaste: (_view, event) => {
-        const files = event.clipboardData?.files;
-        if (files && files.length > 0 && editor) {
-          // Can't upload files to unsaved docs
-          if (isNewDoc || !docId) {
-            error("Please save the document before uploading files");
-            return true;
-          }
-          const hasFiles = Array.from(files).some(
-            (file) => file.type.startsWith("image/") || file.size > 0,
-          );
-          if (hasFiles) {
-            event.preventDefault();
-            handleFilesUpload(editor, Array.from(files), {
-              onError: (msg) => error(msg),
-              attachableType: "doc",
-              attachableId: docId,
-            });
-            return true;
-          }
-        }
-        return false;
-      },
-    },
-  });
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = () => {
@@ -326,7 +248,6 @@ export function DocView() {
       // Restore thread from URL if present
       const threadId = searchParams.get("thread");
       if (threadId) {
-        // Thread will be set after messages are loaded
         setOpenThread(null);
       } else {
         setOpenThread(null);
@@ -338,26 +259,16 @@ export function DocView() {
       setQuotingMessage(null);
       setNewComment("");
       setOpenThread(null);
-      setIsEditing(true); // Always in edit mode for new docs
-      if (editor) {
-        // Defer to avoid flushSync warning during React render
-        queueMicrotask(() => {
-          editor.commands.setContent("");
-        });
-      }
+      setIsEditing(true);
     }
-  }, [docId, isNewDoc, getDoc, fetchMessages, editor, searchParams]);
+  }, [docId, isNewDoc, getDoc, fetchMessages, searchParams]);
 
   useEffect(() => {
-    if (editor && doc) {
-      // Defer to avoid flushSync warning during React render
-      queueMicrotask(() => {
-        editor.commands.setContent(doc.content);
-      });
+    if (doc) {
       setEditedTitle(doc.title);
       setEditedContent(doc.content);
     }
-  }, [doc, editor]);
+  }, [doc]);
 
   // Focus title input for new docs
   useEffect(() => {
@@ -411,12 +322,6 @@ export function DocView() {
     }
   }, [highlightCommentId, docComments]);
 
-  useEffect(() => {
-    if (editor) {
-      editor.setEditable(isEditing);
-    }
-  }, [isEditing, editor]);
-
   // Monitor scroll position to show/hide jump to bottom button
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -461,13 +366,10 @@ export function DocView() {
   };
 
   const performCancelEdit = () => {
-    // Reset to original content
+    // Reset to original content — editor syncs via value prop
     if (doc) {
       setEditedTitle(doc.title);
       setEditedContent(doc.content || "");
-      if (editor) {
-        editor.commands.setContent(doc.content || "");
-      }
     }
     handleExitEditMode();
   };
@@ -569,8 +471,8 @@ export function DocView() {
   };
 
   const handleAddComment = async () => {
-    // Check for empty content - strip HTML tags to check actual text
-    const textContent = newComment.replace(/<[^>]*>/g, "").trim();
+    // Check for empty markdown content
+    const textContent = newComment.trim();
     if (!textContent || !docId) return;
     try {
       await sendMessage(
@@ -641,7 +543,7 @@ export function DocView() {
   };
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <>
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div className="px-6 py-4 border-b border-dark-border max-w-7xl mx-auto w-full">
           <div className="flex items-center justify-between">
@@ -785,115 +687,13 @@ export function DocView() {
           </div>
         </div>
 
-        {isEditing && editor && (
-          <div className="px-8 py-3 border-b border-dark-border flex items-center gap-2 max-w-7xl mx-auto w-full">
-            <button
-              onClick={() => editor.chain().focus().toggleBold().run()}
-              className={clsx(
-                "p-2 rounded transition-colors",
-                editor.isActive("bold")
-                  ? "bg-blue-600 text-white"
-                  : "text-dark-text-muted hover:bg-dark-surface",
-              )}
-            >
-              <Bold size={16} />
-            </button>
-            <button
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-              className={clsx(
-                "p-2 rounded transition-colors",
-                editor.isActive("italic")
-                  ? "bg-blue-600 text-white"
-                  : "text-dark-text-muted hover:bg-dark-surface",
-              )}
-            >
-              <Italic size={16} />
-            </button>
-            <button
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-              className={clsx(
-                "p-2 rounded transition-colors",
-                editor.isActive("bulletList")
-                  ? "bg-blue-600 text-white"
-                  : "text-dark-text-muted hover:bg-dark-surface",
-              )}
-            >
-              <List size={16} />
-            </button>
-            <button
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              className={clsx(
-                "p-2 rounded transition-colors",
-                editor.isActive("orderedList")
-                  ? "bg-blue-600 text-white"
-                  : "text-dark-text-muted hover:bg-dark-surface",
-              )}
-            >
-              <ListOrdered size={16} />
-            </button>
-            <button
-              onClick={() => editor.chain().focus().toggleBlockquote().run()}
-              className={clsx(
-                "p-2 rounded transition-colors",
-                editor.isActive("blockquote")
-                  ? "bg-blue-600 text-white"
-                  : "text-dark-text-muted hover:bg-dark-surface",
-              )}
-            >
-              <Quote size={16} />
-            </button>
-            <div className="w-px h-6 bg-dark-border mx-1" />
-            <button
-              onClick={() => editor.chain().focus().undo().run()}
-              className="p-2 rounded text-dark-text-muted hover:bg-dark-surface transition-colors"
-            >
-              <Undo size={16} />
-            </button>
-            <button
-              onClick={() => editor.chain().focus().redo().run()}
-              className="p-2 rounded text-dark-text-muted hover:bg-dark-surface transition-colors"
-            >
-              <Redo size={16} />
-            </button>
-            <div className="w-px h-6 bg-dark-border mx-1" />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded text-dark-text-muted hover:bg-dark-surface transition-colors"
-              title="Upload file"
-            >
-              <Paperclip size={16} />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = e.target.files;
-                if (files && files.length > 0 && editor) {
-                  // Can't upload files to unsaved docs
-                  if (isNewDoc || !docId) {
-                    error("Please save the document before uploading files");
-                    e.target.value = "";
-                    return;
-                  }
-                  handleFilesUpload(editor, Array.from(files), {
-                    onError: (msg) => error(msg),
-                    attachableType: "doc",
-                    attachableId: docId,
-                  });
-                }
-                e.target.value = "";
-              }}
-            />
-          </div>
-        )}
-
         <div
           className="flex-1 overflow-y-auto relative"
           ref={scrollContainerRef}
         >
-          <div className="px-8 py-6 max-w-7xl mx-auto w-full">
+          <div
+            className="max-w-7xl mx-auto w-full bg-dark-bg"
+          >
             {!doc?.content && !isEditing ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="w-16 h-16 rounded-full bg-dark-surface flex items-center justify-center mb-4">
@@ -922,9 +722,23 @@ export function DocView() {
                 </p>
               </div>
             ) : (
-              <EditorContent
-                editor={editor}
-                className="prose prose-invert prose-slate max-w-none"
+              <RichTextEditor
+                value={editedContent}
+                onChange={(md) => {
+                  if (isEditing) setEditedContent(md);
+                }}
+                editable={isEditing}
+                placeholder="Start writing..."
+                mentions={{ members: mentionMembers }}
+                fileUpload={!isNewDoc && docId ? {
+                  attachableType: "doc",
+                  attachableId: docId,
+                  onError: (msg) => error(msg),
+                } : undefined}
+                onReady={(handle) => {
+                  editorHandleRef.current = handle;
+                }}
+                className="prose prose-invert prose-slate max-w-none [&_.milkdown_.editor]:p-6"
               />
             )}
           </div>
@@ -957,6 +771,11 @@ export function DocView() {
                             onReply={() => handleOpenThread(comment)}
                             onQuote={() => handleQuote(comment)}
                             onQuotedClick={handleQuotedClick}
+                            fileUpload={docId ? {
+                              attachableType: "doc",
+                              attachableId: docId,
+                              onError: (msg) => error(msg),
+                            } : undefined}
                           />
                           {replies.length > 0 && (
                             <button
@@ -1008,21 +827,34 @@ export function DocView() {
               placeholder="Add a comment..."
               quotingMessage={quotingMessage}
               onCancelQuote={() => setQuotingMessage(null)}
+              fileUpload={!isNewDoc && docId ? {
+                attachableType: "doc",
+                attachableId: docId,
+                onError: (msg) => error(msg),
+              } : undefined}
             />
           </div>
         )}
       </div>
 
       {openThread && (
-        <DiscussionThread
-          parentMessage={openThread}
-          threadMessages={threadMessages}
-          onClose={handleCloseThread}
-          onSendReply={async (parentId, text, quoteId) => {
-            if (!docId) return;
-            await sendMessage("doc", docId, text, parentId, quoteId);
-          }}
-        />
+        <div className="fixed inset-0 z-[60] flex">
+          <div className="flex-1 bg-black/20" onClick={handleCloseThread} />
+          <DiscussionThread
+            parentMessage={openThread}
+            threadMessages={threadMessages}
+            onClose={handleCloseThread}
+            onSendReply={async (parentId, text, quoteId) => {
+              if (!docId) return;
+              await sendMessage("doc", docId, text, parentId, quoteId);
+            }}
+            fileUpload={docId ? {
+              attachableType: "doc",
+              attachableId: docId,
+              onError: (msg) => error(msg),
+            } : undefined}
+          />
+        </div>
       )}
 
       <ConfirmModal
@@ -1070,6 +902,6 @@ export function DocView() {
         onConfirm={handleDeleteDoc}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-    </div>
+    </>
   );
 }

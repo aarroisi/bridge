@@ -6,7 +6,7 @@ defmodule Bridge.Lists do
   import Ecto.Query, warn: false
   alias Bridge.Repo
 
-  alias Bridge.Lists.{List, ListStatus, Task, Subtask}
+  alias Bridge.Lists.{List, ListStatus, Task}
   alias Bridge.Chat.Message
 
   @default_statuses [
@@ -19,15 +19,6 @@ defmodule Bridge.Lists do
   # List functions
   # ============================================================================
 
-  @doc """
-  Returns the list of lists for a workspace, filtered by user access.
-
-  ## Examples
-
-      iex> list_lists(workspace_id, user)
-      [%List{}, ...]
-
-  """
   def list_lists(workspace_id, _user, opts \\ []) do
     List
     |> where([l], l.workspace_id == ^workspace_id)
@@ -36,15 +27,6 @@ defmodule Bridge.Lists do
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
-  @doc """
-  Returns the list of starred lists for a workspace.
-
-  ## Examples
-
-      iex> list_starred_lists(workspace_id, user)
-      [%List{}, ...]
-
-  """
   def list_starred_lists(workspace_id, _user, opts \\ []) do
     List
     |> where([l], l.starred == true and l.workspace_id == ^workspace_id)
@@ -53,44 +35,33 @@ defmodule Bridge.Lists do
     |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
   end
 
-  @doc """
-  Gets a single list within a workspace.
-
-  Returns `{:ok, list}` if found, `{:error, :not_found}` otherwise.
-
-  ## Examples
-
-      iex> get_list(id, workspace_id)
-      {:ok, %List{}}
-
-      iex> get_list(456, workspace_id)
-      {:error, :not_found}
-
-  """
   def get_list(id, workspace_id) do
     case List
          |> where([l], l.workspace_id == ^workspace_id)
          |> preload([
            :created_by,
            statuses: [],
-           tasks: [:assignee, :created_by, :status, :subtasks]
+           tasks: [:assignee, :created_by, :status]
          ])
          |> Repo.get(id) do
       nil ->
         {:error, :not_found}
 
       list ->
-        # Add comment counts to tasks
-        tasks_with_counts = add_comment_counts_to_tasks(list.tasks)
-        {:ok, %{list | tasks: tasks_with_counts}}
+        # Filter to only top-level tasks and add counts
+        top_level_tasks =
+          list.tasks
+          |> Enum.filter(&is_nil(&1.parent_id))
+          |> add_comment_counts_to_tasks()
+          |> add_child_counts_to_tasks()
+
+        {:ok, %{list | tasks: top_level_tasks}}
     end
   end
 
-  # Adds comment_count to a list of tasks
   defp add_comment_counts_to_tasks(tasks) when is_list(tasks) do
     task_ids = Enum.map(tasks, & &1.id)
 
-    # Get comment counts for all tasks in one query
     counts =
       from(m in Message,
         where: m.entity_type == "task" and m.entity_id in ^task_ids,
@@ -100,7 +71,6 @@ defmodule Bridge.Lists do
       |> Repo.all()
       |> Map.new()
 
-    # Add counts to tasks
     Enum.map(tasks, fn task ->
       %{task | comment_count: Map.get(counts, task.id, 0)}
     end)
@@ -108,32 +78,38 @@ defmodule Bridge.Lists do
 
   defp add_comment_counts_to_tasks(tasks), do: tasks
 
-  @doc """
-  Creates a list.
+  defp add_child_counts_to_tasks(tasks) when is_list(tasks) do
+    task_ids = Enum.map(tasks, & &1.id)
 
-  ## Examples
+    counts =
+      from(t in Task,
+        where: t.parent_id in ^task_ids,
+        group_by: t.parent_id,
+        select: {t.parent_id, count(t.id), sum(fragment("CASE WHEN ? THEN 1 ELSE 0 END", t.is_completed))}
+      )
+      |> Repo.all()
+      |> Map.new(fn {parent_id, total, done} -> {parent_id, {total, done}} end)
 
-      iex> create_list(%{field: value})
-      {:ok, %List{}}
+    Enum.map(tasks, fn task ->
+      {total, done} = Map.get(counts, task.id, {0, 0})
+      %{task | child_count: total, child_done_count: done}
+    end)
+  end
 
-      iex> create_list(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
+  defp add_child_counts_to_tasks(tasks), do: tasks
 
-  """
   def create_list(attrs \\ %{}) do
     Repo.transaction(fn ->
       with {:ok, list} <-
              %List{}
-             |> List.changeset(attrs)
+             |> List.create_changeset(attrs)
              |> Repo.insert() do
-        # Create default statuses for the new list
         Enum.each(@default_statuses, fn status_attrs ->
           %ListStatus{}
           |> ListStatus.changeset(Map.put(status_attrs, :list_id, list.id))
           |> Repo.insert!()
         end)
 
-        # Return list with statuses preloaded
         list |> Repo.preload(:statuses)
       else
         {:error, changeset} -> Repo.rollback(changeset)
@@ -141,73 +117,74 @@ defmodule Bridge.Lists do
     end)
   end
 
-  @doc """
-  Updates a list.
-
-  ## Examples
-
-      iex> update_list(list, %{field: new_value})
-      {:ok, %List{}}
-
-      iex> update_list(list, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def update_list(%List{} = list, attrs) do
     list
     |> List.changeset(attrs)
     |> Repo.update()
   end
 
-  @doc """
-  Deletes a list.
-
-  ## Examples
-
-      iex> delete_list(list)
-      {:ok, %List{}}
-
-      iex> delete_list(list)
-      {:error, %Ecto.Changeset{}}
-
-  """
   def delete_list(%List{} = list) do
     Repo.delete(list)
   end
 
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking list changes.
-
-  ## Examples
-
-      iex> change_list(list)
-      %Ecto.Changeset{data: %List{}}
-
-  """
   def change_list(%List{} = list, attrs \\ %{}) do
     List.changeset(list, attrs)
   end
 
-  @doc """
-  Toggles the starred status of a list.
-
-  ## Examples
-
-      iex> toggle_list_starred(list)
-      {:ok, %List{}}
-
-  """
   def toggle_list_starred(%List{} = list) do
     update_list(list, %{starred: !list.starred})
+  end
+
+  def suggest_prefix(name, workspace_id) do
+    base =
+      name
+      |> String.replace(~r/[^a-zA-Z\s]/, "")
+      |> String.split(~r/\s+/, trim: true)
+      |> Enum.map(&String.first/1)
+      |> Enum.join()
+      |> String.upcase()
+
+    base =
+      cond do
+        String.length(base) >= 2 -> String.slice(base, 0, 5)
+        String.length(base) == 1 -> base <> String.upcase(String.slice(name, 1, 1) || "X")
+        true -> "XX"
+      end
+
+    find_available_prefix(base, workspace_id)
+  end
+
+  def check_prefix_available?(prefix, workspace_id) do
+    not Repo.exists?(
+      from(l in List, where: l.workspace_id == ^workspace_id and l.prefix == ^prefix)
+    )
+  end
+
+  defp find_available_prefix(base, workspace_id) do
+    max_len = min(5, String.length(base))
+
+    result =
+      Enum.find_value(2..max_len//1, fn len ->
+        candidate = String.slice(base, 0, len)
+        if check_prefix_available?(candidate, workspace_id), do: candidate
+      end)
+
+    result || add_numeric_suffix(String.slice(base, 0, 2), workspace_id)
+  end
+
+  defp add_numeric_suffix(base, workspace_id) do
+    Enum.find_value(2..999, fn n ->
+      candidate = "#{base}#{n}"
+
+      if String.length(candidate) <= 5 && check_prefix_available?(candidate, workspace_id),
+        do: candidate
+    end) || base <> "X"
   end
 
   # ============================================================================
   # List Status functions
   # ============================================================================
 
-  @doc """
-  Returns all statuses for a list ordered by position.
-  """
   def list_statuses(list_id) do
     ListStatus
     |> where([s], s.list_id == ^list_id)
@@ -215,9 +192,6 @@ defmodule Bridge.Lists do
     |> Repo.all()
   end
 
-  @doc """
-  Gets a single status.
-  """
   def get_status(id) do
     case Repo.get(ListStatus, id) do
       nil -> {:error, :not_found}
@@ -225,14 +199,9 @@ defmodule Bridge.Lists do
     end
   end
 
-  @doc """
-  Creates a status for a list.
-  New statuses are inserted before the DONE status (if one exists).
-  """
   def create_status(attrs \\ %{}) do
     list_id = attrs["list_id"] || attrs[:list_id]
 
-    # Find the done status if it exists
     done_status =
       ListStatus
       |> where([s], s.list_id == ^list_id and s.is_done == true)
@@ -241,14 +210,12 @@ defmodule Bridge.Lists do
     Repo.transaction(fn ->
       new_position =
         if done_status do
-          # Insert before DONE status, bump DONE's position
           ListStatus
           |> where([s], s.id == ^done_status.id)
           |> Repo.update_all(inc: [position: 1])
 
           done_status.position
         else
-          # No DONE status, insert at end
           max_position =
             ListStatus
             |> where([s], s.list_id == ^list_id)
@@ -269,25 +236,16 @@ defmodule Bridge.Lists do
     end)
   end
 
-  @doc """
-  Updates a status.
-  """
   def update_status(%ListStatus{} = status, attrs) do
     status
     |> ListStatus.changeset(attrs)
     |> Repo.update()
   end
 
-  @doc """
-  Deletes a status. Tasks with this status will have their status_id set to nil.
-  Cannot delete a status marked as is_done.
-  """
   def delete_status(%ListStatus{} = status) do
-    # Cannot delete the DONE status
     if status.is_done do
       {:error, :is_done_status}
     else
-      # Check if there are any tasks using this status
       task_count =
         Task
         |> where([t], t.status_id == ^status.id)
@@ -301,22 +259,15 @@ defmodule Bridge.Lists do
     end
   end
 
-  @doc """
-  Reorders statuses for a list by providing an ordered list of status IDs.
-  Validates that the DONE status (is_done: true) is always at the end.
-  """
   def reorder_statuses(list_id, status_ids) when is_list(status_ids) do
-    # Fetch all statuses to validate
     statuses =
       ListStatus
       |> where([s], s.list_id == ^list_id)
       |> Repo.all()
       |> Map.new(&{&1.id, &1})
 
-    # Find the done status
     done_status = Enum.find(statuses, fn {_id, s} -> s.is_done end)
 
-    # Validate: if there's a done status, it must be last in the provided order
     case done_status do
       {done_id, _} ->
         last_id = Elixir.List.last(status_ids)
@@ -328,7 +279,6 @@ defmodule Bridge.Lists do
         end
 
       nil ->
-        # No done status, proceed normally
         do_reorder_statuses(list_id, status_ids)
     end
   end
@@ -352,100 +302,82 @@ defmodule Bridge.Lists do
   # ============================================================================
 
   @doc """
-  Returns the list of tasks for a specific list.
-
-  ## Examples
-
-      iex> list_tasks(list_id)
-      [%Task{}, ...]
-
+  Returns top-level tasks (no parent) for a board.
   """
   def list_tasks(list_id, opts \\ []) when is_binary(list_id) do
     page =
       Task
-      |> where([t], t.list_id == ^list_id)
+      |> where([t], t.list_id == ^list_id and is_nil(t.parent_id))
       |> order_by([t], asc: t.position, desc: t.id)
-      |> preload([:list, :assignee, :created_by, :status, subtasks: [:assignee, :created_by]])
+      |> preload([:list, :assignee, :created_by, :status])
       |> Repo.paginate(Keyword.merge([cursor_fields: [:id], limit: 50], opts))
 
-    # Add comment counts to tasks
-    tasks_with_counts = add_comment_counts_to_tasks(page.entries)
+    tasks_with_counts =
+      page.entries
+      |> add_comment_counts_to_tasks()
+      |> add_child_counts_to_tasks()
+
     %{page | entries: tasks_with_counts}
   end
 
   @doc """
-  Returns the list of tasks assigned to a specific user.
-
-  ## Examples
-
-      iex> list_tasks_by_assignee(user_id)
-      [%Task{}, ...]
-
+  Returns top-level tasks assigned to a user.
   """
   def list_tasks_by_assignee(assignee_id, workspace_id) do
     Task
     |> join(:inner, [t], l in assoc(t, :list))
-    |> where([t, l], t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id)
+    |> where([t, l], t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id and is_nil(t.parent_id))
     |> order_by([t], desc: t.inserted_at)
-    |> preload([:list, :assignee, :created_by, :status, :subtasks])
+    |> preload([:list, :assignee, :created_by, :status])
     |> Repo.all()
   end
 
   @doc """
-  Returns the list of tasks with a specific status_id.
-
-  ## Examples
-
-      iex> list_tasks_by_status_id(status_id)
-      [%Task{}, ...]
-
+  Returns child tasks (subtasks) assigned to a user.
   """
+  def list_child_tasks_by_assignee(assignee_id, workspace_id) do
+    Task
+    |> join(:inner, [t], l in assoc(t, :list))
+    |> where([t, l], t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id and not is_nil(t.parent_id))
+    |> order_by([t], desc: t.inserted_at)
+    |> preload([:list, :assignee, :created_by, :parent])
+    |> Repo.all()
+  end
+
   def list_tasks_by_status_id(status_id) do
     Task
     |> where([t], t.status_id == ^status_id)
-    |> preload([:list, :assignee, :created_by, :status, :subtasks])
+    |> preload([:list, :assignee, :created_by, :status])
     |> Repo.all()
   end
 
-  @doc """
-  Returns the list of tasks due on or before a specific date.
-
-  ## Examples
-
-      iex> list_tasks_due_by(~D[2024-12-31])
-      [%Task{}, ...]
-
-  """
   def list_tasks_due_by(date) do
     Task
     |> where([t], not is_nil(t.due_on) and t.due_on <= ^date)
-    |> preload([:list, :assignee, :created_by, :subtasks])
+    |> preload([:list, :assignee, :created_by])
     |> order_by([t], asc: t.due_on)
     |> Repo.all()
   end
 
   @doc """
-  Gets a single task.
-
-  Returns `{:ok, task}` if found, `{:error, :not_found}` otherwise.
-
-  ## Examples
-
-      iex> get_task(123)
-      {:ok, %Task{}}
-
-      iex> get_task(456)
-      {:error, :not_found}
-
+  Returns child tasks for a parent task.
   """
+  def list_child_tasks(parent_id) do
+    Task
+    |> where([t], t.parent_id == ^parent_id)
+    |> order_by([t], asc: t.inserted_at)
+    |> preload([:list, :assignee, :created_by, :parent])
+    |> Repo.all()
+  end
+
   def get_task(id) do
     case Task
          |> preload(
            list: [:statuses],
            status: [],
+           parent: [],
            assignee: [],
-           created_by: [],
-           subtasks: [:assignee, :created_by]
+           created_by: []
          )
          |> Repo.get(id) do
       nil -> {:error, :not_found}
@@ -453,37 +385,89 @@ defmodule Bridge.Lists do
     end
   end
 
-  @doc """
-  Creates a task.
-
-  ## Examples
-
-      iex> create_task(%{field: value})
-      {:ok, %Task{}}
-
-      iex> create_task(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def create_task(attrs \\ %{}) do
+    parent_id = attrs["parent_id"] || attrs[:parent_id]
+
+    with :ok <- validate_single_level_nesting(parent_id) do
+      do_create_task(attrs, parent_id)
+    end
+  end
+
+  defp validate_single_level_nesting(nil), do: :ok
+
+  defp validate_single_level_nesting(parent_id) do
+    case Repo.get(Task, parent_id) do
+      %Task{parent_id: nil} ->
+        :ok
+
+      %Task{} ->
+        changeset =
+          %Task{}
+          |> Ecto.Changeset.change()
+          |> Ecto.Changeset.add_error(:parent_id, "cannot create subtask of a subtask")
+
+        {:error, changeset}
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+
+  defp do_create_task(attrs, parent_id) do
     list_id = attrs["list_id"] || attrs[:list_id]
     status_id = attrs["status_id"] || attrs[:status_id]
 
-    # If no status_id provided, get the first status (lowest position) for the list
-    status_id =
-      if status_id do
-        status_id
+    # For child tasks, inherit list_id from parent if not provided
+    list_id =
+      if parent_id && !list_id do
+        Task
+        |> where([t], t.id == ^parent_id)
+        |> select([t], t.list_id)
+        |> Repo.one()
       else
-        get_first_status_id(list_id)
+        list_id
       end
 
-    # Get max position for the status column and add 1000
-    max_position = get_max_position_by_status_id(list_id, status_id)
+    attrs = Map.put(attrs, "list_id", list_id)
+
+    # Child tasks don't get a status; top-level tasks default to first status
+    status_id =
+      cond do
+        parent_id -> nil
+        status_id -> status_id
+        true -> get_first_status_id(list_id)
+      end
+
+    # Child tasks don't need position calculation
+    max_position =
+      if parent_id do
+        0
+      else
+        get_max_position_by_status_id(list_id, status_id)
+      end
+
+    # Atomically increment the board's sequence counter
+    seq_num =
+      if is_binary(list_id) do
+        {1, [%{task_sequence_counter: counter}]} =
+          from(l in List,
+            where: l.id == ^list_id,
+            select: %{task_sequence_counter: l.task_sequence_counter}
+          )
+          |> Repo.update_all(inc: [task_sequence_counter: 1])
+
+        counter
+      else
+        0
+      end
+
+    position = if parent_id, do: 0, else: max_position + 1000
 
     attrs_with_defaults =
       attrs
-      |> Map.put("position", max_position + 1000)
+      |> Map.put("position", position)
       |> Map.put("status_id", status_id)
+      |> Map.put("sequence_number", seq_num)
 
     result =
       %Task{}
@@ -491,7 +475,7 @@ defmodule Bridge.Lists do
       |> Repo.insert()
 
     case result do
-      {:ok, task} -> {:ok, Repo.preload(task, [:status, :assignee, :created_by])}
+      {:ok, task} -> {:ok, Repo.preload(task, [:list, :status, :assignee, :created_by])}
       error -> error
     end
   end
@@ -517,71 +501,45 @@ defmodule Bridge.Lists do
 
   defp get_max_position_by_status_id(_, _), do: 0
 
-  @doc """
-  Creates a task for a specific list.
-
-  ## Examples
-
-      iex> create_task(list_id, %{field: value})
-      {:ok, %Task{}}
-
-  """
   def create_task(list_id, attrs) when is_binary(list_id) do
     attrs
     |> Map.put(:list_id, list_id)
     |> create_task()
   end
 
-  @doc """
-  Updates a task.
-
-  ## Examples
-
-      iex> update_task(task, %{field: new_value})
-      {:ok, %Task{}}
-
-      iex> update_task(task, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def update_task(%Task{} = task, attrs) do
-    # Check if status is changing and handle completed_at
     attrs = maybe_update_task_completed_at(task, attrs)
+    attrs = maybe_update_child_task_completed_at(task, attrs)
 
     case task
          |> Task.changeset(attrs)
          |> Repo.update() do
       {:ok, updated_task} ->
-        {:ok, Repo.preload(updated_task, [:status, :assignee, :created_by], force: true)}
+        {:ok, Repo.preload(updated_task, [:list, :status, :assignee, :created_by], force: true)}
 
       error ->
         error
     end
   end
 
-  # Check if new status is a "done" status and set/clear completed_at
-  defp maybe_update_task_completed_at(%Task{} = task, attrs) do
+  # For top-level tasks: check if status is changing to done/undone
+  defp maybe_update_task_completed_at(%Task{parent_id: nil} = task, attrs) do
     new_status_id = attrs[:status_id] || attrs["status_id"]
 
-    # Determine if attrs uses string keys or atom keys
     use_string_keys = Map.has_key?(attrs, "status_id") || Map.has_key?(attrs, "title")
     completed_at_key = if use_string_keys, do: "completed_at", else: :completed_at
 
     cond do
-      # No status change
       is_nil(new_status_id) ->
         attrs
 
-      # Status is changing
       new_status_id != task.status_id ->
         new_status = Repo.get(ListStatus, new_status_id)
 
         cond do
-          # Moving to a done status - set completed_at
           new_status && new_status.is_done && is_nil(task.completed_at) ->
             Map.put(attrs, completed_at_key, DateTime.utc_now())
 
-          # Moving away from done status - clear completed_at
           new_status && !new_status.is_done && !is_nil(task.completed_at) ->
             Map.put(attrs, completed_at_key, nil)
 
@@ -594,34 +552,38 @@ defmodule Bridge.Lists do
     end
   end
 
-  @doc """
-  Reorders a task within its list, optionally changing status.
+  defp maybe_update_task_completed_at(_task, attrs), do: attrs
 
-  ## Parameters
-    - task: The task to reorder
-    - target_index: The target index in the column (0-based)
-    - new_status: Optional new status (for cross-column moves)
+  # For child tasks: check if is_completed is changing
+  defp maybe_update_child_task_completed_at(%Task{parent_id: parent_id} = task, attrs)
+       when not is_nil(parent_id) do
+    new_is_completed = attrs[:is_completed] || attrs["is_completed"]
 
-  ## Returns
-    - {:ok, task} on success
-    - {:error, changeset} on failure
+    use_string_keys = Map.has_key?(attrs, "is_completed") || Map.has_key?(attrs, "title")
+    completed_at_key = if use_string_keys, do: "completed_at", else: :completed_at
 
-  ## Examples
+    cond do
+      is_nil(new_is_completed) ->
+        attrs
 
-      iex> reorder_task(task, 0)
-      {:ok, %Task{}}
+      new_is_completed == true && task.is_completed != true ->
+        Map.put(attrs, completed_at_key, DateTime.utc_now())
 
-      iex> reorder_task(task, 1, "doing")
-      {:ok, %Task{}}
+      new_is_completed == false && task.is_completed == true ->
+        Map.put(attrs, completed_at_key, nil)
 
-  """
+      true ->
+        attrs
+    end
+  end
+
+  defp maybe_update_child_task_completed_at(_task, attrs), do: attrs
+
   def reorder_task(%Task{} = task, target_index, new_status_id \\ nil) do
     new_status_id = new_status_id || task.status_id
 
-    # Calculate the new position based on neighbors
     calculated_position = calculate_position(task.list_id, new_status_id, target_index, task.id)
 
-    # Build attrs and check for completed_at update
     attrs = %{position: calculated_position, status_id: new_status_id}
     attrs = maybe_update_task_completed_at(task, attrs)
 
@@ -631,13 +593,12 @@ defmodule Bridge.Lists do
       |> Repo.update()
 
     case result do
-      {:ok, task} -> {:ok, Repo.preload(task, [:status, :assignee, :created_by])}
+      {:ok, task} -> {:ok, Repo.preload(task, [:list, :status, :assignee, :created_by])}
       error -> error
     end
   end
 
   defp calculate_position(list_id, status_id, target_index, exclude_task_id) do
-    # Get all tasks in the target column ordered by position, excluding the task being moved
     positions =
       Task
       |> where(
@@ -649,18 +610,15 @@ defmodule Bridge.Lists do
       |> Repo.all()
 
     cond do
-      # Empty column or inserting at start
       positions == [] or target_index == 0 ->
         case positions do
           [] -> 1000
           [first | _] -> div(first, 2)
         end
 
-      # Inserting at end
       target_index >= length(positions) ->
         Elixir.List.last(positions) + 1000
 
-      # Inserting between two tasks
       true ->
         prev_pos = Enum.at(positions, target_index - 1)
         next_pos = Enum.at(positions, target_index)
@@ -668,292 +626,19 @@ defmodule Bridge.Lists do
     end
   end
 
-  @doc """
-  Deletes a task.
-
-  ## Examples
-
-      iex> delete_task(task)
-      {:ok, %Task{}}
-
-      iex> delete_task(task)
-      {:error, %Ecto.Changeset{}}
-
-  """
   def delete_task(%Task{} = task) do
     Repo.delete(task)
   end
 
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking task changes.
-
-  ## Examples
-
-      iex> change_task(task)
-      %Ecto.Changeset{data: %Task{}}
-
-  """
   def change_task(%Task{} = task, attrs \\ %{}) do
     Task.changeset(task, attrs)
   end
 
-  @doc """
-  Assigns a task to a user.
-
-  ## Examples
-
-      iex> assign_task(task, user_id)
-      {:ok, %Task{}}
-
-  """
   def assign_task(%Task{} = task, assignee_id) do
     update_task(task, %{assignee_id: assignee_id})
   end
 
-  @doc """
-  Updates the status of a task.
-
-  ## Examples
-
-      iex> update_task_status(task, status_id)
-      {:ok, %Task{}}
-
-  """
   def update_task_status(%Task{} = task, status_id) do
     update_task(task, %{status_id: status_id})
-  end
-
-  # ============================================================================
-  # Subtask functions
-  # ============================================================================
-
-  @doc """
-  Returns the list of subtasks.
-
-  ## Examples
-
-      iex> list_subtasks()
-      [%Subtask{}, ...]
-
-  """
-  def list_subtasks do
-    Subtask
-    |> preload([:task, :assignee, :created_by])
-    |> Repo.all()
-  end
-
-  @doc """
-  Returns the list of subtasks for a specific task.
-
-  ## Examples
-
-      iex> list_subtasks(task_id)
-      [%Subtask{}, ...]
-
-  """
-  def list_subtasks(task_id) do
-    Subtask
-    |> where([s], s.task_id == ^task_id)
-    |> preload([:task, :assignee, :created_by])
-    |> Repo.all()
-  end
-
-  @doc """
-  Returns the list of subtasks assigned to a specific user.
-
-  ## Examples
-
-      iex> list_subtasks_by_assignee(user_id)
-      [%Subtask{}, ...]
-
-  """
-  def list_subtasks_by_assignee(assignee_id, workspace_id) do
-    Subtask
-    |> join(:inner, [s], t in assoc(s, :task))
-    |> join(:inner, [s, t], l in assoc(t, :list))
-    |> where([s, t, l], s.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id)
-    |> order_by([s], desc: s.inserted_at)
-    |> preload([:task, :assignee, :created_by])
-    |> Repo.all()
-  end
-
-  @doc """
-  Returns the list of subtasks with a specific status.
-
-  ## Examples
-
-      iex> list_subtasks_by_status("todo")
-      [%Subtask{}, ...]
-
-  """
-  def list_subtasks_by_status(status) do
-    Subtask
-    |> where([s], s.status == ^status)
-    |> preload([:task, :assignee, :created_by])
-    |> Repo.all()
-  end
-
-  @doc """
-  Gets a single subtask.
-
-  Returns `{:ok, subtask}` if found, `{:error, :not_found}` otherwise.
-
-  ## Examples
-
-      iex> get_subtask(123)
-      {:ok, %Subtask{}}
-
-      iex> get_subtask(456)
-      {:error, :not_found}
-
-  """
-  def get_subtask(id) do
-    case Subtask
-         |> preload(task: [list: []], assignee: [], created_by: [])
-         |> Repo.get(id) do
-      nil -> {:error, :not_found}
-      subtask -> {:ok, subtask}
-    end
-  end
-
-  @doc """
-  Creates a subtask.
-
-  ## Examples
-
-      iex> create_subtask(%{field: value})
-      {:ok, %Subtask{}}
-
-      iex> create_subtask(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_subtask(attrs \\ %{}) do
-    %Subtask{}
-    |> Subtask.changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a subtask for a specific task.
-
-  ## Examples
-
-      iex> create_subtask(task_id, %{field: value})
-      {:ok, %Subtask{}}
-
-  """
-  def create_subtask(task_id, attrs) when is_binary(task_id) do
-    attrs
-    |> Map.put(:task_id, task_id)
-    |> create_subtask()
-  end
-
-  @doc """
-  Updates a subtask.
-
-  ## Examples
-
-      iex> update_subtask(subtask, %{field: new_value})
-      {:ok, %Subtask{}}
-
-      iex> update_subtask(subtask, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def update_subtask(%Subtask{} = subtask, attrs) do
-    # Check if status is changing and handle completed_at
-    attrs = maybe_update_subtask_completed_at(subtask, attrs)
-
-    case subtask
-         |> Subtask.changeset(attrs)
-         |> Repo.update() do
-      {:ok, updated_subtask} ->
-        {:ok, Repo.preload(updated_subtask, [:assignee, :created_by], force: true)}
-
-      error ->
-        error
-    end
-  end
-
-  # Check if subtask is_completed is changing and set/clear completed_at
-  defp maybe_update_subtask_completed_at(%Subtask{} = subtask, attrs) do
-    new_is_completed = attrs[:is_completed] || attrs["is_completed"]
-
-    # Determine if attrs uses string keys or atom keys
-    use_string_keys = Map.has_key?(attrs, "is_completed") || Map.has_key?(attrs, "title")
-    completed_at_key = if use_string_keys, do: "completed_at", else: :completed_at
-
-    cond do
-      # No is_completed change
-      is_nil(new_is_completed) ->
-        attrs
-
-      # Marking as completed - set completed_at
-      new_is_completed == true && subtask.is_completed != true ->
-        Map.put(attrs, completed_at_key, DateTime.utc_now())
-
-      # Marking as not completed - clear completed_at
-      new_is_completed == false && subtask.is_completed == true ->
-        Map.put(attrs, completed_at_key, nil)
-
-      true ->
-        attrs
-    end
-  end
-
-  @doc """
-  Deletes a subtask.
-
-  ## Examples
-
-      iex> delete_subtask(subtask)
-      {:ok, %Subtask{}}
-
-      iex> delete_subtask(subtask)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_subtask(%Subtask{} = subtask) do
-    Repo.delete(subtask)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking subtask changes.
-
-  ## Examples
-
-      iex> change_subtask(subtask)
-      %Ecto.Changeset{data: %Subtask{}}
-
-  """
-  def change_subtask(%Subtask{} = subtask, attrs \\ %{}) do
-    Subtask.changeset(subtask, attrs)
-  end
-
-  @doc """
-  Assigns a subtask to a user.
-
-  ## Examples
-
-      iex> assign_subtask(subtask, user_id)
-      {:ok, %Subtask{}}
-
-  """
-  def assign_subtask(%Subtask{} = subtask, assignee_id) do
-    update_subtask(subtask, %{assignee_id: assignee_id})
-  end
-
-  @doc """
-  Updates the status of a subtask.
-
-  ## Examples
-
-      iex> update_subtask_completion(subtask, true)
-      {:ok, %Subtask{}}
-
-  """
-  def update_subtask_completion(%Subtask{} = subtask, is_completed) do
-    update_subtask(subtask, %{is_completed: is_completed})
   end
 end

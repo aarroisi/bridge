@@ -37,6 +37,7 @@ defmodule BridgeWeb.ListJSON do
     base = %{
       id: list.id,
       name: list.name,
+      prefix: list.prefix,
       starred: list.starred,
       created_by_id: list.created_by_id,
       created_by: get_created_by(list),

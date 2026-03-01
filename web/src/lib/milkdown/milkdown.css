@@ -1,0 +1,104 @@
+/* Bridge theme overrides for Milkdown Crepe */
+.milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: #e2e8f0;
+  --crepe-color-surface: #1e293b;
+  --crepe-color-surface-low: #0f172a;
+  --crepe-color-on-surface: #e2e8f0;
+  --crepe-color-on-surface-variant: #94a3b8;
+  --crepe-color-outline: #334155;
+  --crepe-color-primary: #3b82f6;
+  --crepe-color-secondary: #3b82f6;
+  --crepe-color-on-secondary: #93c5fd;
+  --crepe-color-inverse: #e2e8f0;
+  --crepe-color-on-inverse: #0f172a;
+  --crepe-color-inline-code: #f472b6;
+  --crepe-color-error: #ef4444;
+  --crepe-color-hover: #334155;
+  --crepe-color-selected: #3b82f6;
+  --crepe-color-inline-area: #1e293b;
+
+  --crepe-font-title: inherit;
+  --crepe-font-default: inherit;
+  --crepe-font-code: "Fira Code", Menlo, Monaco, "Courier New", Courier,
+    monospace;
+
+  --crepe-shadow-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3),
+    0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --crepe-shadow-2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3),
+    0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Editor content area styling - reset Crepe's default 60px 120px padding */
+.milkdown .editor {
+  outline: none;
+  color: #e2e8f0;
+  padding: 4px 0;
+}
+
+/* Remove all block-level margins — spacing is controlled by empty lines */
+.milkdown .editor h1,
+.milkdown .editor h2,
+.milkdown .editor h3,
+.milkdown .editor h4,
+.milkdown .editor h5,
+.milkdown .editor h6,
+.milkdown .editor p,
+.milkdown .editor blockquote,
+.milkdown .editor ul,
+.milkdown .editor ol,
+.milkdown .editor pre,
+.milkdown .editor hr {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Narrower blockquote gap between border and text */
+.milkdown .editor blockquote {
+  padding-left: 16px;
+}
+
+/* Hide the virtual cursor animation that causes flickering */
+.milkdown .prosemirror-virtual-cursor {
+  display: none;
+}
+
+/* Brighten list bullet/number labels */
+.milkdown .milkdown-list-item-block li .label-wrapper {
+  color: #94a3b8;
+}
+
+/* Mention styling within Milkdown */
+.milkdown .mention {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.milkdown .mention:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* Uploaded image styling (editor + view mode) */
+.image-block-wrapper img {
+  border: 1px solid #334155;
+  max-width: min(800px, 100%);
+  height: auto;
+}
+
+.image-grid img {
+  border: 1px solid #334155;
+}
+
+/* Toggle caption edit/view based on editor editable state */
+.milkdown .editor[contenteditable="false"] .caption-edit {
+  display: none;
+}
+
+.milkdown .editor[contenteditable="true"] .caption-view {
+  display: none;
+}

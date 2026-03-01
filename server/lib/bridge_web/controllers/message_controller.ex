@@ -49,7 +49,7 @@ defmodule BridgeWeb.MessageController do
               true
 
             # If entity_type is not a valid type, let validation handle it
-            entity_type not in ["task", "subtask", "doc", "channel", "dm"] ->
+            entity_type not in ["task", "doc", "channel", "dm"] ->
               true
 
             # Otherwise, check entity access
@@ -80,13 +80,6 @@ defmodule BridgeWeb.MessageController do
   defp get_entity("task", id, _conn) when is_binary(id) do
     case Bridge.Lists.get_task(id) do
       {:ok, task} -> task
-      _ -> nil
-    end
-  end
-
-  defp get_entity("subtask", id, _conn) when is_binary(id) do
-    case Bridge.Lists.get_subtask(id) do
-      {:ok, subtask} -> subtask
       _ -> nil
     end
   end

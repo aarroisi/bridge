@@ -16,6 +16,7 @@ import {
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { CreateBoardModal } from "@/components/features/CreateBoardModal";
+import { CreateChannelModal } from "@/components/features/CreateChannelModal";
 import { format } from "date-fns";
 import { useProjectStore } from "@/stores/projectStore";
 import { useBoardStore } from "@/stores/boardStore";
@@ -236,6 +237,7 @@ export function ProjectPage() {
     name: string;
   } | null>(null);
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
 
   const projects = useProjectStore((state) => state.projects);
   const updateProject = useProjectStore((state) => state.updateProject);
@@ -300,11 +302,8 @@ export function ProjectPage() {
           break;
         }
         case "channel": {
-          const channel = await createChannel("new-channel");
-          await addItem(id, "channel", channel.id);
-          success("Channel created");
-          navigate(`/projects/${id}/channels/${channel.id}`);
-          break;
+          setShowCreateChannelModal(true);
+          return;
         }
       }
     } catch (err) {
@@ -417,10 +416,10 @@ export function ProjectPage() {
     }
   };
 
-  const handleCreateBoard = async (name: string) => {
+  const handleCreateBoard = async (name: string, prefix: string) => {
     if (!id) return;
     try {
-      const board = await createBoard(name);
+      const board = await createBoard(name, prefix);
       await addItem(id, "board", board.id);
       success("Board created");
       setShowCreateBoardModal(false);
@@ -428,6 +427,20 @@ export function ProjectPage() {
     } catch (err) {
       console.error("Failed to create board:", err);
       error("Failed to create board");
+    }
+  };
+
+  const handleCreateChannel = async (name: string) => {
+    if (!id) return;
+    try {
+      const channel = await createChannel(name);
+      await addItem(id, "channel", channel.id);
+      success("Channel created");
+      setShowCreateChannelModal(false);
+      navigate(`/projects/${id}/channels/${channel.id}`);
+    } catch (err) {
+      console.error("Failed to create channel:", err);
+      error("Failed to create channel");
     }
   };
 
@@ -762,6 +775,13 @@ export function ProjectPage() {
         isOpen={showCreateBoardModal}
         onClose={() => setShowCreateBoardModal(false)}
         onSubmit={handleCreateBoard}
+      />
+
+      {/* Create Channel Modal */}
+      <CreateChannelModal
+        isOpen={showCreateChannelModal}
+        onClose={() => setShowCreateChannelModal(false)}
+        onSubmit={handleCreateChannel}
       />
     </div>
   );

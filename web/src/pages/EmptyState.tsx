@@ -15,6 +15,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
 import { CreateProjectModal } from "@/components/features/CreateProjectModal";
 import { CreateBoardModal } from "@/components/features/CreateBoardModal";
+import { CreateChannelModal } from "@/components/features/CreateChannelModal";
 
 export function EmptyState() {
   const location = useLocation();
@@ -23,6 +24,7 @@ export function EmptyState() {
 
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
 
   const createProject = useProjectStore((state) => state.createProject);
   const createBoard = useBoardStore((state) => state.createBoard);
@@ -79,10 +81,8 @@ export function EmptyState() {
           icon: Hash,
           description: "Start team conversations in channels",
           actionText: "Create Channel",
-          action: async () => {
-            const channel = await createChannel("new-channel");
-            success("Channel created successfully");
-            navigate(`/channels/${channel.id}`);
+          action: () => {
+            setShowCreateChannelModal(true);
           },
         };
       case "dms":
@@ -143,14 +143,26 @@ export function EmptyState() {
     }
   };
 
-  const handleCreateBoard = async (name: string) => {
+  const handleCreateBoard = async (name: string, prefix: string) => {
     try {
-      const board = await createBoard(name);
+      const board = await createBoard(name, prefix);
       success("Board created successfully");
       setShowCreateBoardModal(false);
       navigate(`/boards/${board.id}`);
     } catch (err) {
       console.error("Failed to create board:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
+
+  const handleCreateChannel = async (name: string) => {
+    try {
+      const channel = await createChannel(name);
+      success("Channel created successfully");
+      setShowCreateChannelModal(false);
+      navigate(`/channels/${channel.id}`);
+    } catch (err) {
+      console.error("Failed to create channel:", err);
       error("Error: " + (err as Error).message);
     }
   };
@@ -186,6 +198,12 @@ export function EmptyState() {
         isOpen={showCreateBoardModal}
         onClose={() => setShowCreateBoardModal(false)}
         onSubmit={handleCreateBoard}
+      />
+
+      <CreateChannelModal
+        isOpen={showCreateChannelModal}
+        onClose={() => setShowCreateChannelModal(false)}
+        onSubmit={handleCreateChannel}
       />
     </div>
   );

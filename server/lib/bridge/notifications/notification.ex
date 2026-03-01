@@ -19,7 +19,7 @@ defmodule Bridge.Notifications.Notification do
   end
 
   @notification_types ["mention"]
-  @entity_types ["message", "doc", "task", "subtask"]
+  @entity_types ["message", "doc", "task"]
 
   @doc false
   def changeset(notification, attrs) do

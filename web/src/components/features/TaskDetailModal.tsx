@@ -17,34 +17,34 @@ import { CommentEditor } from "./CommentEditor";
 import { RichTextNotesEditor } from "@/components/ui/RichTextNotesEditor";
 import {
   Task,
-  Subtask,
   BoardStatus,
   Message as MessageType,
   User,
 } from "@/types";
 import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useToastStore } from "@/stores/toastStore";
 import { clsx } from "clsx";
 
 interface TaskDetailModalProps {
   task: Task;
-  subtasks: Subtask[];
+  childTasks: Task[];
   comments: MessageType[];
   statuses: BoardStatus[];
   workspaceMembers?: User[];
   onClose: () => void;
-  onSubtaskClick?: (subtaskId: string) => void;
+  onChildTaskClick?: (childTaskId: string) => void;
   highlightCommentId?: string | null;
 }
 
 export function TaskDetailModal({
   task,
-  subtasks,
+  childTasks,
   comments,
   statuses,
   workspaceMembers = [],
   onClose,
-  onSubtaskClick,
+  onChildTaskClick,
   highlightCommentId,
 }: TaskDetailModalProps) {
   const [openThread, setOpenThread] = useState<MessageType | null>(null);
@@ -52,52 +52,38 @@ export function TaskDetailModal({
   const [quotingMessage, setQuotingMessage] = useState<MessageType | null>(
     null,
   );
-  const [newSubtask, setNewSubtask] = useState("");
-  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [newChildTask, setNewChildTask] = useState("");
+  const [isAddingChildTask, setIsAddingChildTask] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
-  const [subtaskToDelete, setSubtaskToDelete] = useState<Subtask | null>(null);
+  const [childTaskToDelete, setChildTaskToDelete] = useState<Task | null>(null);
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
-  const [isSavingDetails, setIsSavingDetails] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
-  // Local state for batched save
-  const [localStatusId, setLocalStatusId] = useState(task.statusId);
-  const [localAssigneeId, setLocalAssigneeId] = useState<string | undefined>(
-    task.assigneeId ?? undefined,
-  );
-  const [localDueDate, setLocalDueDate] = useState(task.dueOn || "");
-  const [localNotes, setLocalNotes] = useState(task.notes || "");
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
-  const subtaskInputRef = useRef<HTMLInputElement>(null);
+  const childTaskInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const {
     updateTask,
-    updateSubtask,
-    createSubtask,
-    deleteSubtask,
+    updateChildTask,
+    createChildTask,
+    deleteChildTask,
     deleteTask,
   } = useBoardStore();
   const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
+  const { error: toastError } = useToastStore();
 
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position);
-  const localStatus = sortedStatuses.find((s) => s.id === localStatusId);
+  const currentStatus = sortedStatuses.find((s) => s.id === task.statusId);
   const selectedAssignee = workspaceMembers.find(
-    (m) => m.id === localAssigneeId,
+    (m) => m.id === task.assigneeId,
   );
 
-  // Check if any details have changed
-  const hasDetailsChanged =
-    localStatusId !== task.statusId ||
-    (localAssigneeId || null) !== (task.assigneeId || null) ||
-    (localDueDate || null) !== (task.dueOn || null) ||
-    (localNotes || "") !== (task.notes || "");
-
   // Calculate checklist progress
-  const completedCount = subtasks.filter((s) => s.isCompleted).length;
-  const totalCount = subtasks.length;
+  const completedCount = childTasks.filter((s) => s.isCompleted).length;
+  const totalCount = childTasks.length;
   const progressPercent =
     totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
@@ -159,46 +145,39 @@ export function TaskDetailModal({
     setEditingTitle(false);
   };
 
-  const handleLocalStatusChange = (statusId: string) => {
-    setLocalStatusId(statusId);
+  const handleStatusChange = async (statusId: string) => {
     setIsStatusDropdownOpen(false);
+    await updateTask(task.id, { statusId });
   };
 
-  const handleLocalAssigneeChange = (assigneeId: string | null) => {
-    setLocalAssigneeId(assigneeId || undefined);
+  const handleAssigneeChange = async (assigneeId: string | null) => {
     setIsAssigneeDropdownOpen(false);
+    await updateTask(task.id, { assigneeId });
   };
 
-  const handleSaveDetails = async () => {
-    if (!hasDetailsChanged) return;
-    setIsSavingDetails(true);
-    try {
-      await updateTask(task.id, {
-        statusId: localStatusId,
-        assigneeId: localAssigneeId || null,
-        dueOn: localDueDate || null,
-        notes: localNotes,
-      });
-    } finally {
-      setIsSavingDetails(false);
-    }
+  const handleDueDateChange = async (dueOn: string | null) => {
+    await updateTask(task.id, { dueOn });
   };
 
-  const handleSubtaskToggle = async (subtask: Subtask) => {
-    await updateSubtask(subtask.id, { isCompleted: !subtask.isCompleted });
+  const handleSaveNotes = async (notes: string) => {
+    await updateTask(task.id, { notes });
   };
 
-  const handleAddSubtask = async () => {
-    if (!newSubtask.trim()) return;
-    await createSubtask(task.id, { title: newSubtask, isCompleted: false });
-    setNewSubtask("");
-    subtaskInputRef.current?.focus();
+  const handleChildTaskToggle = async (child: Task) => {
+    await updateChildTask(child.id, task.id, { isCompleted: !child.isCompleted });
   };
 
-  const handleDeleteSubtask = async () => {
-    if (!subtaskToDelete) return;
-    await deleteSubtask(subtaskToDelete.id);
-    setSubtaskToDelete(null);
+  const handleAddChildTask = async () => {
+    if (!newChildTask.trim()) return;
+    await createChildTask(task.id, { title: newChildTask, isCompleted: false });
+    setNewChildTask("");
+    childTaskInputRef.current?.focus();
+  };
+
+  const handleDeleteChildTask = async () => {
+    if (!childTaskToDelete) return;
+    await deleteChildTask(childTaskToDelete.id, task.id);
+    setChildTaskToDelete(null);
   };
 
   const handleDeleteTask = async () => {
@@ -207,16 +186,16 @@ export function TaskDetailModal({
     onClose();
   };
 
-  const handleStartAddingSubtask = () => {
-    setIsAddingSubtask(true);
+  const handleStartAddingChildTask = () => {
+    setIsAddingChildTask(true);
     setTimeout(() => {
-      subtaskInputRef.current?.focus();
+      childTaskInputRef.current?.focus();
     }, 50);
   };
 
-  const handleCancelAddingSubtask = () => {
-    setIsAddingSubtask(false);
-    setNewSubtask("");
+  const handleCancelAddingChildTask = () => {
+    setIsAddingChildTask(false);
+    setNewChildTask("");
   };
 
   const handleAddComment = async () => {
@@ -275,6 +254,7 @@ export function TaskDetailModal({
   };
 
   return (
+    <>
     <Modal onClose={onClose} size="full" variant="bg" showCloseButton={false}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-dark-border flex items-start justify-between flex-shrink-0">
@@ -305,13 +285,20 @@ export function TaskDetailModal({
               </button>
             </div>
           ) : (
-            <h2
-              onClick={() => setEditingTitle(true)}
-              className="text-xl font-semibold text-dark-text mb-2 cursor-pointer hover:text-blue-400 transition-colors"
-              title="Click to edit"
-            >
-              {task.title}
-            </h2>
+            <div className="mb-2">
+              {task.key && (
+                <span className="text-xs font-mono text-dark-text-muted block mb-1">
+                  {task.key}
+                </span>
+              )}
+              <h2
+                onClick={() => setEditingTitle(true)}
+                className="text-xl font-semibold text-dark-text cursor-pointer hover:text-blue-400 transition-colors"
+                title="Click to edit"
+              >
+                {task.title}
+              </h2>
+            </div>
           )}
           {task.createdBy && (
             <div className="text-sm text-dark-text-muted">
@@ -337,10 +324,8 @@ export function TaskDetailModal({
         </div>
       </div>
 
-      {/* Content - Two Column Layout */}
-      <div className="flex-1 overflow-hidden flex">
-        {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
           {/* Task Details Section */}
           <div className="px-6 py-4 border-b border-dark-border space-y-4">
             {/* Status Row */}
@@ -350,10 +335,10 @@ export function TaskDetailModal({
               </label>
               <div className="flex-1 relative">
                 <div className="flex items-center gap-2">
-                  {localStatus && (
+                  {currentStatus && (
                     <div
                       className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: localStatus.color }}
+                      style={{ backgroundColor: currentStatus.color }}
                     />
                   )}
                   <button
@@ -363,7 +348,7 @@ export function TaskDetailModal({
                     className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface border border-dark-border rounded text-sm hover:border-dark-text-muted transition-colors"
                   >
                     <span className="text-dark-text">
-                      {localStatus?.name || "Select status"}
+                      {currentStatus?.name || "Select status"}
                     </span>
                     <ChevronDown
                       size={14}
@@ -379,10 +364,10 @@ export function TaskDetailModal({
                     {sortedStatuses.map((status) => (
                       <button
                         key={status.id}
-                        onClick={() => handleLocalStatusChange(status.id)}
+                        onClick={() => handleStatusChange(status.id)}
                         className={clsx(
                           "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-dark-border transition-colors",
-                          localStatusId === status.id && "bg-dark-border",
+                          task.statusId === status.id && "bg-dark-border",
                         )}
                       >
                         <div
@@ -425,10 +410,10 @@ export function TaskDetailModal({
                 {isAssigneeDropdownOpen && (
                   <div className="absolute z-10 mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto min-w-[200px]">
                     <button
-                      onClick={() => handleLocalAssigneeChange(null)}
+                      onClick={() => handleAssigneeChange(null)}
                       className={clsx(
                         "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-dark-border transition-colors",
-                        !localAssigneeId && "bg-dark-border",
+                        !task.assigneeId && "bg-dark-border",
                       )}
                     >
                       <span className="text-dark-text-muted">Unassigned</span>
@@ -436,10 +421,10 @@ export function TaskDetailModal({
                     {workspaceMembers.map((member) => (
                       <button
                         key={member.id}
-                        onClick={() => handleLocalAssigneeChange(member.id)}
+                        onClick={() => handleAssigneeChange(member.id)}
                         className={clsx(
                           "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-dark-border transition-colors",
-                          localAssigneeId === member.id && "bg-dark-border",
+                          task.assigneeId === member.id && "bg-dark-border",
                         )}
                       >
                         <Avatar name={member.name} size="xs" />
@@ -459,18 +444,18 @@ export function TaskDetailModal({
               <div className="flex-1 flex items-center gap-2">
                 <input
                   type="date"
-                  value={localDueDate}
-                  onChange={(e) => setLocalDueDate(e.target.value)}
+                  value={task.dueOn || ""}
+                  onChange={(e) => handleDueDateChange(e.target.value || null)}
                   className={clsx(
                     "px-2 py-1.5 bg-transparent border-none text-sm focus:outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert",
-                    localDueDate
+                    task.dueOn
                       ? "text-dark-text"
                       : "text-dark-text-muted [&::-webkit-datetime-edit]:text-dark-text-muted",
                   )}
                 />
-                {localDueDate && (
+                {task.dueOn && (
                   <button
-                    onClick={() => setLocalDueDate("")}
+                    onClick={() => handleDueDateChange(null)}
                     className="text-dark-text-muted hover:text-red-400 transition-colors p-1"
                     title="Clear due date"
                   >
@@ -487,31 +472,18 @@ export function TaskDetailModal({
               </label>
               <div className="flex-1">
                 <RichTextNotesEditor
-                  value={localNotes}
-                  onChange={setLocalNotes}
+                  value={task.notes || ""}
+                  onSave={handleSaveNotes}
                   placeholder="Add notes..."
+                  fileUpload={{
+                    attachableType: "task",
+                    attachableId: task.id,
+                    onError: (msg) => toastError(msg),
+                  }}
                 />
               </div>
             </div>
 
-            {/* Save Button */}
-            <div className="flex items-start gap-6">
-              <div className="w-24 flex-shrink-0" />
-              <div className="flex-1">
-                <button
-                  onClick={handleSaveDetails}
-                  disabled={!hasDetailsChanged || isSavingDetails}
-                  className={clsx(
-                    "px-4 py-2 text-sm font-medium rounded transition-colors",
-                    hasDetailsChanged
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-dark-surface text-dark-text-muted cursor-not-allowed",
-                  )}
-                >
-                  {isSavingDetails ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Subtasks Section */}
@@ -543,34 +515,39 @@ export function TaskDetailModal({
             )}
 
             <div className="space-y-1">
-              {subtasks.map((subtask) => (
+              {childTasks.map((child) => (
                 <div
-                  key={subtask.id}
+                  key={child.id}
                   className="group flex items-start gap-2 py-1.5 px-1 -mx-1 rounded hover:bg-dark-surface transition-colors"
                 >
                   <button
-                    onClick={() => handleSubtaskToggle(subtask)}
+                    onClick={() => handleChildTaskToggle(child)}
                     className="flex-shrink-0 mt-0.5 text-dark-text-muted hover:text-dark-text transition-colors"
                   >
-                    {subtask.isCompleted ? (
+                    {child.isCompleted ? (
                       <CheckSquare size={18} className="text-green-500" />
                     ) : (
                       <Square size={18} />
                     )}
                   </button>
                   <button
-                    onClick={() => onSubtaskClick?.(subtask.id)}
+                    onClick={() => onChildTaskClick?.(child.id)}
                     className={clsx(
                       "flex-1 text-sm leading-relaxed text-left hover:text-blue-400 transition-colors",
-                      subtask.isCompleted
+                      child.isCompleted
                         ? "text-dark-text-muted line-through"
                         : "text-dark-text",
                     )}
                   >
-                    {subtask.title}
+                    {child.key && (
+                      <span className="text-xs font-mono text-dark-text-muted mr-1.5">
+                        {child.key}
+                      </span>
+                    )}
+                    {child.title}
                   </button>
                   <button
-                    onClick={() => setSubtaskToDelete(subtask)}
+                    onClick={() => setChildTaskToDelete(child)}
                     className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-dark-text-muted hover:text-red-400 transition-all"
                     title="Delete item"
                   >
@@ -580,18 +557,18 @@ export function TaskDetailModal({
               ))}
             </div>
 
-            {isAddingSubtask ? (
+            {isAddingChildTask ? (
               <div className="mt-2">
                 <input
-                  ref={subtaskInputRef}
+                  ref={childTaskInputRef}
                   type="text"
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
+                  value={newChildTask}
+                  onChange={(e) => setNewChildTask(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && newSubtask.trim()) {
-                      handleAddSubtask();
+                    if (e.key === "Enter" && newChildTask.trim()) {
+                      handleAddChildTask();
                     } else if (e.key === "Escape") {
-                      handleCancelAddingSubtask();
+                      handleCancelAddingChildTask();
                     }
                   }}
                   placeholder="Add a subtask..."
@@ -599,14 +576,14 @@ export function TaskDetailModal({
                 />
                 <div className="flex items-center gap-2 mt-2">
                   <button
-                    onClick={handleAddSubtask}
-                    disabled={!newSubtask.trim()}
+                    onClick={handleAddChildTask}
+                    disabled={!newChildTask.trim()}
                     className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Add
                   </button>
                   <button
-                    onClick={handleCancelAddingSubtask}
+                    onClick={handleCancelAddingChildTask}
                     className="px-3 py-1.5 text-dark-text-muted text-sm hover:text-dark-text transition-colors"
                   >
                     Cancel
@@ -615,7 +592,7 @@ export function TaskDetailModal({
               </div>
             ) : (
               <button
-                onClick={handleStartAddingSubtask}
+                onClick={handleStartAddingChildTask}
                 className="mt-2 text-sm text-dark-text-muted hover:text-dark-text transition-colors"
               >
                 + Add a subtask
@@ -651,6 +628,11 @@ export function TaskDetailModal({
                           onReply={() => setOpenThread(comment)}
                           onQuote={() => handleQuote(comment)}
                           onQuotedClick={handleQuotedClick}
+                          fileUpload={{
+                            attachableType: "task",
+                            attachableId: task.id,
+                            onError: (msg) => toastError(msg),
+                          }}
                         />
                         {replies.length > 0 && (
                           <button
@@ -678,7 +660,7 @@ export function TaskDetailModal({
               </div>
             )}
           </div>
-        </div>
+
       </div>
 
       {/* Comment Editor - Fixed at bottom */}
@@ -691,84 +673,96 @@ export function TaskDetailModal({
           placeholder="Add a comment..."
           quotingMessage={quotingMessage}
           onCancelQuote={() => setQuotingMessage(null)}
+          fileUpload={{
+            attachableType: "task",
+            attachableId: task.id,
+            onError: (msg) => toastError(msg),
+          }}
         />
       </div>
-
-      {/* Thread Panel - Outside modal, fixed on right */}
-      {openThread && (
-        <div className="fixed top-0 right-0 bottom-0 w-96 bg-dark-surface border-l border-dark-border z-[60] flex flex-col shadow-2xl">
-          <DiscussionThread
-            parentMessage={openThread}
-            threadMessages={threadMessages}
-            onClose={() => setOpenThread(null)}
-            onSendReply={async (parentId, text, quoteId) => {
-              await sendMessage("task", task.id, text, parentId, quoteId);
-            }}
-          />
-        </div>
-      )}
-
-      {/* Delete Subtask Confirmation Modal */}
-      {subtaskToDelete && (
-        <Modal
-          title="Delete item?"
-          onClose={() => setSubtaskToDelete(null)}
-          size="sm"
-          zIndex={60}
-        >
-          <div className="p-6">
-            <p className="text-sm text-dark-text-muted mb-4">
-              Are you sure you want to delete "{subtaskToDelete.title}"? This
-              action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setSubtaskToDelete(null)}
-                className="px-4 py-2 text-dark-text-muted hover:text-dark-text transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteSubtask}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Delete Task Confirmation Modal */}
-      {isDeleteTaskModalOpen && (
-        <Modal
-          title="Delete task?"
-          onClose={() => setIsDeleteTaskModalOpen(false)}
-          size="sm"
-          zIndex={60}
-        >
-          <div className="p-6">
-            <p className="text-sm text-dark-text-muted mb-4">
-              Are you sure you want to delete "{task.title}"? This will also
-              delete all subtasks and comments. This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setIsDeleteTaskModalOpen(false)}
-                className="px-4 py-2 text-dark-text-muted hover:text-dark-text transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteTask}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </Modal>
+
+    {/* Thread Panel - Fixed overlay above modal */}
+    {openThread && (
+      <div className="fixed inset-0 z-[60] flex">
+        <div className="flex-1 bg-black/20" onClick={() => setOpenThread(null)} />
+        <DiscussionThread
+          parentMessage={openThread}
+          threadMessages={threadMessages}
+          onClose={() => setOpenThread(null)}
+          onSendReply={async (parentId, text, quoteId) => {
+            await sendMessage("task", task.id, text, parentId, quoteId);
+          }}
+          fileUpload={{
+            attachableType: "task",
+            attachableId: task.id,
+            onError: (msg) => toastError(msg),
+          }}
+        />
+      </div>
+    )}
+
+    {/* Delete Child Task Confirmation Modal */}
+    {childTaskToDelete && (
+      <Modal
+        title="Delete item?"
+        onClose={() => setChildTaskToDelete(null)}
+        size="sm"
+        zIndex={60}
+      >
+        <div className="p-6">
+          <p className="text-sm text-dark-text-muted mb-4">
+            Are you sure you want to delete "{childTaskToDelete.title}"? This
+            action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setChildTaskToDelete(null)}
+              className="px-4 py-2 text-dark-text-muted hover:text-dark-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteChildTask}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+
+    {/* Delete Task Confirmation Modal */}
+    {isDeleteTaskModalOpen && (
+      <Modal
+        title="Delete task?"
+        onClose={() => setIsDeleteTaskModalOpen(false)}
+        size="sm"
+        zIndex={60}
+      >
+        <div className="p-6">
+          <p className="text-sm text-dark-text-muted mb-4">
+            Are you sure you want to delete "{task.title}"? This will also
+            delete all subtasks and comments. This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setIsDeleteTaskModalOpen(false)}
+              className="px-4 py-2 text-dark-text-muted hover:text-dark-text transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteTask}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+    </>
   );
 }

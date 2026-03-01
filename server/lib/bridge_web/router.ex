@@ -44,6 +44,8 @@ defmodule BridgeWeb.Router do
 
     # Resource routes (authentication required)
     resources("/projects", ProjectController, except: [:new, :edit])
+    get("/boards/suggest-prefix", ListController, :suggest_prefix)
+    get("/boards/check-prefix", ListController, :check_prefix)
     resources("/boards", ListController, except: [:new, :edit])
     get("/boards/:list_id/statuses", ListStatusController, :index)
     post("/boards/:list_id/statuses", ListStatusController, :create)
@@ -52,7 +54,6 @@ defmodule BridgeWeb.Router do
     delete("/statuses/:id", ListStatusController, :delete)
     resources("/tasks", TaskController, except: [:new, :edit])
     put("/tasks/:id/reorder", TaskController, :reorder)
-    resources("/subtasks", SubtaskController, except: [:new, :edit])
     resources("/docs", DocController, except: [:new, :edit])
     resources("/channels", ChannelController, except: [:new, :edit])
     resources("/direct_messages", DirectMessageController, except: [:new, :edit])

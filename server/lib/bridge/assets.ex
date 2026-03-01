@@ -189,6 +189,15 @@ defmodule Bridge.Assets do
       "user" ->
         validate_user_ownership(workspace_id, attachable_id)
 
+      "task" ->
+        validate_task_ownership(workspace_id, attachable_id)
+
+      "channel" ->
+        validate_channel_ownership(workspace_id, attachable_id)
+
+      "dm" ->
+        validate_dm_ownership(workspace_id, attachable_id)
+
       nil ->
         {:error, :attachable_type_required}
 
@@ -255,19 +264,10 @@ defmodule Bridge.Assets do
 
   defp validate_message_entity_ownership(workspace_id, "task", entity_id) do
     query =
-      from(t in Bridge.Tasks.Task,
-        where: t.id == ^entity_id and t.workspace_id == ^workspace_id
-      )
-
-    if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}
-  end
-
-  defp validate_message_entity_ownership(workspace_id, "subtask", entity_id) do
-    query =
-      from(s in Bridge.Tasks.Subtask,
-        join: t in Bridge.Tasks.Task,
-        on: s.task_id == t.id,
-        where: s.id == ^entity_id and t.workspace_id == ^workspace_id
+      from(t in Bridge.Lists.Task,
+        join: l in Bridge.Lists.List,
+        on: t.list_id == l.id,
+        where: t.id == ^entity_id and l.workspace_id == ^workspace_id
       )
 
     if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}
@@ -295,6 +295,53 @@ defmodule Bridge.Assets do
         query =
           from(u in Bridge.Accounts.User,
             where: u.id == ^user_id and u.workspace_id == ^workspace_id
+          )
+
+        if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}
+    end
+  end
+
+  defp validate_task_ownership(workspace_id, task_id) do
+    case task_id do
+      nil ->
+        {:error, :attachable_id_required}
+
+      _ ->
+        query =
+          from(t in Bridge.Lists.Task,
+            join: l in Bridge.Lists.List,
+            on: t.list_id == l.id,
+            where: t.id == ^task_id and l.workspace_id == ^workspace_id
+          )
+
+        if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}
+    end
+  end
+
+  defp validate_channel_ownership(workspace_id, channel_id) do
+    case channel_id do
+      nil ->
+        {:error, :attachable_id_required}
+
+      _ ->
+        query =
+          from(c in Bridge.Chat.Channel,
+            where: c.id == ^channel_id and c.workspace_id == ^workspace_id
+          )
+
+        if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}
+    end
+  end
+
+  defp validate_dm_ownership(workspace_id, dm_id) do
+    case dm_id do
+      nil ->
+        {:error, :attachable_id_required}
+
+      _ ->
+        query =
+          from(d in Bridge.Chat.DirectMessage,
+            where: d.id == ^dm_id and d.workspace_id == ^workspace_id
           )
 
         if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}

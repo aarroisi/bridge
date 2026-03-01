@@ -34,7 +34,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useDroppable } from "@dnd-kit/core";
 import { KanbanBoard } from "@/components/features/KanbanBoard";
 import { TaskDetailModal } from "@/components/features/TaskDetailModal";
-import { SubtaskDetailModal } from "@/components/features/SubtaskDetailModal";
+import { ChildTaskDetailModal } from "@/components/features/ChildTaskDetailModal";
 import { StatusManager } from "@/components/features/StatusManager";
 import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
@@ -88,7 +88,12 @@ function SortableTaskRow({
       >
         <GripVertical size={16} />
       </div>
-      <div className="flex-1 min-w-0" onClick={onClick}>
+      <div className="flex-1 min-w-0 flex items-center gap-2" onClick={onClick}>
+        {task.key && (
+          <span className="text-xs font-mono text-dark-text-muted flex-shrink-0">
+            {task.key}
+          </span>
+        )}
         <span className="text-dark-text truncate">{task.title}</span>
       </div>
       <div className="w-32 text-sm text-dark-text-muted text-right">
@@ -142,9 +147,9 @@ export function BoardView() {
   const {
     boards,
     tasks,
-    subtasks,
+    childTasks,
     fetchTasks,
-    fetchSubtasks,
+    fetchChildTasks,
     createTask,
     reorderTask,
     updateBoard,
@@ -163,12 +168,12 @@ export function BoardView() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedChildTaskId, setSelectedChildTaskId] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Get view mode, task and subtask IDs from URL
+  // Get view mode and task ID from URL
   const viewMode = (searchParams.get("view") as "board" | "table") || "board";
   const selectedTaskId = searchParams.get("task");
-  const selectedSubtaskId = searchParams.get("subtask");
   const highlightCommentId = searchParams.get("comment");
 
   const setViewMode = (mode: "board" | "table") => {
@@ -188,8 +193,13 @@ export function BoardView() {
   const rawBoardTasks = boardId ? tasks[boardId] : undefined;
   const boardTasks = Array.isArray(rawBoardTasks) ? rawBoardTasks : [];
   const selectedTask = boardTasks.find((t) => t.id === selectedTaskId);
-  const taskSubtasks = selectedTaskId ? subtasks[selectedTaskId] || [] : [];
-  const selectedSubtask = taskSubtasks.find((s) => s.id === selectedSubtaskId);
+  const taskChildTasks = selectedTaskId ? childTasks[selectedTaskId] || [] : [];
+  const selectedChildTask = selectedChildTaskId
+    ? taskChildTasks.find((t) => t.id === selectedChildTaskId)
+    : undefined;
+  const childTaskMessages = selectedChildTaskId
+    ? messages[`task:${selectedChildTaskId}`] || []
+    : [];
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -307,17 +317,16 @@ export function BoardView() {
 
   useEffect(() => {
     if (selectedTaskId) {
-      fetchSubtasks(selectedTaskId);
+      fetchChildTasks(selectedTaskId);
       fetchMessages("task", selectedTaskId);
     }
-  }, [selectedTaskId, fetchSubtasks, fetchMessages]);
+  }, [selectedTaskId, fetchChildTasks, fetchMessages]);
 
-  // Fetch subtask comments when a subtask is selected
   useEffect(() => {
-    if (selectedSubtaskId) {
-      fetchMessages("subtask", selectedSubtaskId);
+    if (selectedChildTaskId) {
+      fetchMessages("task", selectedChildTaskId);
     }
-  }, [selectedSubtaskId, fetchMessages]);
+  }, [selectedChildTaskId, fetchMessages]);
 
   // Fetch workspace members for assignee dropdown
   useEffect(() => {
@@ -380,19 +389,12 @@ export function BoardView() {
   };
 
   const handleCloseTask = () => {
+    setSelectedChildTaskId(null);
     setSearchParams({});
   };
 
-  const handleSubtaskClick = (subtaskId: string) => {
-    if (selectedTaskId) {
-      setSearchParams({ task: selectedTaskId, subtask: subtaskId });
-    }
-  };
-
-  const handleCloseSubtask = () => {
-    if (selectedTaskId) {
-      setSearchParams({ task: selectedTaskId });
-    }
+  const handleChildTaskClick = (childTaskId: string) => {
+    setSelectedChildTaskId(childTaskId);
   };
 
   const handleAddTask = (statusId: string) => {
@@ -588,7 +590,12 @@ export function BoardView() {
           {activeTask ? (
             <div className="flex items-center px-4 py-3 bg-dark-surface border border-dark-border rounded shadow-lg">
               <GripVertical size={16} className="mr-2 text-dark-text-muted" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                {activeTask.key && (
+                  <span className="text-xs font-mono text-dark-text-muted flex-shrink-0">
+                    {activeTask.key}
+                  </span>
+                )}
                 <span className="text-dark-text truncate">
                   {activeTask.title}
                 </span>
@@ -724,24 +731,24 @@ export function BoardView() {
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
-          subtasks={taskSubtasks}
+          childTasks={taskChildTasks}
           comments={messages[`task:${selectedTaskId}`] || []}
           statuses={board?.statuses || []}
           workspaceMembers={workspaceMembers}
           onClose={handleCloseTask}
-          onSubtaskClick={handleSubtaskClick}
+          onChildTaskClick={handleChildTaskClick}
           highlightCommentId={highlightCommentId}
         />
       )}
 
-      {/* Subtask Detail Modal */}
-      {selectedSubtask && (
-        <SubtaskDetailModal
-          subtask={selectedSubtask}
-          comments={messages[`subtask:${selectedSubtaskId}`] || []}
+      {/* Child Task Detail Modal */}
+      {selectedChildTask && selectedTask && (
+        <ChildTaskDetailModal
+          task={selectedChildTask}
+          parentTask={selectedTask}
+          comments={childTaskMessages}
           workspaceMembers={workspaceMembers}
-          onClose={handleCloseSubtask}
-          highlightCommentId={highlightCommentId}
+          onClose={() => setSelectedChildTaskId(null)}
         />
       )}
 

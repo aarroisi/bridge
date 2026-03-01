@@ -49,6 +49,9 @@ export default defineConfig({
       '/socket': {
         target: 'ws://localhost:4000',
         ws: true
+      },
+      '/tidewave': {
+        target: 'http://localhost:4000'
       }
     }
   }

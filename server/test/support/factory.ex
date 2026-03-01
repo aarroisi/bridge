@@ -35,6 +35,7 @@ defmodule Bridge.Factory do
   def list_factory do
     %Bridge.Lists.List{
       name: Faker.Lorem.sentence(2..4),
+      prefix: sequence(:prefix, &String.upcase("T#{&1}")),
       starred: false
     }
   end
@@ -50,16 +51,9 @@ defmodule Bridge.Factory do
   def task_factory do
     %Bridge.Lists.Task{
       title: Faker.Lorem.sentence(3..6),
+      sequence_number: sequence(:task_seq, & &1),
       notes: Faker.Lorem.paragraph(1..3),
       due_on: Date.add(Date.utc_today(), Enum.random(1..30))
-    }
-  end
-
-  def subtask_factory do
-    %Bridge.Lists.Subtask{
-      title: Faker.Lorem.sentence(2..4),
-      is_completed: false,
-      notes: Faker.Lorem.sentence(1..2)
     }
   end
 

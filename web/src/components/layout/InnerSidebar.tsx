@@ -20,6 +20,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Category } from "@/types";
 import { CreateProjectModal } from "@/components/features/CreateProjectModal";
 import { CreateBoardModal } from "@/components/features/CreateBoardModal";
+import { CreateChannelModal } from "@/components/features/CreateChannelModal";
 
 export function InnerSidebar() {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export function InnerSidebar() {
   const { success, error } = useToastStore();
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [createBoardForProjectId, setCreateBoardForProjectId] = useState<
     string | null
   >(null);
@@ -308,10 +310,8 @@ export function InnerSidebar() {
           setActiveItem({ type: "docs", id: "new" });
           break;
         case "channels":
-          const channel = await createChannel("new-channel");
-          success("Channel created successfully");
-          await navigateToItem("channels", channel.id);
-          break;
+          setShowCreateChannelModal(true);
+          return;
       }
     } catch (err) {
       console.error("Failed to create item:", err);
@@ -339,9 +339,9 @@ export function InnerSidebar() {
     }
   };
 
-  const handleCreateBoard = async (name: string) => {
+  const handleCreateBoard = async (name: string, prefix: string) => {
     try {
-      const board = await createBoard(name);
+      const board = await createBoard(name, prefix);
       if (createBoardForProjectId) {
         // Add to project
         await addItemToProject(createBoardForProjectId, "board", board.id);
@@ -356,6 +356,18 @@ export function InnerSidebar() {
       }
     } catch (err) {
       console.error("Failed to create board:", err);
+      error("Error: " + (err as Error).message);
+    }
+  };
+
+  const handleCreateChannel = async (name: string) => {
+    try {
+      const channel = await createChannel(name);
+      success("Channel created successfully");
+      setShowCreateChannelModal(false);
+      await navigateToItem("channels", channel.id);
+    } catch (err) {
+      console.error("Failed to create channel:", err);
       error("Error: " + (err as Error).message);
     }
   };
@@ -788,6 +800,11 @@ export function InnerSidebar() {
           setCreateBoardForProjectId(null);
         }}
         onSubmit={handleCreateBoard}
+      />
+      <CreateChannelModal
+        isOpen={showCreateChannelModal}
+        onClose={() => setShowCreateChannelModal(false)}
+        onSubmit={handleCreateChannel}
       />
     </>
   );

@@ -1,17 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Reply, Quote, Pencil, Trash2, Check, X } from "lucide-react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Message as MessageType } from "@/types";
 import { clsx } from "clsx";
-import DOMPurify from "dompurify";
 import { useMemberProfile } from "@/contexts/MemberProfileContext";
 import { useAuthStore } from "@/stores/authStore";
 import { useChatStore } from "@/stores/chatStore";
-import { createMentionExtension } from "@/lib/mention";
+import { ContentRenderer } from "@/lib/milkdown/ContentRenderer";
+import {
+  RichTextEditor,
+  type RichTextEditorHandle,
+} from "@/lib/milkdown/RichTextEditor";
 
 interface MessageProps {
   message: MessageType;
@@ -20,6 +21,11 @@ interface MessageProps {
   onQuote?: () => void;
   onQuotedClick?: (messageId: string) => void;
   className?: string;
+  fileUpload?: {
+    attachableType: string;
+    attachableId: string;
+    onError: (msg: string) => void;
+  };
 }
 
 export function Message({
@@ -29,14 +35,17 @@ export function Message({
   onQuote,
   onQuotedClick,
   className,
+  fileUpload,
 }: MessageProps) {
   const { openMemberProfile } = useMemberProfile();
   const { user, members } = useAuthStore();
   const { updateMessage, deleteMessage } = useChatStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const editorHandleRef = useRef<RichTextEditorHandle | null>(null);
 
   // Check if current user is the message author
   const isAuthor = user?.id === message.userId;
@@ -48,76 +57,40 @@ export function Message({
   const displayQuote = quotedMessage || message.quote;
 
   // Mention members for editor
-  const mentionMembers = members.map((m) => ({
-    id: m.id,
-    name: m.name,
-    email: m.email,
-    avatar: m.avatar,
-    online: m.online,
-  }));
-
-  // Editor for editing mode
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      createMentionExtension({ members: mentionMembers }),
-    ],
-    content: message.text,
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-invert max-w-none focus:outline-none text-base text-dark-text",
-      },
-    },
-  });
-
-  // Update editor content when message changes
-  useEffect(() => {
-    if (editor && !isEditing) {
-      editor.commands.setContent(message.text);
-    }
-  }, [message.text, editor, isEditing]);
-
-  // Handle clicks on mention spans
-  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.classList.contains("mention")) {
-      const memberId = target.getAttribute("data-id");
-      if (memberId) {
-        e.preventDefault();
-        e.stopPropagation();
-        openMemberProfile(memberId);
-      }
-    }
-  };
+  const mentionMembers = useMemo(
+    () =>
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        avatar: m.avatar,
+        online: m.online,
+      })),
+    [members],
+  );
 
   const handleEdit = () => {
-    if (editor) {
-      editor.commands.setContent(message.text);
-      editor.commands.focus("end");
-    }
+    setEditValue(message.text);
     setIsEditing(true);
+    setTimeout(() => {
+      editorHandleRef.current?.focus();
+    }, 100);
   };
 
   const handleCancelEdit = () => {
-    if (editor) {
-      editor.commands.setContent(message.text);
-    }
     setIsEditing(false);
+    setEditValue("");
   };
 
   const handleSaveEdit = async () => {
-    if (!editor) return;
-
-    const newText = editor.getHTML();
-    const textContent = editor.getText().trim();
-
+    const textContent = editValue.trim();
     if (!textContent) return;
 
     setIsSaving(true);
     try {
-      await updateMessage(message.id, newText);
+      await updateMessage(message.id, editValue);
       setIsEditing(false);
+      setEditValue("");
     } catch (error) {
       console.error("Failed to update message:", error);
     } finally {
@@ -137,31 +110,10 @@ export function Message({
     }
   };
 
-  // Sanitize HTML to prevent XSS attacks while allowing mentions
-  const sanitizedText = DOMPurify.sanitize(message.text, {
-    ALLOWED_TAGS: [
-      "p",
-      "br",
-      "strong",
-      "em",
-      "u",
-      "s",
-      "ul",
-      "ol",
-      "li",
-      "blockquote",
-      "pre",
-      "code",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "span",
-    ],
-    ALLOWED_ATTR: ["class", "data-id", "data-type", "data-label"],
-  });
+  const handleMentionClick = (memberId: string) => {
+    openMemberProfile(memberId);
+  };
+
   return (
     <div
       className={clsx(
@@ -199,22 +151,27 @@ export function Message({
               <Quote size={12} />
               <span className="font-semibold">{displayQuote.userName}</span>
             </div>
-            <div
+            <ContentRenderer
+              content={displayQuote.text}
               className="text-sm text-dark-text-muted mt-1 line-clamp-2 prose prose-invert prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(displayQuote.text, {
-                  ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "span"],
-                  ALLOWED_ATTR: ["class", "data-id", "data-type", "data-label"],
-                }),
-              }}
+              onMentionClick={handleMentionClick}
             />
           </button>
         )}
 
         {isEditing ? (
           <div className="mt-2">
-            <div className="border border-dark-border rounded-lg bg-dark-surface p-2">
-              <EditorContent editor={editor} />
+            <div className="border border-dark-border rounded-lg bg-dark-surface overflow-hidden">
+              <RichTextEditor
+                value={editValue}
+                onChange={setEditValue}
+                mentions={{ members: mentionMembers }}
+                fileUpload={fileUpload}
+                onReady={(handle) => {
+                  editorHandleRef.current = handle;
+                }}
+                className="[&_.milkdown_.editor]:outline-none [&_.milkdown_.editor]:text-base [&_.milkdown_.editor]:text-dark-text [&_.milkdown_.editor]:p-2"
+              />
             </div>
             <div className="flex gap-2 mt-2">
               <button
@@ -236,10 +193,10 @@ export function Message({
             </div>
           </div>
         ) : (
-          <div
-            className="ProseMirror text-base text-dark-text mt-1 whitespace-pre-wrap break-words prose prose-invert prose-slate max-w-none"
-            dangerouslySetInnerHTML={{ __html: sanitizedText }}
-            onClick={handleContentClick}
+          <ContentRenderer
+            content={message.text}
+            className="text-base text-dark-text mt-1 whitespace-pre-wrap break-words prose prose-invert prose-slate max-w-none"
+            onMentionClick={handleMentionClick}
           />
         )}
 

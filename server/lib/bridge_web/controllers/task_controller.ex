@@ -57,6 +57,13 @@ defmodule BridgeWeb.TaskController do
     conn.assigns[:task]
   end
 
+  def index(conn, %{"assigned_to_me" => "true", "is_subtask" => "true"}) do
+    current_user = conn.assigns.current_user
+    workspace_id = conn.assigns.workspace_id
+    tasks = Lists.list_child_tasks_by_assignee(current_user.id, workspace_id)
+    render(conn, :index, tasks: tasks)
+  end
+
   def index(conn, %{"assigned_to_me" => "true"}) do
     current_user = conn.assigns.current_user
     workspace_id = conn.assigns.workspace_id
@@ -64,8 +71,12 @@ defmodule BridgeWeb.TaskController do
     render(conn, :index, tasks: tasks)
   end
 
+  def index(conn, %{"parent_id" => parent_id}) when is_binary(parent_id) do
+    tasks = Lists.list_child_tasks(parent_id)
+    render(conn, :index, tasks: tasks)
+  end
+
   def index(conn, params) do
-    # Accept both board_id and list_id for backwards compatibility
     board_id = params["board_id"] || params["list_id"]
 
     case board_id do
@@ -75,7 +86,6 @@ defmodule BridgeWeb.TaskController do
         render(conn, :index, page: page)
 
       _ ->
-        # If no board_id provided, return empty result
         render(conn, :index, tasks: [])
     end
   end
@@ -88,6 +98,7 @@ defmodule BridgeWeb.TaskController do
       params
       |> Map.put("created_by_id", current_user.id)
       |> normalize_board_id()
+      |> normalize_parent_id()
 
     with {:ok, task} <- Lists.create_task(task_params) do
       conn
@@ -108,6 +119,18 @@ defmodule BridgeWeb.TaskController do
         params
         |> Map.put("list_id", params["board_id"])
         |> Map.delete("board_id")
+
+      true ->
+        params
+    end
+  end
+
+  defp normalize_parent_id(params) do
+    cond do
+      Map.has_key?(params, "parentId") ->
+        params
+        |> Map.put("parent_id", params["parentId"])
+        |> Map.delete("parentId")
 
       true ->
         params

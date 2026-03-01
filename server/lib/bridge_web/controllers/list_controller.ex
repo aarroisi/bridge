@@ -96,4 +96,16 @@ defmodule BridgeWeb.ListController do
       send_resp(conn, :no_content, "")
     end
   end
+
+  def suggest_prefix(conn, %{"name" => name}) do
+    workspace_id = conn.assigns.workspace_id
+    prefix = Lists.suggest_prefix(name, workspace_id)
+    json(conn, %{data: %{prefix: prefix}})
+  end
+
+  def check_prefix(conn, %{"prefix" => prefix}) do
+    workspace_id = conn.assigns.workspace_id
+    available = Lists.check_prefix_available?(String.upcase(prefix), workspace_id)
+    json(conn, %{data: %{available: available}})
+  end
 end

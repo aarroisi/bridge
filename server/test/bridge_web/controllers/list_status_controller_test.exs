@@ -60,7 +60,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
     } do
       response =
         conn
-        |> get(~p"/api/lists/#{list.id}/statuses")
+        |> get(~p"/api/boards/#{list.id}/statuses")
         |> json_response(200)
 
       status_ids = Enum.map(response["data"], & &1["id"])
@@ -72,7 +72,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "returns statuses ordered by position", %{conn: conn, list: list} do
       response =
         conn
-        |> get(~p"/api/lists/#{list.id}/statuses")
+        |> get(~p"/api/boards/#{list.id}/statuses")
         |> json_response(200)
 
       positions = Enum.map(response["data"], & &1["position"])
@@ -85,7 +85,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
 
       response =
         conn
-        |> get(~p"/api/lists/#{other_list.id}/statuses")
+        |> get(~p"/api/boards/#{other_list.id}/statuses")
         |> json_response(200)
 
       status_ids = Enum.map(response["data"], & &1["id"])
@@ -98,7 +98,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
       other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
-      |> get(~p"/api/lists/#{other_list.id}/statuses")
+      |> get(~p"/api/boards/#{other_list.id}/statuses")
       |> json_response(404)
     end
   end
@@ -107,7 +107,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "creates status with valid attributes", %{conn: conn, list: list} do
       response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
+        |> post(~p"/api/boards/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
         |> json_response(201)
 
       # Name is uppercased on create
@@ -119,14 +119,14 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "created status appears in index", %{conn: conn, list: list} do
       create_response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
+        |> post(~p"/api/boards/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
         |> json_response(201)
 
       status_id = create_response["data"]["id"]
 
       index_response =
         conn
-        |> get(~p"/api/lists/#{list.id}/statuses")
+        |> get(~p"/api/boards/#{list.id}/statuses")
         |> json_response(200)
 
       status_ids = Enum.map(index_response["data"], & &1["id"])
@@ -136,7 +136,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "new status is added before DONE status", %{conn: conn, list: list} do
       response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
+        |> post(~p"/api/boards/#{list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
         |> json_response(201)
 
       # Should be position 2 (before done which gets bumped to 3)
@@ -147,7 +147,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "returns error with empty name", %{conn: conn, list: list} do
       response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "", color: "#8b5cf6"})
+        |> post(~p"/api/boards/#{list.id}/statuses", %{name: "", color: "#8b5cf6"})
         |> json_response(422)
 
       assert response["errors"]["name"]
@@ -156,7 +156,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "returns error with invalid color format", %{conn: conn, list: list} do
       response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "Review", color: "invalid"})
+        |> post(~p"/api/boards/#{list.id}/statuses", %{name: "Review", color: "invalid"})
         |> json_response(422)
 
       assert response["errors"]["color"]
@@ -165,13 +165,13 @@ defmodule BridgeWeb.ListStatusControllerTest do
     test "returns error with duplicate name in same list", %{conn: conn, list: list} do
       # First create a status that will be uppercased
       conn
-      |> post(~p"/api/lists/#{list.id}/statuses", %{name: "review", color: "#8b5cf6"})
+      |> post(~p"/api/boards/#{list.id}/statuses", %{name: "review", color: "#8b5cf6"})
       |> json_response(201)
 
       # Try to create another with same name (case-insensitive due to uppercasing)
       response =
         conn
-        |> post(~p"/api/lists/#{list.id}/statuses", %{name: "REVIEW", color: "#ef4444"})
+        |> post(~p"/api/boards/#{list.id}/statuses", %{name: "REVIEW", color: "#ef4444"})
         |> json_response(422)
 
       # Unique constraint on [:list_id, :name] puts error on first field
@@ -183,7 +183,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
       other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
-      |> post(~p"/api/lists/#{other_list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
+      |> post(~p"/api/boards/#{other_list.id}/statuses", %{name: "Review", color: "#8b5cf6"})
       |> json_response(404)
     end
   end
@@ -274,7 +274,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
 
       index_response =
         conn
-        |> get(~p"/api/lists/#{list.id}/statuses")
+        |> get(~p"/api/boards/#{list.id}/statuses")
         |> json_response(200)
 
       status_ids = Enum.map(index_response["data"], & &1["id"])
@@ -338,7 +338,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
 
       response =
         conn
-        |> put(~p"/api/lists/#{list.id}/statuses/reorder", %{status_ids: new_order})
+        |> put(~p"/api/boards/#{list.id}/statuses/reorder", %{status_ids: new_order})
         |> json_response(200)
 
       positions = response["data"] |> Enum.sort_by(& &1["position"]) |> Enum.map(& &1["id"])
@@ -356,12 +356,12 @@ defmodule BridgeWeb.ListStatusControllerTest do
       new_order = [doing_status.id, todo_status.id, done_status.id]
 
       conn
-      |> put(~p"/api/lists/#{list.id}/statuses/reorder", %{status_ids: new_order})
+      |> put(~p"/api/boards/#{list.id}/statuses/reorder", %{status_ids: new_order})
       |> json_response(200)
 
       index_response =
         conn
-        |> get(~p"/api/lists/#{list.id}/statuses")
+        |> get(~p"/api/boards/#{list.id}/statuses")
         |> json_response(200)
 
       positions = index_response["data"] |> Enum.sort_by(& &1["position"]) |> Enum.map(& &1["id"])
@@ -380,7 +380,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
 
       response =
         conn
-        |> put(~p"/api/lists/#{list.id}/statuses/reorder", %{status_ids: invalid_order})
+        |> put(~p"/api/boards/#{list.id}/statuses/reorder", %{status_ids: invalid_order})
         |> json_response(422)
 
       assert response["error"] == "The DONE status must always be at the end."
@@ -391,7 +391,7 @@ defmodule BridgeWeb.ListStatusControllerTest do
       other_list = insert(:list, workspace_id: other_workspace.id)
 
       conn
-      |> put(~p"/api/lists/#{other_list.id}/statuses/reorder", %{status_ids: []})
+      |> put(~p"/api/boards/#{other_list.id}/statuses/reorder", %{status_ids: []})
       |> json_response(404)
     end
   end

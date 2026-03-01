@@ -47,8 +47,7 @@ defmodule BridgeWeb.Plugs.AuthorizePlug do
     conn.assigns[:doc] ||
       conn.assigns[:list] ||
       conn.assigns[:channel] ||
-      conn.assigns[:task] ||
-      conn.assigns[:subtask]
+      conn.assigns[:task]
   end
 
   # Get project_id from params for create actions

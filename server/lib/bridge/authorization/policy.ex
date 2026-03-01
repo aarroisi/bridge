@@ -101,9 +101,5 @@ defmodule Bridge.Authorization.Policy do
   defp get_project_id(%Bridge.Lists.Task{list_id: list_id}),
     do: Projects.get_item_project_id("list", list_id)
 
-  # For subtasks, look up via the task's list's project
-  defp get_project_id(%Bridge.Lists.Subtask{task: %{list_id: list_id}}),
-    do: Projects.get_item_project_id("list", list_id)
-
   defp get_project_id(_), do: nil
 end

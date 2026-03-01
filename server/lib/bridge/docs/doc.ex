@@ -22,19 +22,19 @@ defmodule Bridge.Docs.Doc do
     doc
     |> cast(attrs, [:title, :content, :starred, :workspace_id, :author_id])
     |> validate_required([:title, :workspace_id, :author_id])
-    |> sanitize_html()
+    |> sanitize_content()
   end
 
-  # Sanitize HTML content to prevent XSS attacks
-  defp sanitize_html(changeset) do
+  # Sanitize markdown content — strip dangerous HTML tags that could be
+  # embedded in markdown (script, iframe, event handlers, javascript: URLs)
+  defp sanitize_content(changeset) do
     case get_change(changeset, :content) do
       nil ->
         changeset
 
       content ->
-        # Use HTML5 scrubber which allows safe formatting tags
-        sanitized_content = HtmlSanitizeEx.html5(content)
-        put_change(changeset, :content, sanitized_content)
+        sanitized = Bridge.ContentSanitizer.sanitize_markdown(content)
+        put_change(changeset, :content, sanitized)
     end
   end
 end

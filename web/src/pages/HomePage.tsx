@@ -14,7 +14,7 @@ import {
   MessageSquare,
   Square,
 } from "lucide-react";
-import { Task, Subtask } from "@/types";
+import { Task } from "@/types";
 import { api } from "@/lib/api";
 
 export function HomePage() {
@@ -27,18 +27,18 @@ export function HomePage() {
   const channels = useChatStore((state) => state.channels) || [];
 
   const [myTasks, setMyTasks] = useState<Task[]>([]);
-  const [mySubtasks, setMySubtasks] = useState<Subtask[]>([]);
+  const [myChildTasks, setMyChildTasks] = useState<Task[]>([]);
 
-  // Fetch my tasks and subtasks
+  // Fetch my tasks and child tasks
   useEffect(() => {
     const fetchMyItems = async () => {
       try {
-        const [tasksRes, subtasksRes] = await Promise.all([
+        const [tasksRes, childTasksRes] = await Promise.all([
           api.get<Task[]>("/tasks?assigned_to_me=true"),
-          api.get<Subtask[]>("/subtasks?assigned_to_me=true"),
+          api.get<Task[]>("/tasks?assigned_to_me=true&is_subtask=true"),
         ]);
         setMyTasks(Array.isArray(tasksRes) ? tasksRes : []);
-        setMySubtasks(Array.isArray(subtasksRes) ? subtasksRes : []);
+        setMyChildTasks(Array.isArray(childTasksRes) ? childTasksRes : []);
       } catch (error) {
         console.error("Failed to fetch my items:", error);
       }
@@ -123,7 +123,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="flex-1 overflow-y-auto p-8 bg-dark-surface">
       <h1 className="text-3xl font-bold text-dark-text mb-2">
         {workspace?.name || "Home"}
       </h1>
@@ -141,7 +141,7 @@ export function HomePage() {
               <div
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="p-4 bg-dark-surface border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer"
+                className="p-4 bg-dark-bg border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2 mb-2">
                   {item.type === "project" && (
@@ -197,11 +197,16 @@ export function HomePage() {
                     setActiveItem({ type: "boards", id: task.boardId });
                     navigate(`/boards/${task.boardId}?task=${task.id}`);
                   }}
-                  className="p-3 bg-dark-surface border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex items-center gap-3"
+                  className="p-3 bg-dark-bg border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex items-center gap-3"
                 >
                   <Kanban size={16} className="text-blue-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-dark-text truncate">
+                      {task.key && (
+                        <span className="text-xs font-mono text-dark-text-muted mr-2">
+                          {task.key}
+                        </span>
+                      )}
                       {task.title}
                     </h3>
                   </div>
@@ -227,27 +232,27 @@ export function HomePage() {
           <h2 className="text-lg font-semibold text-dark-text mb-4">
             My Subtasks
           </h2>
-          {mySubtasks.length === 0 ? (
+          {myChildTasks.length === 0 ? (
             <p className="text-dark-text-muted">No subtasks assigned to you</p>
           ) : (
             <div className="space-y-2">
-              {mySubtasks.map((subtask) => (
+              {myChildTasks.map((child) => (
                 <div
-                  key={subtask.id}
+                  key={child.id}
                   onClick={() => {
-                    if (subtask.task?.boardId) {
+                    if (child.parent?.boardId) {
                       setActiveItem({
                         type: "boards",
-                        id: subtask.task.boardId,
+                        id: child.parent.boardId,
                       });
                       navigate(
-                        `/boards/${subtask.task.boardId}?task=${subtask.taskId}&subtask=${subtask.id}`,
+                        `/boards/${child.parent.boardId}?task=${child.parentId}`,
                       );
                     }
                   }}
-                  className="p-3 bg-dark-surface border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex items-center gap-3"
+                  className="p-3 bg-dark-bg border border-dark-border rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex items-center gap-3"
                 >
-                  {subtask.isCompleted ? (
+                  {child.isCompleted ? (
                     <CheckSquare
                       size={16}
                       className="text-green-500 flex-shrink-0"
@@ -260,19 +265,24 @@ export function HomePage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <h3
-                      className={`font-medium truncate ${subtask.isCompleted ? "text-dark-text-muted line-through" : "text-dark-text"}`}
+                      className={`font-medium truncate ${child.isCompleted ? "text-dark-text-muted line-through" : "text-dark-text"}`}
                     >
-                      {subtask.title}
+                      {child.key && (
+                        <span className="text-xs font-mono text-dark-text-muted mr-2">
+                          {child.key}
+                        </span>
+                      )}
+                      {child.title}
                     </h3>
                   </div>
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded ${
-                      subtask.isCompleted
+                      child.isCompleted
                         ? "bg-green-500/20 text-green-400"
                         : "bg-yellow-500/20 text-yellow-400"
                     }`}
                   >
-                    {subtask.isCompleted ? "Done" : "Pending"}
+                    {child.isCompleted ? "Done" : "Pending"}
                   </span>
                 </div>
               ))}

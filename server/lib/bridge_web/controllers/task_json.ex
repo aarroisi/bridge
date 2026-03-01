@@ -1,9 +1,6 @@
 defmodule BridgeWeb.TaskJSON do
   alias Bridge.Lists.Task
 
-  @doc """
-  Renders a list of tasks.
-  """
   def index(%{page: page}) do
     %{
       data: for(task <- page.entries, do: data(task)),
@@ -19,16 +16,10 @@ defmodule BridgeWeb.TaskJSON do
     %{data: for(task <- tasks, do: data(task))}
   end
 
-  @doc """
-  Renders a single task.
-  """
   def show(%{task: task}) do
     %{data: data(task)}
   end
 
-  @doc """
-  Renders errors.
-  """
   def error(%{changeset: changeset}) do
     %{errors: translate_errors(changeset)}
   end
@@ -37,24 +28,32 @@ defmodule BridgeWeb.TaskJSON do
     base = %{
       id: task.id,
       title: task.title,
+      sequence_number: task.sequence_number,
+      key: get_task_key(task),
       position: task.position,
+      is_completed: task.is_completed,
       notes: task.notes,
       due_on: task.due_on,
       completed_at: task.completed_at,
       board_id: task.list_id,
+      parent_id: task.parent_id,
       status_id: task.status_id,
       assignee_id: task.assignee_id,
       assignee: get_assignee(task),
       created_by_id: task.created_by_id,
       created_by: get_created_by(task),
-      subtask_count: get_subtask_count(task),
-      subtask_done_count: get_subtask_done_count(task),
+      child_count: task.child_count || 0,
+      child_done_count: task.child_done_count || 0,
       comment_count: task.comment_count || 0,
       inserted_at: task.inserted_at,
       updated_at: task.updated_at
     }
 
-    # Include status object if loaded
+    base = maybe_add_status(base, task)
+    maybe_add_parent(base, task)
+  end
+
+  defp maybe_add_status(base, task) do
     if Ecto.assoc_loaded?(task.status) and task.status do
       Map.put(base, :status, %{
         id: task.status.id,
@@ -62,6 +61,18 @@ defmodule BridgeWeb.TaskJSON do
         color: task.status.color,
         position: task.status.position,
         is_done: task.status.is_done
+      })
+    else
+      base
+    end
+  end
+
+  defp maybe_add_parent(base, task) do
+    if task.parent_id && Ecto.assoc_loaded?(task.parent) && task.parent do
+      Map.put(base, :parent, %{
+        id: task.parent.id,
+        title: task.parent.title,
+        board_id: task.parent.list_id
       })
     else
       base
@@ -78,15 +89,12 @@ defmodule BridgeWeb.TaskJSON do
 
   defp get_created_by(_), do: nil
 
-  defp get_subtask_count(%Task{subtasks: subtasks}) when is_list(subtasks),
-    do: length(subtasks)
+  defp get_task_key(%Task{list: %Bridge.Lists.List{prefix: prefix}, sequence_number: seq})
+       when is_binary(prefix) and is_integer(seq) do
+    "#{prefix}-#{seq}"
+  end
 
-  defp get_subtask_count(_), do: 0
-
-  defp get_subtask_done_count(%Task{subtasks: subtasks}) when is_list(subtasks),
-    do: Enum.count(subtasks, & &1.is_completed)
-
-  defp get_subtask_done_count(_), do: 0
+  defp get_task_key(_), do: nil
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

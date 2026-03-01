@@ -104,35 +104,6 @@ defmodule BridgeWeb.TaskChannel do
   end
 
   @impl true
-  def handle_in("new_subtask", %{"subtask" => subtask_params}, socket) do
-    task_id = socket.assigns.task_id
-    user_id = socket.assigns.user_id
-
-    # Add task_id and created_by_id to the subtask params
-    subtask_params =
-      subtask_params
-      |> Map.put("task_id", task_id)
-      |> Map.put("created_by_id", user_id)
-
-    case Lists.create_subtask(subtask_params) do
-      {:ok, subtask} ->
-        # Preload associations for broadcasting
-        subtask = Repo.preload(subtask, [:assignee, :created_by, :task])
-
-        # Broadcast the new subtask to all subscribers
-        broadcast!(socket, "subtask_created", %{
-          subtask: subtask,
-          task_id: task_id
-        })
-
-        {:reply, {:ok, %{subtask: subtask}}, socket}
-
-      {:error, changeset} ->
-        {:reply, {:error, %{errors: format_errors(changeset)}}, socket}
-    end
-  end
-
-  @impl true
   def handle_in("assign_user", %{"user_id" => assignee_id}, socket) do
     task_id = socket.assigns.task_id
 

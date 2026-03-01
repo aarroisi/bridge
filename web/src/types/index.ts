@@ -57,6 +57,7 @@ export interface BoardStatus {
 export interface Board {
   id: string;
   name: string;
+  prefix: string;
   starred: boolean;
   statuses?: BoardStatus[];
   createdById: string;
@@ -76,9 +77,13 @@ export interface Task {
   id: string;
   boardId: string;
   title: string;
+  key?: string;
+  sequenceNumber?: number;
   statusId: string;
   status?: BoardStatus;
   position: number;
+  parentId?: string | null;
+  isCompleted?: boolean;
   assigneeId?: string | null;
   assignee?: EmbeddedUser | null;
   createdById: string;
@@ -86,33 +91,17 @@ export interface Task {
   dueOn?: string | null;
   completedAt?: string | null;
   notes?: string | null;
-  subtaskCount: number;
-  subtaskDoneCount: number;
+  childCount: number;
+  childDoneCount: number;
   commentCount: number;
-  insertedAt: string;
-  updatedAt: string;
-}
-
-export interface Subtask {
-  id: string;
-  taskId: string;
-  isCompleted: boolean;
-  title: string;
-  assigneeId?: string | null;
-  assignee?: EmbeddedUser | null;
-  createdById: string;
-  createdBy?: EmbeddedUser | null;
-  notes?: string | null;
-  dueOn?: string | null;
-  completedAt?: string | null;
-  insertedAt: string;
-  updatedAt: string;
-  // Optional task info (included when fetching subtasks with task preloaded)
-  task?: {
+  parent?: {
     id: string;
     boardId: string;
     title: string;
+    key?: string;
   };
+  insertedAt: string;
+  updatedAt: string;
 }
 
 // Doc types
@@ -156,7 +145,7 @@ export interface Message {
   parentId?: string; // For threading
   quoteId?: string; // For quotes
   quote?: Message; // The actual quoted message
-  entityType: "task" | "subtask" | "doc" | "channel" | "dm";
+  entityType: "task" | "doc" | "channel" | "dm";
   entityId: string;
   insertedAt: string;
   updatedAt: string;
@@ -196,7 +185,7 @@ export interface ActiveItem {
 export interface Notification {
   id: string;
   type: "mention";
-  entityType: "message" | "doc" | "task" | "subtask";
+  entityType: "message" | "doc" | "task";
   entityId: string;
   context: Record<string, unknown>;
   read: boolean;

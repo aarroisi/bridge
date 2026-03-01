@@ -20,5 +20,8 @@ defmodule Bridge.Chat.Channel do
     channel
     |> cast(attrs, [:name, :starred, :workspace_id, :created_by_id])
     |> validate_required([:name, :workspace_id])
+    |> unique_constraint([:workspace_id, :name],
+      message: "a channel with this name already exists"
+    )
   end
 end

@@ -47,9 +47,8 @@ export function InnerSidebar() {
   const [addItemDropdownProjectId, setAddItemDropdownProjectId] = useState<
     string | null
   >(null);
-  const [showNewDM, setShowNewDM] = useState(false);
-  const [dmSearch, setDmSearch] = useState("");
-  const dmSearchRef = useRef<HTMLInputElement>(null);
+  const [, setShowNewDM] = useState(false);
+  const [, setDmSearch] = useState("");
   const addItemDropdownRef = useRef<HTMLDivElement>(null);
 
   const unreadChannelIds = useChatStore((state) => state.unreadChannelIds);
@@ -812,22 +811,6 @@ export function InnerSidebar() {
         );
 
       case "dms": {
-        const existingDmUserIds = new Set(
-          safeDirectMessages.map((dm) => dm.userId),
-        );
-        const dmCandidates = workspaceMembers
-          .filter(
-            (m) => m.id !== currentUser?.id && !existingDmUserIds.has(m.id),
-          )
-          .filter((m) => {
-            if (!dmSearch.trim()) return true;
-            const q = dmSearch.toLowerCase();
-            return (
-              m.name.toLowerCase().includes(q) ||
-              m.email.toLowerCase().includes(q)
-            );
-          });
-
         // Build a combined list: existing DMs first, then remaining members
         const dmMembers = safeDirectMessages.map((dm) => ({
           id: dm.userId,

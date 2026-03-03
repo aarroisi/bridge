@@ -410,15 +410,6 @@ export function DocView() {
     setShowCancelConfirmModal(false);
   };
 
-  const handleCancelNew = () => {
-    // Check if there's any content in the new doc
-    if (editedTitle.trim() !== "" || editedContent.trim() !== "") {
-      setShowCancelConfirmModal(true);
-    } else {
-      navigate("/docs");
-    }
-  };
-
   const performCancelNew = () => {
     if (projectIdParam && folderIdParam) {
       navigate(

@@ -159,7 +159,7 @@ export function DiscussionThread({
           ))}
         </div>
 
-        <div className="border-t border-dark-border">
+        <div className="border-t border-dark-border pb-[env(safe-area-inset-bottom)]">
           <CommentEditor
             ref={replyTextareaRef}
             value={replyText}

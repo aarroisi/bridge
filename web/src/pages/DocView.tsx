@@ -868,7 +868,7 @@ export function DocView() {
         </div>
 
         {!isEditing && (
-          <div className="relative border-t border-dark-border bg-dark-bg w-full">
+          <div className="relative border-t border-dark-border bg-dark-bg w-full pb-[env(safe-area-inset-bottom)]">
             {showJumpToBottom && (
               <button
                 onClick={handleJumpToBottom}

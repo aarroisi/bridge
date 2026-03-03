@@ -482,7 +482,7 @@ export function ChildTaskDetailModal({
         </div>
 
         {/* Comment Editor - Fixed at bottom */}
-        <div className="border-t border-dark-border flex-shrink-0">
+        <div className="border-t border-dark-border flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <CommentEditor
             ref={commentEditorRef}
             value={newComment}

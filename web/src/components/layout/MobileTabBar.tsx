@@ -10,6 +10,7 @@ import {
   Search,
   Settings,
   User,
+  RefreshCw,
   LogOut,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -86,6 +87,9 @@ export function MobileTabBar() {
       case "profile":
         setShowProfileModal(true);
         break;
+      case "refresh":
+        window.location.reload();
+        break;
       case "logout":
         logout().then(() => navigate("/login"));
         break;
@@ -154,6 +158,14 @@ export function MobileTabBar() {
             >
               <User size={20} />
               <span className="text-[10px] leading-tight">Profile</span>
+            </button>
+
+            <button
+              onClick={() => handleMoreAction("refresh")}
+              className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg text-dark-text-muted hover:bg-dark-border/50 transition-colors"
+            >
+              <RefreshCw size={20} />
+              <span className="text-[10px] leading-tight">Refresh</span>
             </button>
 
             <button

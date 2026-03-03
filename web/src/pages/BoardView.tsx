@@ -70,10 +70,11 @@ function SortableTaskRow({
     isDragging,
   } = useSortable({ id: task.id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    touchAction: "manipulation",
   };
 
   return (
@@ -217,8 +218,8 @@ export function BoardView() {
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        delay: 300,
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {

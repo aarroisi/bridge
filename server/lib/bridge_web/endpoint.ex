@@ -64,7 +64,7 @@ defmodule BridgeWeb.Endpoint do
   plug(Plug.Session, @session_options)
 
   plug(CORSPlug,
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: &BridgeWeb.Endpoint.cors_origins/0,
     credentials: true,
     max_age: 86400,
     headers: [
@@ -84,4 +84,8 @@ defmodule BridgeWeb.Endpoint do
   )
 
   plug(BridgeWeb.Router)
+
+  def cors_origins do
+    Application.get_env(:bridge, :cors_origins, ["http://localhost:5173", "http://localhost:3000"])
+  end
 end

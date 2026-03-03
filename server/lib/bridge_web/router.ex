@@ -10,6 +10,11 @@ defmodule BridgeWeb.Router do
     plug(BridgeWeb.Plugs.AuthPlug)
   end
 
+  # Health check (no auth, no pipeline)
+  scope "/", BridgeWeb do
+    get("/health", HealthController, :index)
+  end
+
   scope "/api", BridgeWeb do
     pipe_through(:api)
 

@@ -37,6 +37,12 @@ if System.get_env("FRONTEND_URL") do
   config :bridge, :frontend_url, System.get_env("FRONTEND_URL")
 end
 
+if cors = System.get_env("CORS_ORIGINS") do
+  origins = String.split(cors, ",", trim: true)
+  config :bridge, :cors_origins, origins
+  config :bridge, BridgeWeb.Endpoint, check_origin: origins
+end
+
 config :bridge, BridgeWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 

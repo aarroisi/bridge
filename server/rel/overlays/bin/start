@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+cd -P -- "$(dirname -- "$0")"
+
+echo "Running migrations..."
+./bridge eval Bridge.Release.migrate
+
+echo "Starting server..."
+PHX_SERVER=true exec ./bridge start

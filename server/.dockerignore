@@ -1,0 +1,28 @@
+# Version control
+.git
+
+# Build artifacts
+_build/
+deps/
+
+# Test files
+test/
+
+# Dev tools
+.formatter.exs
+.credo.exs
+
+# Environment files
+.env
+.env.*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

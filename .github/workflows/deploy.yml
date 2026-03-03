@@ -1,0 +1,101 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend - Test & Deploy
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bridge_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: server
+
+    env:
+      MIX_ENV: test
+      DATABASE_URL: ecto://postgres:postgres@localhost/bridge_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.18.2"
+          otp-version: "27.2"
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            server/deps
+            server/_build
+          key: ${{ runner.os }}-mix-${{ hashFiles('server/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Run tests
+        run: mix test
+
+      - name: Deploy to Render
+        if: success()
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" "$RENDER_DEPLOY_HOOK"
+
+  frontend:
+    name: Frontend - Build & Deploy
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web
+
+    env:
+      VITE_API_URL: https://api.missionspace.co/api
+      VITE_WS_URL: wss://api.missionspace.co/socket
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=mission-space
+          workingDirectory: web

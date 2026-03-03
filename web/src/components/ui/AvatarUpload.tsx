@@ -1,28 +1,44 @@
 import { useRef, useState } from "react";
 import { Camera, Loader2, X } from "lucide-react";
 import { clsx } from "clsx";
-import { Avatar } from "./Avatar";
 import { useFileUpload, formatBytes } from "../../hooks/useFileUpload";
 
 interface AvatarUploadProps {
   name: string;
   currentAvatarUrl?: string | null;
   onUploadComplete: (asset: { id: string; url: string }) => void;
+  onRemove?: () => void;
   onError?: (error: string) => void;
   size?: "md" | "lg" | "xl";
+  attachableType: string;
+  attachableId: string;
 }
 
 const sizeClasses = {
-  md: "w-16 h-16",
-  lg: "w-24 h-24",
-  xl: "w-32 h-32",
+  md: "w-16 h-16 text-lg",
+  lg: "w-24 h-24 text-2xl",
+  xl: "w-32 h-32 text-3xl",
 };
 
-const avatarSizeMap = {
-  md: "lg" as const,
-  lg: "lg" as const,
-  xl: "lg" as const,
-};
+const colors = [
+  "bg-blue-600",
+  "bg-green-600",
+  "bg-purple-600",
+  "bg-pink-600",
+  "bg-orange-600",
+  "bg-teal-600",
+];
+
+function getColorForName(name: string): string {
+  if (!name) return colors[0];
+  const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+}
+
+function getInitials(name: string): string {
+  if (!name) return "??";
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -30,8 +46,11 @@ export function AvatarUpload({
   name,
   currentAvatarUrl,
   onUploadComplete,
+  onRemove,
   onError,
   size = "lg",
+  attachableType,
+  attachableId,
 }: AvatarUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -71,7 +90,7 @@ export function AvatarUpload({
     reader.readAsDataURL(file);
 
     try {
-      const asset = await upload(file, { assetType: "avatar" });
+      const asset = await upload(file, { assetType: "avatar", attachableType, attachableId });
       onUploadComplete({ id: asset.id, url: asset.url || "" });
     } catch (err) {
       // Clear preview on error
@@ -82,15 +101,10 @@ export function AvatarUpload({
     }
   };
 
-  const handleClearPreview = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPreviewUrl(null);
-  };
-
   const displayUrl = previewUrl || currentAvatarUrl;
 
   return (
-    <div className="relative inline-block">
+    <div className="relative flex flex-col items-center">
       <button
         type="button"
         onClick={handleClick}
@@ -108,7 +122,9 @@ export function AvatarUpload({
             className="w-full h-full object-cover"
           />
         ) : (
-          <Avatar name={name} size={avatarSizeMap[size]} className="w-full h-full" />
+          <div className={clsx("w-full h-full rounded-full flex items-center justify-center font-medium text-white", getColorForName(name))}>
+            {getInitials(name)}
+          </div>
         )}
 
         {/* Overlay on hover */}
@@ -130,13 +146,17 @@ export function AvatarUpload({
         )}
       </button>
 
-      {/* Clear preview button */}
-      {previewUrl && !isUploading && (
+      {/* Remove button */}
+      {displayUrl && !isUploading && (
         <button
           type="button"
-          onClick={handleClearPreview}
-          className="absolute -top-1 -right-1 p-1 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-          title="Clear preview"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPreviewUrl(null);
+            onRemove?.();
+          }}
+          className="absolute top-0 right-0 p-1 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+          title="Remove photo"
         >
           <X size={12} />
         </button>

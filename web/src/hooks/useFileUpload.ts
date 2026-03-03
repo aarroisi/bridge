@@ -10,6 +10,8 @@ export interface UploadProgress {
 
 export interface UploadOptions {
   assetType: AssetType;
+  attachableType?: string;
+  attachableId?: string;
   onProgress?: (progress: UploadProgress) => void;
 }
 
@@ -37,7 +39,7 @@ export function useFileUpload(): UseFileUploadReturn {
 
   const upload = useCallback(
     async (file: File, options: UploadOptions): Promise<Asset> => {
-      const { assetType, onProgress } = options;
+      const { assetType, attachableType, attachableId, onProgress } = options;
 
       // Validate file size
       const maxSize = assetType === "avatar" ? MAX_AVATAR_SIZE : MAX_FILE_SIZE;
@@ -59,6 +61,8 @@ export function useFileUpload(): UseFileUploadReturn {
             contentType: file.type,
             sizeBytes: file.size,
             assetType,
+            attachableType,
+            attachableId,
           }
         );
 

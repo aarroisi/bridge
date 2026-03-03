@@ -54,8 +54,8 @@ defmodule BridgeWeb.DocJSON do
 
   defp get_key(_), do: nil
 
-  defp get_created_by(%Doc{author: %{id: id, name: name, email: email}}),
-    do: %{id: id, name: name, email: email}
+  defp get_created_by(%Doc{author: %{id: id, name: name, email: email, avatar: avatar}}),
+    do: %{id: id, name: name, email: email, avatar: avatar}
 
   defp get_created_by(_), do: nil
 

@@ -19,7 +19,8 @@ defmodule BridgeWeb.WorkspaceController do
           workspace: %{
             id: updated_workspace.id,
             name: updated_workspace.name,
-            slug: updated_workspace.slug
+            slug: updated_workspace.slug,
+            logo: updated_workspace.logo
           }
         })
 

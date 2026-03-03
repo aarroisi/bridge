@@ -119,7 +119,7 @@ export function WorkspaceMembersPage() {
             className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-dark-border last:border-b-0 items-center"
           >
             <div className="col-span-5 flex items-center gap-3">
-              <Avatar name={member.name} size="md" />
+              <Avatar name={member.name} src={member.avatar} size="md" />
               <div>
                 <div className="text-dark-text font-medium flex items-center gap-2">
                   {member.name}

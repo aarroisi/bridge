@@ -65,7 +65,7 @@ export function MemberProfileModal({
             {/* Avatar and name */}
             <div className="flex flex-col items-center text-center">
               <div className="relative">
-                <Avatar name={member.name} size="lg" />
+                <Avatar name={member.name} src={member.avatar} size="lg" />
                 {member.online && (
                   <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-dark-surface" />
                 )}

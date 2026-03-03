@@ -83,7 +83,7 @@ defmodule BridgeWeb.AssetController do
       {:error, :invalid_attachable_type} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> json(%{error: "Invalid attachable_type. Must be one of: doc, message, user, task, channel, dm"})
+        |> json(%{error: "Invalid attachable_type. Must be one of: doc, message, user, task, channel, dm, workspace"})
 
       {:error, :attachable_not_found} ->
         conn
@@ -95,10 +95,15 @@ defmodule BridgeWeb.AssetController do
         |> put_status(:unprocessable_entity)
         |> json(%{error: "Message has invalid entity type"})
 
-      {:error, changeset} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:error, changeset: changeset)
+
+      {:error, reason} when is_binary(reason) ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 

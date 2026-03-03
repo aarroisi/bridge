@@ -8,6 +8,7 @@ defmodule Bridge.Accounts.Workspace do
   schema "workspaces" do
     field(:name, :string)
     field(:slug, :string)
+    field(:logo, :string)
     field(:storage_used_bytes, :integer, default: 0)
     field(:storage_quota_bytes, :integer, default: 5_368_709_120)
 
@@ -20,9 +21,8 @@ defmodule Bridge.Accounts.Workspace do
   @doc false
   def changeset(workspace, attrs) do
     workspace
-    |> cast(attrs, [:name, :slug])
-    |> validate_required([:name, :slug])
-    |> validate_format(:slug, ~r/^[a-z0-9-]+$/)
+    |> cast(attrs, [:name, :slug, :logo])
+    |> validate_required([:name])
     |> unique_constraint(:slug)
   end
 

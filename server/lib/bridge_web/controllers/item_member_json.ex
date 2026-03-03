@@ -22,7 +22,8 @@ defmodule BridgeWeb.ItemMemberJSON do
       Map.put(base, :user, %{
         id: member.user.id,
         name: member.user.name,
-        email: member.user.email
+        email: member.user.email,
+        avatar: member.user.avatar
       })
     else
       base

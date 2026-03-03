@@ -815,6 +815,7 @@ export function InnerSidebar() {
         const dmMembers = safeDirectMessages.map((dm) => ({
           id: dm.userId,
           name: dm.name,
+          avatar: dm.avatar,
           online: dm.online,
           dmId: dm.id,
           starred: dm.starred,
@@ -827,6 +828,7 @@ export function InnerSidebar() {
           .map((m) => ({
             id: m.id,
             name: m.name,
+            avatar: m.avatar,
             online: m.online,
             dmId: null as string | null,
             starred: false,
@@ -859,7 +861,7 @@ export function InnerSidebar() {
                       isUnread && activeItemId !== member.dmId && "font-semibold text-dark-text",
                     )}
                   >
-                    <Avatar name={member.name} size="xs" online={member.online} />
+                    <Avatar name={member.name} src={member.avatar} size="xs" online={member.online} />
                     <span className="truncate flex-1">{member.name}</span>
                     {isUnread && activeItemId !== member.dmId && (
                       <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />

@@ -22,13 +22,15 @@ defmodule BridgeWeb.AuthController do
             id: user.id,
             name: user.name,
             email: user.email,
+            avatar: user.avatar,
             role: user.role,
             workspace_id: workspace.id
           },
           workspace: %{
             id: workspace.id,
             name: workspace.name,
-            slug: workspace.slug
+            slug: workspace.slug,
+            logo: workspace.logo
           }
         })
 
@@ -58,13 +60,15 @@ defmodule BridgeWeb.AuthController do
               id: user.id,
               name: user.name,
               email: user.email,
+              avatar: user.avatar,
               role: user.role,
               workspace_id: user.workspace_id
             },
             workspace: %{
               id: user.workspace.id,
               name: user.workspace.name,
-              slug: user.workspace.slug
+              slug: user.workspace.slug,
+              logo: user.workspace.logo
             }
           })
         end
@@ -104,13 +108,15 @@ defmodule BridgeWeb.AuthController do
                   id: user.id,
                   name: user.name,
                   email: user.email,
+                  avatar: user.avatar,
                   role: user.role,
                   workspace_id: user.workspace_id
                 },
                 workspace: %{
                   id: user.workspace.id,
                   name: user.workspace.name,
-                  slug: user.workspace.slug
+                  slug: user.workspace.slug,
+                  logo: user.workspace.logo
                 }
               })
             end
@@ -145,7 +151,8 @@ defmodule BridgeWeb.AuthController do
           workspace: %{
             id: user.workspace.id,
             name: user.workspace.name,
-            slug: user.workspace.slug
+            slug: user.workspace.slug,
+            logo: user.workspace.logo
           }
         })
 

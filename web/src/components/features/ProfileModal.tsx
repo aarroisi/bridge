@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { AvatarUpload } from "@/components/ui/AvatarUpload";
+import { getAssetUrl } from "@/lib/asset-cache";
 import { Modal } from "@/components/ui/Modal";
 
 interface ProfileModalProps {
@@ -14,7 +15,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { success, error: showError } = useToastStore();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarAssetId, setAvatarAssetId] = useState<string | null>(null);
+  const [avatarDisplayUrl, setAvatarDisplayUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,10 +24,19 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     if (isOpen && user) {
       setName(user.name);
       setEmail(user.email);
-      setAvatarUrl(user.avatar || null);
+      setAvatarAssetId(user.avatar || null);
       setError(null);
     }
   }, [isOpen, user]);
+
+  // Resolve avatar asset ID to presigned URL
+  useEffect(() => {
+    if (avatarAssetId) {
+      getAssetUrl(avatarAssetId).then(setAvatarDisplayUrl).catch(() => setAvatarDisplayUrl(null));
+    } else {
+      setAvatarDisplayUrl(null);
+    }
+  }, [avatarAssetId]);
 
   if (!isOpen || !user) return null;
 
@@ -38,7 +49,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const updates: { name?: string; email?: string; avatar?: string } = {};
       if (name !== user.name) updates.name = name;
       if (email !== user.email) updates.email = email;
-      if (avatarUrl !== user.avatar) updates.avatar = avatarUrl || "";
+      if (avatarAssetId !== user.avatar) updates.avatar = avatarAssetId || "";
 
       await updateProfile(updates);
       success("Profile updated successfully");
@@ -54,11 +65,13 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   };
 
   const handleAvatarUpload = (asset: { id: string; url: string }) => {
-    setAvatarUrl(asset.url);
+    setAvatarAssetId(asset.id);
+    // Set display URL immediately from the upload response
+    if (asset.url) setAvatarDisplayUrl(asset.url);
   };
 
   const hasChanges =
-    name !== user.name || email !== user.email || avatarUrl !== user.avatar;
+    name !== user.name || email !== user.email || avatarAssetId !== user.avatar;
 
   return (
     <Modal title="Edit Profile" onClose={onClose} size="md">
@@ -66,10 +79,16 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         <div className="flex justify-center">
           <AvatarUpload
             name={name || user.name}
-            currentAvatarUrl={avatarUrl}
+            currentAvatarUrl={avatarDisplayUrl}
             onUploadComplete={handleAvatarUpload}
+            onRemove={() => {
+              setAvatarAssetId(null);
+              setAvatarDisplayUrl(null);
+            }}
             onError={(msg) => showError(msg)}
             size="lg"
+            attachableType="user"
+            attachableId={user.id}
           />
         </div>
 

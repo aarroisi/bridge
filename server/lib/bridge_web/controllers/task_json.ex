@@ -80,13 +80,13 @@ defmodule BridgeWeb.TaskJSON do
     end
   end
 
-  defp get_assignee(%Task{assignee: %{id: id, name: name, email: email}}),
-    do: %{id: id, name: name, email: email}
+  defp get_assignee(%Task{assignee: %{id: id, name: name, email: email, avatar: avatar}}),
+    do: %{id: id, name: name, email: email, avatar: avatar}
 
   defp get_assignee(_), do: nil
 
-  defp get_created_by(%Task{created_by: %{id: id, name: name, email: email}}),
-    do: %{id: id, name: name, email: email}
+  defp get_created_by(%Task{created_by: %{id: id, name: name, email: email, avatar: avatar}}),
+    do: %{id: id, name: name, email: email, avatar: avatar}
 
   defp get_created_by(_), do: nil
 

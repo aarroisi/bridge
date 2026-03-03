@@ -11,6 +11,7 @@ interface Workspace {
   id: string;
   name: string;
   slug: string;
+  logo: string | null;
 }
 
 interface WorkspaceMember {
@@ -37,7 +38,7 @@ interface AuthState {
     email?: string;
     avatar?: string;
   }) => Promise<void>;
-  updateWorkspace: (data: { name?: string; slug?: string }) => Promise<void>;
+  updateWorkspace: (data: { name?: string; slug?: string; logo?: string | null }) => Promise<void>;
   // Permission helpers
   isOwner: () => boolean;
   canEdit: (item: ItemWithCreator) => boolean;
@@ -158,7 +159,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: response.user });
   },
 
-  updateWorkspace: async (data: { name?: string; slug?: string }) => {
+  updateWorkspace: async (data: { name?: string; slug?: string; logo?: string | null }) => {
     const response = await api.put<{ workspace: Workspace }>("/workspace", {
       workspace: data,
     });

@@ -6,6 +6,7 @@ import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
+import { getAssetUrl } from "@/lib/asset-cache";
 import {
   Briefcase,
   Folder,
@@ -28,6 +29,16 @@ export function HomePage() {
   const [myTasks, setMyTasks] = useState<Task[]>([]);
   const [starredTasks, setStarredTasks] = useState<Task[]>([]);
   const [starredDocs, setStarredDocs] = useState<Doc[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Resolve logo asset ID to presigned URL
+  useEffect(() => {
+    if (workspace?.logo) {
+      getAssetUrl(workspace.logo).then(setLogoUrl).catch(() => setLogoUrl(null));
+    } else {
+      setLogoUrl(null);
+    }
+  }, [workspace?.logo]);
 
   // Fetch all tasks assigned to me and starred tasks/docs
   useEffect(() => {
@@ -163,9 +174,20 @@ export function HomePage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-dark-surface">
-      <h1 className="text-3xl font-bold text-dark-text mb-2">
-        {workspace?.name || "Home"}
-      </h1>
+      {/* Workspace branding - centered like Basecamp */}
+      <div className="flex flex-col items-center mb-10">
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={workspace?.name}
+            className="h-28 rounded-lg object-cover"
+          />
+        ) : (
+          <h1 className="font-bold text-dark-text text-4xl">
+            {workspace?.name || "Home"}
+          </h1>
+        )}
+      </div>
 
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-dark-text mb-4">

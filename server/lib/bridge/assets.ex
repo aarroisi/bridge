@@ -198,6 +198,9 @@ defmodule Bridge.Assets do
       "dm" ->
         validate_dm_ownership(workspace_id, attachable_id)
 
+      "workspace" ->
+        validate_workspace_ownership(workspace_id, attachable_id)
+
       nil ->
         {:error, :attachable_type_required}
 
@@ -330,6 +333,20 @@ defmodule Bridge.Assets do
           )
 
         if Repo.exists?(query), do: :ok, else: {:error, :attachable_not_found}
+    end
+  end
+
+  defp validate_workspace_ownership(workspace_id, attachable_id) do
+    case attachable_id do
+      nil ->
+        {:error, :attachable_id_required}
+
+      _ ->
+        if attachable_id == workspace_id do
+          :ok
+        else
+          {:error, :attachable_not_found}
+        end
     end
   end
 

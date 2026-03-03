@@ -324,7 +324,7 @@ export function ChildTaskDetailModal({
                 >
                   {selectedAssignee ? (
                     <>
-                      <Avatar name={selectedAssignee.name} size="xs" />
+                      <Avatar name={selectedAssignee.name} src={selectedAssignee.avatar} size="xs" />
                       <span className="text-dark-text">
                         {selectedAssignee.name}
                       </span>
@@ -355,7 +355,7 @@ export function ChildTaskDetailModal({
                           task.assigneeId === member.id && "bg-dark-border",
                         )}
                       >
-                        <Avatar name={member.name} size="xs" />
+                        <Avatar name={member.name} src={member.avatar} size="xs" />
                         <span className="text-dark-text">{member.name}</span>
                       </button>
                     ))}

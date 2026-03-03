@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { clsx } from "clsx";
+import { getAssetUrl } from "@/lib/asset-cache";
 
 interface AvatarProps {
   name: string;
@@ -42,6 +44,12 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isAssetId(src: string): boolean {
+  return UUID_RE.test(src);
+}
+
 export function Avatar({
   name,
   src,
@@ -52,12 +60,23 @@ export function Avatar({
   const safeName = name || "Unknown User";
   const colorClass = getColorForName(safeName);
   const initials = getInitials(safeName);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (src && isAssetId(src)) {
+      getAssetUrl(src).then(setResolvedUrl).catch(() => setResolvedUrl(null));
+    } else {
+      setResolvedUrl(null);
+    }
+  }, [src]);
+
+  const imgSrc = src && isAssetId(src) ? resolvedUrl : src;
 
   return (
     <div className={clsx("relative flex-shrink-0", className)}>
-      {src ? (
+      {imgSrc ? (
         <img
-          src={src}
+          src={imgSrc}
           alt={safeName}
           className={clsx("rounded-full object-cover", sizeClasses[size])}
         />

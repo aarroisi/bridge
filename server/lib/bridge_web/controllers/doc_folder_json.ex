@@ -30,8 +30,8 @@ defmodule BridgeWeb.DocFolderJSON do
     }
   end
 
-  defp get_created_by(%DocFolder{created_by: %{id: id, name: name, email: email}}),
-    do: %{id: id, name: name, email: email}
+  defp get_created_by(%DocFolder{created_by: %{id: id, name: name, email: email, avatar: avatar}}),
+    do: %{id: id, name: name, email: email, avatar: avatar}
 
   defp get_created_by(_), do: nil
 end

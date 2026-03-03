@@ -249,6 +249,7 @@ export function NotificationBell() {
                     <div className="relative flex-shrink-0">
                       <Avatar
                         name={notification.actorName || "User"}
+                        src={notification.actorAvatar}
                         size="sm"
                       />
                       {notification.type === "mention" && (

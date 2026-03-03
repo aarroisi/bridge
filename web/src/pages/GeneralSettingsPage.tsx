@@ -1,31 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { StorageUsage } from "@/components/features/StorageUsage";
+import { useFileUpload, formatBytes } from "@/hooks/useFileUpload";
+import { getAssetUrl } from "@/lib/asset-cache";
+import { Camera, Loader2, X } from "lucide-react";
+
+const MAX_LOGO_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export function GeneralSettingsPage() {
   const { workspace, updateWorkspace } = useAuthStore();
   const { success, error } = useToastStore();
 
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize form with workspace data
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { upload, isUploading, progress } = useFileUpload();
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [resolvedLogoUrl, setResolvedLogoUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (workspace) {
       setName(workspace.name);
-      setSlug(workspace.slug);
     }
   }, [workspace]);
 
-  // Track changes
   useEffect(() => {
     if (workspace) {
-      setHasChanges(name !== workspace.name || slug !== workspace.slug);
+      setHasChanges(name !== workspace.name);
     }
-  }, [name, slug, workspace]);
+  }, [name, workspace]);
+
+  // Resolve logo asset ID to presigned URL
+  useEffect(() => {
+    if (workspace?.logo) {
+      getAssetUrl(workspace.logo).then(setResolvedLogoUrl).catch(() => setResolvedLogoUrl(null));
+    } else {
+      setResolvedLogoUrl(null);
+    }
+  }, [workspace?.logo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +49,7 @@ export function GeneralSettingsPage() {
 
     setIsLoading(true);
     try {
-      await updateWorkspace({ name, slug });
+      await updateWorkspace({ name });
       success("Workspace settings updated");
     } catch (err) {
       error("Failed to update settings: " + (err as Error).message);
@@ -43,14 +58,59 @@ export function GeneralSettingsPage() {
     }
   };
 
-  const handleSlugChange = (value: string) => {
-    // Sanitize slug: lowercase, replace spaces with hyphens, remove invalid chars
-    const sanitized = value
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
-    setSlug(sanitized);
+  const handleLogoClick = () => {
+    if (!isUploading) {
+      fileInputRef.current?.click();
+    }
   };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    e.target.value = "";
+
+    if (!file.type.startsWith("image/")) {
+      error("Please select an image file (JPG, PNG, GIF, etc.)");
+      return;
+    }
+
+    if (file.size > MAX_LOGO_SIZE) {
+      error(`Image is too large. Maximum size is ${formatBytes(MAX_LOGO_SIZE)}.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setLogoPreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      const asset = await upload(file, {
+        assetType: "avatar",
+        attachableType: "workspace",
+        attachableId: workspace!.id,
+      });
+      await updateWorkspace({ logo: asset.id });
+      success("Logo updated");
+    } catch (err) {
+      setLogoPreview(null);
+      error(err instanceof Error ? err.message : "Failed to upload logo");
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      await updateWorkspace({ logo: null });
+      setLogoPreview(null);
+      success("Logo removed");
+    } catch (err) {
+      error("Failed to remove logo: " + (err as Error).message);
+    }
+  };
+
+  const displayLogo = logoPreview || resolvedLogoUrl;
 
   return (
     <div className="max-w-2xl mx-auto p-8">
@@ -60,6 +120,68 @@ export function GeneralSettingsPage() {
       <p className="text-dark-text-muted mb-8">
         Manage your workspace's basic information.
       </p>
+
+      {/* Workspace Logo */}
+      <div className="mb-8">
+        <label className="block text-sm font-medium text-dark-text mb-3">
+          Workspace Logo
+        </label>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={handleLogoClick}
+            disabled={isUploading}
+            className="relative w-20 h-20 rounded-lg overflow-hidden bg-dark-surface border border-dark-border hover:border-blue-500 transition-colors cursor-pointer group flex items-center justify-center"
+          >
+            {displayLogo ? (
+              <img
+                src={displayLogo}
+                alt="Workspace logo"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <Camera className="text-dark-text-muted" size={24} />
+            )}
+
+            {!isUploading && (
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="text-white" size={24} />
+              </div>
+            )}
+
+            {isUploading && progress && (
+              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
+                <Loader2 className="text-white animate-spin" size={24} />
+                <span className="text-white text-xs mt-1">{progress.percentage}%</span>
+              </div>
+            )}
+          </button>
+
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-dark-text-muted">
+              Click to upload (max {formatBytes(MAX_LOGO_SIZE)})
+            </p>
+            {displayLogo && (
+              <button
+                type="button"
+                onClick={handleRemoveLogo}
+                className="text-sm text-red-400 hover:text-red-300 text-left flex items-center gap-1"
+              >
+                <X size={14} />
+                Remove logo
+              </button>
+            )}
+          </div>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleLogoChange}
+          className="hidden"
+        />
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Workspace Name */}
@@ -81,36 +203,6 @@ export function GeneralSettingsPage() {
           />
           <p className="mt-1 text-sm text-dark-text-muted">
             This is the display name for your workspace.
-          </p>
-        </div>
-
-        {/* Subdomain / Slug */}
-        <div>
-          <label
-            htmlFor="slug"
-            className="block text-sm font-medium text-dark-text mb-2"
-          >
-            Subdomain
-          </label>
-          <div className="flex items-center">
-            <input
-              type="text"
-              id="slug"
-              value={slug}
-              onChange={(e) => handleSlugChange(e.target.value)}
-              className="flex-1 px-3 py-2 bg-dark-surface border border-dark-border rounded-l-lg text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="my-org"
-              required
-              minLength={3}
-              maxLength={30}
-            />
-            <span className="px-3 py-2 bg-dark-hover border border-l-0 border-dark-border rounded-r-lg text-dark-text-muted">
-              .bridge.app
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-dark-text-muted">
-            URL-friendly identifier. Only lowercase letters, numbers, and
-            hyphens allowed.
           </p>
         </div>
 

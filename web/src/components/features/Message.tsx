@@ -121,7 +121,7 @@ export function Message({
         className,
       )}
     >
-      <Avatar name={message.userName} size="sm" />
+      <Avatar name={message.userName} src={message.avatar} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-semibold text-dark-text text-sm">

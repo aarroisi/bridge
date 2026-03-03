@@ -80,7 +80,7 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
                 : "text-dark-text hover:bg-dark-border/50",
             )}
           >
-            <Avatar name={member.name} size="sm" online={member.online} />
+            <Avatar name={member.name} src={member.avatar} size="sm" online={member.online} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{member.name}</p>
               {member.email && (

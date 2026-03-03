@@ -225,7 +225,7 @@ export function ChatView() {
             </div>
           ) : entityType === "dm" ? (
             <div className="flex items-center gap-3">
-              <Avatar name={item.name} size="sm" online={"online" in item && item.online} />
+              <Avatar name={item.name} src={"avatar" in item ? item.avatar : undefined} size="sm" online={"online" in item && item.online} />
               <h1 className="text-2xl font-bold text-dark-text">
                 {item.name}
               </h1>

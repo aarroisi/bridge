@@ -41,7 +41,7 @@ export function TaskCard({
       <div className="flex items-center gap-3 text-xs text-dark-text-muted flex-wrap">
         {task.assignee && (
           <div className="flex items-center gap-1">
-            <Avatar name={task.assignee.name} size="xs" />
+            <Avatar name={task.assignee.name} src={task.assignee.avatar} size="xs" />
             <span>{task.assignee.name}</span>
           </div>
         )}

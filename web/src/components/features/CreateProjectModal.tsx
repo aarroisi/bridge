@@ -136,7 +136,7 @@ export function CreateProjectModal({
                     onChange={() => toggleMember(member.id)}
                     className="w-4 h-4 rounded border-dark-border bg-dark-bg text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                   />
-                  <Avatar name={member.name} size="sm" />
+                  <Avatar name={member.name} src={member.avatar} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-dark-text truncate">
                       {member.name}

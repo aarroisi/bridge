@@ -20,6 +20,7 @@ interface MemberEntry {
   userId: string;
   name: string;
   email: string;
+  avatar?: string;
   role: Role;
 }
 
@@ -66,6 +67,7 @@ export function ManageMembersModal({
         userId: m.userId,
         name: m.user?.name || "Unknown",
         email: m.user?.email || "",
+        avatar: m.user?.avatar,
         role: "member" as Role,
       }));
     } else {
@@ -76,6 +78,7 @@ export function ManageMembersModal({
         userId: m.userId,
         name: m.user?.name || "Unknown",
         email: m.user?.email || "",
+        avatar: m.user?.avatar,
         role: "member" as Role,
       }));
     }
@@ -181,7 +184,7 @@ export function ManageMembersModal({
                       key={member.userId}
                       className="flex items-center gap-3 py-2 group"
                     >
-                      <Avatar name={member.name} size="sm" />
+                      <Avatar name={member.name} src={member.avatar} size="sm" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-dark-text truncate">
@@ -244,7 +247,7 @@ export function ManageMembersModal({
                       key={user.id}
                       className="flex items-center gap-3 py-2"
                     >
-                      <Avatar name={user.name} size="sm" />
+                      <Avatar name={user.name} src={user.avatar} size="sm" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-dark-text truncate">

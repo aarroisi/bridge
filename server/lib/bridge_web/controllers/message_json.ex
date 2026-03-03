@@ -54,8 +54,7 @@ defmodule BridgeWeb.MessageJSON do
       entity_id: message.entity_id,
       user_id: message.user_id,
       user_name: if(Ecto.assoc_loaded?(message.user), do: message.user.name, else: nil),
-      # TODO: Add avatar support
-      avatar: "",
+      avatar: if(Ecto.assoc_loaded?(message.user), do: message.user.avatar, else: nil),
       parent_id: message.parent_id,
       quote_id: message.quote_id,
       quote: quote_data,

@@ -65,8 +65,26 @@ config :phoenix, :plug_init_mode, :runtime
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
-# Web Push VAPID keys for development
+# Cloudflare R2 Storage (dev)
+config :bridge, :r2,
+  access_key_id: "1b5295b87cb00967b206561b746646a0",
+  secret_access_key: "35d385323c21282ed01ea41603e851750455623310aa9cf59c6fedc39289916b",
+  bucket: "bridge",
+  host: "041b2d7bd4ad75659221d9d3edc332ac.r2.cloudflarestorage.com",
+  region: "auto"
+
+config :ex_aws,
+  access_key_id: "1b5295b87cb00967b206561b746646a0",
+  secret_access_key: "35d385323c21282ed01ea41603e851750455623310aa9cf59c6fedc39289916b",
+  region: "auto"
+
+config :ex_aws, :s3,
+  scheme: "https://",
+  host: "041b2d7bd4ad75659221d9d3edc332ac.r2.cloudflarestorage.com",
+  region: "auto"
+
+# Web Push (dev)
 config :web_push_encryption, :vapid_details,
   subject: "mailto:dev@localhost",
-  public_key: "BKEX4lraAaykIyHgHLZGGZLu04cpe1WHkVr9Ud8oCCe273Sc4jiBMhMv5PMwdCQ4kBII7RkoY12E6pxsX_ZHwrQ",
-  private_key: "c64rQ0K4W2QtekNLoiSj-Ph4QjRge6cTfUDzUJwlrfI"
+  public_key: "BCdOUElSDkbS8lGf8ghJmfKd3H0u9D2MxJsFTAuXFEV0NxW8AzSfMfqQXyHfNr_IVDkR8fxbWJo0LMK4rFuRHyk",
+  private_key: "lbZQqnMLkpeV0J_s3tLkGQj1OMP53Yf5gaKvsqFjef8"

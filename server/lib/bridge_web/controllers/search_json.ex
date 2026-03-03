@@ -38,7 +38,7 @@ defmodule BridgeWeb.SearchJSON do
       status:
         if(t.status, do: %{name: t.status.name, color: t.status.color}, else: nil),
       assignee:
-        if(t.assignee, do: %{id: t.assignee.id, name: t.assignee.name}, else: nil)
+        if(t.assignee, do: %{id: t.assignee.id, name: t.assignee.name, avatar: t.assignee.avatar}, else: nil)
     }
   end
 

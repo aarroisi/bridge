@@ -72,6 +72,7 @@ export interface EmbeddedUser {
   id: string;
   name: string;
   email: string;
+  avatar?: string;
 }
 
 export interface Task {
@@ -301,7 +302,7 @@ export interface SearchResultTask {
   boardId: string;
   parentId?: string | null;
   status?: { name: string; color: string } | null;
-  assignee?: { id: string; name: string } | null;
+  assignee?: { id: string; name: string; avatar?: string } | null;
 }
 
 export interface SearchResultDocFolder {

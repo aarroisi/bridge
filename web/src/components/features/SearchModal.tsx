@@ -137,7 +137,7 @@ function ResultRow({
         onMouseEnter={onSelect}
         onClick={onNavigate}
       >
-        <Avatar name={item.data.name} size="xs" />
+        <Avatar name={item.data.name} src={item.data.avatar} size="xs" />
         <span className="text-dark-text truncate">{item.data.name}</span>
         <span className="text-dark-text-muted text-xs truncate ml-auto">
           {item.data.email}

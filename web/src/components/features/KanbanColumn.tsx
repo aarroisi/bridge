@@ -21,6 +21,7 @@ interface KanbanColumnProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   dropPlaceholderIndex?: number | null;
+  isDragActive?: boolean;
 }
 
 export function KanbanColumn({
@@ -36,6 +37,7 @@ export function KanbanColumn({
   isCollapsed = false,
   onToggleCollapse,
   dropPlaceholderIndex,
+  isDragActive = false,
 }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id });
 
@@ -106,7 +108,7 @@ export function KanbanColumn({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-2 p-1">
+      <div className={clsx("flex-1 space-y-2 p-1", isDragActive ? "overflow-hidden" : "overflow-y-auto")}>
         <SortableContext
           id={id}
           items={tasks.map((t) => t.id)}

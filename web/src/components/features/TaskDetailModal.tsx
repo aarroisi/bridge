@@ -674,7 +674,7 @@ export function TaskDetailModal({
       </div>
 
       {/* Comment Editor - Fixed at bottom */}
-      <div className="border-t border-dark-border flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+      <div className="border-t border-dark-border flex-shrink-0 pb-[env(safe-area-inset-bottom)] bg-dark-surface">
         <CommentEditor
           ref={commentEditorRef}
           value={newComment}

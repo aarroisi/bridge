@@ -318,7 +318,7 @@ export function KanbanBoard({
         onDragEnd={handleDragEnd}
       >
         <div className="flex h-full">
-          <div className="flex-1 flex overflow-x-auto gap-2 p-2">
+          <div className={`flex-1 flex gap-2 p-2 ${activeTask ? "overflow-hidden" : "overflow-x-auto"}`}>
             {sortedStatusesWithDoneLast.map((status, index) => {
               const isDragSource = activeTask?.statusId === status.id;
               const isCrossColumnDrag =
@@ -374,6 +374,7 @@ export function KanbanBoard({
                   isCollapsed={collapsedColumns.has(status.id)}
                   onToggleCollapse={() => toggleColumnCollapse(status.id)}
                   dropPlaceholderIndex={adjustedDropIndex}
+                  isDragActive={!!activeTask}
                 />
               );
             })}

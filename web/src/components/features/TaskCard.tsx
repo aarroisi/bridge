@@ -9,6 +9,7 @@ interface TaskCardProps {
   onClick: () => void;
   isSelected?: boolean;
   isDragging?: boolean;
+  dragHandle?: React.ReactNode;
 }
 
 export function TaskCard({
@@ -16,6 +17,7 @@ export function TaskCard({
   onClick,
   isSelected,
   isDragging,
+  dragHandle,
 }: TaskCardProps) {
   return (
     <div
@@ -24,8 +26,10 @@ export function TaskCard({
         "bg-dark-surface border border-dark-border rounded-lg px-3 pt-3 pb-2 cursor-pointer hover:border-blue-500 transition-colors",
         isSelected && "border-blue-500 ring-1 ring-blue-500",
         isDragging && "shadow-lg ring-2 ring-blue-500 opacity-90",
+        dragHandle && "flex gap-2",
       )}
     >
+      <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-1">
         {task.key && (
           <span className="text-xs font-mono text-dark-text-muted">
@@ -87,6 +91,8 @@ export function TaskCard({
           {format(new Date(task.insertedAt), "MMM d")}
         </div>
       )}
+      </div>
+      {dragHandle}
     </div>
   );
 }

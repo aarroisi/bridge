@@ -82,7 +82,7 @@ function getResultUrl(item: FlatResult): string | null {
     case "member":
       return null;
     default:
-      return "/";
+      return "/dashboard";
   }
 }
 

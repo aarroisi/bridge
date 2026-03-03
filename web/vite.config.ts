@@ -3,8 +3,6 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
-import { cloudflare } from "@cloudflare/vite-plugin";
-
 export default defineConfig({
   plugins: [react(), VitePWA({
     registerType: 'autoUpdate',
@@ -16,6 +14,8 @@ export default defineConfig({
       theme_color: '#0f172a',
       background_color: '#0f172a',
       display: 'standalone',
+      start_url: '/dashboard',
+      scope: '/',
       icons: [
         {
           src: 'pwa-192x192.png',
@@ -33,7 +33,7 @@ export default defineConfig({
       globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
     }
-  }), cloudflare()],
+  })],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

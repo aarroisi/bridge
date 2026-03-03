@@ -45,8 +45,8 @@ export function LoginPage() {
 
       success("Signed in successfully!");
 
-      // Navigate to home
-      navigate("/");
+      // Navigate to dashboard
+      navigate("/dashboard");
     } catch (err) {
       const errorMessage = (err as Error).message;
       setError(errorMessage);

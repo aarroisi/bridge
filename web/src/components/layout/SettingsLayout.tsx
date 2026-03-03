@@ -22,7 +22,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
   // Redirect non-owners to home
   useEffect(() => {
     if (isAuthenticated && !isOwner()) {
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [isAuthenticated, isOwner, navigate]);
 
@@ -37,7 +37,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
         {/* Header */}
         <div className="p-4 border-b border-dark-border">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             className="text-sm text-dark-text-muted hover:text-dark-text transition-colors"
           >
             &larr; Back to workspace

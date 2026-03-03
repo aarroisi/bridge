@@ -45,7 +45,7 @@ export function OuterSidebar() {
 
     // Navigate to the category route
     if (category === "home") {
-      navigate("/");
+      navigate("/dashboard");
     } else {
       navigate(`/${category}`);
     }
@@ -55,7 +55,7 @@ export function OuterSidebar() {
   const getCurrentCategory = (): Category => {
     const path = location.pathname;
 
-    if (path === "/") return "home";
+    if (path === "/dashboard") return "home";
     // All /projects/* routes (including nested /projects/:id/docs/:docId) are projects
     if (path.startsWith("/projects")) return "projects";
     if (path.startsWith("/boards")) return "boards";

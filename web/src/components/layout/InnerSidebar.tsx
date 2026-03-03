@@ -100,7 +100,7 @@ export function InnerSidebar() {
   const getCurrentCategory = (): Category => {
     const path = location.pathname;
 
-    if (path === "/") return "home";
+    if (path === "/dashboard") return "home";
     // All /projects/* routes (including nested /projects/:id/docs/:docId) are projects
     if (path.startsWith("/projects")) return "projects";
     if (path.startsWith("/boards")) return "boards";

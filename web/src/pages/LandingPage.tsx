@@ -7,7 +7,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-dark-bg flex flex-col">
-      <header className="flex items-center justify-between px-8 py-6">
+      <header className="relative z-10 flex items-center justify-between px-8 py-6">
         <span className="text-xl font-bold text-dark-text">Mission Space</span>
         <button
           onClick={() => navigate(isAuthenticated ? "/dashboard" : "/login")}

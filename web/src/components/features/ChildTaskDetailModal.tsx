@@ -414,13 +414,10 @@ export function ChildTaskDetailModal({
               </div>
             </div>
 
-            {/* Subscribers Row */}
-            <div className="flex items-center gap-6">
-              <label className="w-24 flex-shrink-0 text-sm font-medium text-dark-text text-right">
-                Watching
-              </label>
-              <SubscriptionSection itemType="task" itemId={task.id} />
-            </div>
+          </div>
+
+          <div className="px-4 md:px-6 py-4 border-b border-dark-border">
+            <SubscriptionSection itemType="task" itemId={task.id} />
           </div>
 
           {/* Comments Section */}

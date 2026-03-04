@@ -18,7 +18,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <main
         className={clsx(
           "flex-1 overflow-hidden flex flex-col",
-          isMobile && "pb-14",
+          isMobile && "pb-[calc(3.5rem+env(safe-area-inset-bottom))]",
         )}
       >
         {children}

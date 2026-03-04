@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { AvatarUpload } from "@/components/ui/AvatarUpload";
@@ -90,7 +92,8 @@ function formatTimezoneLabel(timezone: string): string {
 }
 
 export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
-  const { user, updateProfile } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, updateProfile, logout } = useAuthStore();
   const { success, error: showError } = useToastStore();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -173,6 +176,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     setAvatarAssetId(asset.id);
     // Set display URL immediately from the upload response
     if (asset.url) setAvatarDisplayUrl(asset.url);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    onClose();
+    navigate("/login");
   };
 
   const hasChanges =
@@ -279,6 +288,16 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             {isLoading ? "Saving..." : "Save Changes"}
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={isLoading}
+          className="w-full px-4 py-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </button>
       </form>
     </Modal>
   );

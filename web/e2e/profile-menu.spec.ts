@@ -21,8 +21,8 @@ test.describe("Profile Menu", () => {
     // Should show Edit Profile option
     await expect(page.getByText("Edit Profile")).toBeVisible();
 
-    // Should show Sign Out option
-    await expect(page.getByText("Sign Out")).toBeVisible();
+    // Sign Out is now only available in Edit Profile modal
+    await expect(page.getByText("Sign Out")).not.toBeVisible();
   });
 
   test("should open profile modal and edit name", async ({ page }) => {
@@ -98,8 +98,11 @@ test.describe("Profile Menu", () => {
       .last();
     await profileTrigger.click();
 
-    // Click Sign Out
-    await page.getByText("Sign Out").click();
+    // Open profile modal first
+    await page.getByText("Edit Profile").click();
+
+    // Click Sign Out from modal
+    await page.getByRole("button", { name: "Sign Out" }).click();
 
     // Should redirect to login
     await page.waitForURL(/\/login/);

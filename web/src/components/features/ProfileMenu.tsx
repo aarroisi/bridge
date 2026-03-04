@@ -1,26 +1,15 @@
 import { useState } from "react";
-import { LogOut, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { User } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { Avatar } from "@/components/ui/Avatar";
-import {
-  Dropdown,
-  DropdownItem,
-  DropdownDivider,
-} from "@/components/ui/Dropdown";
+import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { ProfileModal } from "./ProfileModal";
 
 export function ProfileMenu() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   if (!user) return null;
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
 
   return (
     <>
@@ -58,15 +47,6 @@ export function ProfileMenu() {
             </div>
           </DropdownItem>
         </div>
-
-        <DropdownDivider />
-
-        <DropdownItem onClick={handleLogout} variant="danger">
-          <div className="flex items-center gap-2">
-            <LogOut size={16} />
-            <span>Sign Out</span>
-          </div>
-        </DropdownItem>
       </Dropdown>
 
       <ProfileModal

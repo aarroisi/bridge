@@ -11,7 +11,6 @@ import {
   Settings,
   User,
   RefreshCw,
-  LogOut,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -23,7 +22,7 @@ import { ProfileModal } from "@/components/features/ProfileModal";
 export function MobileTabBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -107,9 +106,6 @@ export function MobileTabBar() {
       case "refresh":
         window.location.reload();
         break;
-      case "logout":
-        logout().then(() => navigate("/login"));
-        break;
     }
   };
 
@@ -185,13 +181,6 @@ export function MobileTabBar() {
               <span className="text-[10px] leading-tight">Refresh</span>
             </button>
 
-            <button
-              onClick={() => handleMoreAction("logout")}
-              className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg text-red-400 hover:bg-dark-border/50 transition-colors"
-            >
-              <LogOut size={20} />
-              <span className="text-[10px] leading-tight">Logout</span>
-            </button>
           </div>
         </div>
       )}

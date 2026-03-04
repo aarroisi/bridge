@@ -12,7 +12,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-dark-bg">
+    <div className="flex h-svh w-screen overflow-hidden bg-dark-bg">
       {!isMobile && <OuterSidebar />}
       {!isMobile && <InnerSidebar />}
       <main

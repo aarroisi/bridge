@@ -125,8 +125,8 @@ export function DocFolderView() {
     <>
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-start md:items-center justify-between">
+            <div className="flex items-start md:items-center gap-3 min-w-0">
               <MobileBackButton to={projectIdParam ? `/projects/${projectIdParam}` : "/doc-folders"} />
               <span className="px-2 py-1 text-xs font-mono font-semibold bg-blue-500/20 text-blue-400 rounded">
                 {folder.prefix}

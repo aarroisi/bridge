@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { MobileBackButton } from "@/components/ui/MobileBackButton";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
   DndContext,
   DragOverlay,
@@ -89,7 +90,7 @@ function SortableTaskRow({
       <div
         {...attributes}
         {...listeners}
-        className="mr-2 cursor-grab text-dark-text-muted hover:text-dark-text"
+        className="mr-2 cursor-grab text-dark-text-muted hover:text-dark-text touch-none"
       >
         <GripVertical size={16} />
       </div>
@@ -164,6 +165,7 @@ export function BoardView() {
   } = useBoardStore();
   const { messages, fetchMessages } = useChatStore();
   const { isOwner } = useAuthStore();
+  const isMobile = useIsMobile();
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskStatusId, setNewTaskStatusId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -506,8 +508,8 @@ export function BoardView() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 overflow-y-auto">
-          <div className="border border-dark-border rounded-lg m-6 overflow-hidden">
+        <div className={clsx("flex-1", activeTask ? "overflow-hidden" : "overflow-y-auto")}>
+          <div className="border border-dark-border rounded-lg m-2 md:m-6 overflow-hidden">
             {/* Table header */}
             <div className="flex items-center px-4 py-2 bg-dark-surface border-b border-dark-border">
               <div className="w-6" /> {/* Spacer for grip handle */}
@@ -644,8 +646,8 @@ export function BoardView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border flex items-start md:items-center justify-between">
+        <div className="flex items-start md:items-center gap-2 min-w-0">
         <MobileBackButton to={projectId ? `/projects/${projectId}` : "/boards"} />
         {editingTitle ? (
           <div className="flex items-center gap-2">
@@ -692,37 +694,41 @@ export function BoardView() {
         )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsStatusManagerOpen(true)}
-            className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface"
-            title="Manage statuses"
-          >
-            <Settings size={18} />
-          </button>
-          <button
-            onClick={() => setViewMode("board")}
-            className={clsx(
-              "p-2 rounded transition-colors",
-              viewMode === "board"
-                ? "bg-blue-600 text-white"
-                : "text-dark-text-muted hover:bg-dark-surface",
-            )}
-            title="Board view"
-          >
-            <LayoutGrid size={18} />
-          </button>
-          <button
-            onClick={() => setViewMode("table")}
-            className={clsx(
-              "p-2 rounded transition-colors",
-              viewMode === "table"
-                ? "bg-blue-600 text-white"
-                : "text-dark-text-muted hover:bg-dark-surface",
-            )}
-            title="Table view"
-          >
-            <List size={18} />
-          </button>
+          {!isMobile && (
+            <>
+              <button
+                onClick={() => setIsStatusManagerOpen(true)}
+                className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface"
+                title="Manage statuses"
+              >
+                <Settings size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode("board")}
+                className={clsx(
+                  "p-2 rounded transition-colors",
+                  viewMode === "board"
+                    ? "bg-blue-600 text-white"
+                    : "text-dark-text-muted hover:bg-dark-surface",
+                )}
+                title="Board view"
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={clsx(
+                  "p-2 rounded transition-colors",
+                  viewMode === "table"
+                    ? "bg-blue-600 text-white"
+                    : "text-dark-text-muted hover:bg-dark-surface",
+                )}
+                title="Table view"
+              >
+                <List size={18} />
+              </button>
+            </>
+          )}
           <Dropdown
             align="right"
             trigger={
@@ -731,6 +737,30 @@ export function BoardView() {
               </button>
             }
           >
+            {isMobile && (
+              <>
+                <DropdownItem onClick={() => setViewMode("board")}>
+                  <span className="flex items-center gap-2">
+                    <LayoutGrid size={16} className={viewMode === "board" ? "text-blue-400" : ""} />
+                    Board View
+                    {viewMode === "board" && <Check size={14} className="ml-auto text-blue-400" />}
+                  </span>
+                </DropdownItem>
+                <DropdownItem onClick={() => setViewMode("table")}>
+                  <span className="flex items-center gap-2">
+                    <List size={16} className={viewMode === "table" ? "text-blue-400" : ""} />
+                    Table View
+                    {viewMode === "table" && <Check size={14} className="ml-auto text-blue-400" />}
+                  </span>
+                </DropdownItem>
+                <DropdownItem onClick={() => setIsStatusManagerOpen(true)}>
+                  <span className="flex items-center gap-2">
+                    <Settings size={16} />
+                    Manage Statuses
+                  </span>
+                </DropdownItem>
+              </>
+            )}
             {!projectId && (
               <DropdownItem onClick={() => setShowMembersModal(true)}>
                 <span className="flex items-center gap-2">

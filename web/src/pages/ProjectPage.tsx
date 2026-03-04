@@ -549,8 +549,8 @@ export function ProjectPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border flex items-start md:items-center justify-between">
+        <div className="flex items-start md:items-center gap-2 min-w-0">
         <MobileBackButton to="/projects" />
         {editingTitle ? (
           <div className="flex items-center gap-2">

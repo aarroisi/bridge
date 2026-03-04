@@ -35,12 +35,12 @@ export function MobileBoardsPage() {
     >
       <Kanban size={18} className="text-blue-400 flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-dark-text-muted">
+        <h3 className="font-medium text-dark-text truncate">
+          <span className="text-xs font-mono text-dark-text-muted mr-1.5">
             {board.prefix}
           </span>
-          <h3 className="font-medium text-dark-text truncate">{board.name}</h3>
-        </div>
+          {board.name}
+        </h3>
         {board.createdBy && (
           <p className="text-xs text-dark-text-muted mt-1">
             by {board.createdBy.name} ·{" "}

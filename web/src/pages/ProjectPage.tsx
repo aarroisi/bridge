@@ -549,8 +549,8 @@ export function ProjectPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border flex items-start md:items-center justify-between">
-        <div className="flex items-start md:items-center gap-2 min-w-0">
+      <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
         <MobileBackButton to="/projects" />
         {editingTitle ? (
           <div className="flex items-center gap-2">
@@ -598,10 +598,10 @@ export function ProjectPage() {
           <div className="relative">
             <button
               onClick={() => setShowAddMenu(!showAddMenu)}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 p-2 md:px-3 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
             >
               <Plus size={16} />
-              Add Item
+              <span className="hidden md:inline">Add Item</span>
             </button>
             {showAddMenu && (
               <AddItemMenu
@@ -654,7 +654,7 @@ export function ProjectPage() {
 
       {/* Project Info */}
       {(project.description || project.startDate || project.endDate) && (
-        <div className="px-6 py-3">
+        <div className="px-4 md:px-6 py-3">
           {project.description && (
             <p className="text-sm text-dark-text-muted">
               {project.description}

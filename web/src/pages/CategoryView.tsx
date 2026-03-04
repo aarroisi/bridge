@@ -141,9 +141,9 @@ export function CategoryView() {
   } = getCategoryInfo();
 
   return (
-    <div className="flex-1 overflow-auto p-8">
+    <div className="flex-1 overflow-auto p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-6">
           <Icon size={32} className="text-blue-500" />
           <h1 className="text-3xl font-bold text-dark-text">{title}</h1>
         </div>

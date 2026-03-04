@@ -125,12 +125,9 @@ export function DocFolderView() {
     <>
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dark-border">
-          <div className="flex items-start md:items-center justify-between">
-            <div className="flex items-start md:items-center gap-3 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <MobileBackButton to={projectIdParam ? `/projects/${projectIdParam}` : "/doc-folders"} />
-              <span className="px-2 py-1 text-xs font-mono font-semibold bg-blue-500/20 text-blue-400 rounded">
-                {folder.prefix}
-              </span>
               {isEditingName ? (
                 <input
                   type="text"
@@ -148,21 +145,29 @@ export function DocFolderView() {
                   autoFocus
                 />
               ) : (
-                <h1
-                  className="text-lg md:text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors truncate"
-                  onClick={() => setIsEditingName(true)}
-                >
-                  {folder.name}
-                </h1>
+                <div className="min-w-0">
+                  <h1
+                    className="text-lg md:text-2xl font-bold text-dark-text cursor-pointer hover:text-blue-400 transition-colors truncate"
+                    onClick={() => setIsEditingName(true)}
+                  >
+                    {folder.name}
+                  </h1>
+                  {folder.createdBy && (
+                    <div className="text-sm text-dark-text-muted">
+                      Added by {folder.createdBy.name} on{" "}
+                      {format(new Date(folder.insertedAt), "MMM d, yyyy")}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNewDoc}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                className="flex items-center gap-2 p-2 md:px-4 md:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
               >
                 <Plus size={16} />
-                New Doc
+                <span className="hidden md:inline">New Doc</span>
               </button>
               <Dropdown
                 align="right"
@@ -240,16 +245,14 @@ export function DocFolderView() {
                     className="text-green-400 flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-dark-text truncate">
                       {doc.key && (
-                        <span className="text-xs font-mono text-dark-text-muted">
+                        <span className="text-xs font-mono text-dark-text-muted mr-1.5">
                           {doc.key}
                         </span>
                       )}
-                      <h3 className="font-medium text-dark-text truncate">
-                        {doc.title}
-                      </h3>
-                    </div>
+                      {doc.title}
+                    </h3>
                     {doc.createdBy && (
                       <p className="text-xs text-dark-text-muted mt-1">
                         by {doc.createdBy.name} ·{" "}

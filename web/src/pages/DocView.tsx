@@ -801,13 +801,13 @@ export function DocView() {
                 onReady={(handle) => {
                   editorHandleRef.current = handle;
                 }}
-                className="prose prose-invert prose-slate max-w-none [&_.milkdown_.editor]:p-6"
+                className="prose prose-invert prose-slate max-w-none [&_.milkdown_.editor]:p-4 [&_.milkdown_.editor]:md:p-6"
               />
             )}
           </div>
 
           {!isEditing && docId && !isNewDoc && (
-            <div className="px-8 py-4 border-t border-dark-border">
+            <div className="px-4 md:px-8 py-4 border-t border-dark-border">
               <SubscriptionSection itemType="doc" itemId={docId} />
             </div>
           )}

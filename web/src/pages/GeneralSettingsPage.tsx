@@ -113,16 +113,16 @@ export function GeneralSettingsPage() {
   const displayLogo = logoPreview || resolvedLogoUrl;
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
+    <div className="max-w-2xl mx-auto p-4 md:p-8">
       <h1 className="text-2xl font-bold text-dark-text mb-2">
         General Settings
       </h1>
-      <p className="text-dark-text-muted mb-8">
+      <p className="text-dark-text-muted mb-6">
         Manage your workspace's basic information.
       </p>
 
       {/* Workspace Logo */}
-      <div className="mb-8">
+      <div className="mb-6">
         <label className="block text-sm font-medium text-dark-text mb-3">
           Workspace Logo
         </label>

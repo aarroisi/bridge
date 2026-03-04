@@ -104,7 +104,8 @@ export function AvatarUpload({
   const displayUrl = previewUrl || currentAvatarUrl;
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div className="flex flex-col items-center">
+      <div className="relative">
       <button
         type="button"
         onClick={handleClick}
@@ -161,6 +162,7 @@ export function AvatarUpload({
           <X size={12} />
         </button>
       )}
+      </div>
 
       <input
         ref={fileInputRef}

@@ -86,8 +86,8 @@ export function WorkspaceMembersPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-4xl mx-auto p-4 md:p-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-dark-text">
             Workspace Members
@@ -98,10 +98,10 @@ export function WorkspaceMembersPage() {
         </div>
         <button
           onClick={() => setShowInviteModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 p-2 md:px-4 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={18} />
-          Invite Member
+          <span className="hidden md:inline">Invite Member</span>
         </button>
       </div>
 

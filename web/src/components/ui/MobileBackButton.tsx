@@ -15,7 +15,7 @@ export function MobileBackButton({ to }: MobileBackButtonProps) {
   return (
     <button
       onClick={() => navigate(to)}
-      className="p-1.5 -ml-1 mt-0.5 flex-shrink-0 rounded-lg text-dark-text-muted hover:text-dark-text transition-colors"
+      className="p-1.5 -ml-1 flex-shrink-0 rounded-lg text-dark-text-muted hover:text-dark-text transition-colors"
     >
       <ArrowLeft size={20} />
     </button>

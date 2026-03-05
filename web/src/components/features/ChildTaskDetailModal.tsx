@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   X,
   Quote,
@@ -22,6 +22,7 @@ import {
 } from "@/types";
 import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { SubscriptionSection } from "./SubscriptionSection";
 import { clsx } from "clsx";
@@ -58,10 +59,23 @@ export function ChildTaskDetailModal({
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const { updateChildTask, deleteChildTask, toggleTaskStar } = useBoardStore();
   const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
+  const { members } = useAuthStore();
   const { error: toastError } = useToastStore();
 
   const selectedAssignee = workspaceMembers.find(
     (m) => m.id === task.assigneeId,
+  );
+
+  const mentionMembers = useMemo(
+    () =>
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        avatar: m.avatar,
+        online: m.online,
+      })),
+    [members],
   );
 
   // Close on escape key (only when thread is not open)
@@ -405,6 +419,7 @@ export function ChildTaskDetailModal({
                   value={task.notes || ""}
                   onSave={handleSaveNotes}
                   placeholder="Add notes..."
+                  mentions={{ members: mentionMembers }}
                   fileUpload={{
                     attachableType: "task",
                     attachableId: task.id,

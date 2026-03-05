@@ -3,6 +3,11 @@ defmodule BridgeWeb.TaskController do
 
   alias Bridge.Lists
   alias Bridge.Projects
+  alias Bridge.Accounts
+  alias Bridge.Mentions
+  alias Bridge.Notifications
+  alias Bridge.Repo
+  alias Bridge.Subscriptions
   alias Bridge.Authorization.Policy
   import Plug.Conn
 
@@ -166,10 +171,81 @@ defmodule BridgeWeb.TaskController do
   end
 
   def update(conn, params) do
+    old_task = conn.assigns.task
+    current_user = conn.assigns.current_user
+    workspace_id = conn.assigns.workspace_id
     task_params = Map.drop(params, ["id"])
 
-    with {:ok, task} <- Lists.update_task(conn.assigns.task, task_params) do
-      render(conn, :show, task: task)
+    with {:ok, updated_task} <- Lists.update_task(old_task, task_params) do
+      maybe_notify_notes_mentions(
+        old_task,
+        updated_task,
+        task_params,
+        current_user.id,
+        workspace_id
+      )
+
+      render(conn, :show, task: updated_task)
+    end
+  end
+
+  defp maybe_notify_notes_mentions(old_task, updated_task, task_params, actor_id, workspace_id) do
+    notes_updated? = Map.has_key?(task_params, "notes") || Map.has_key?(task_params, :notes)
+
+    if notes_updated? do
+      old_mentions = Mentions.extract_mention_ids(old_task.notes || "") |> MapSet.new()
+      new_mentions = Mentions.extract_mention_ids(updated_task.notes || "") |> MapSet.new()
+
+      added_mentions =
+        MapSet.difference(new_mentions, old_mentions)
+        |> MapSet.delete(actor_id)
+        |> MapSet.to_list()
+
+      Enum.each(added_mentions, fn user_id ->
+        notify_task_mention(user_id, updated_task, actor_id, workspace_id)
+      end)
+    end
+  end
+
+  defp notify_task_mention(user_id, task, actor_id, workspace_id) do
+    with {:ok, _uuid} <- Ecto.UUID.cast(user_id),
+         {:ok, mentioned_user} <- Accounts.get_workspace_user(user_id, workspace_id),
+         true <- mentioned_user.is_active do
+      _ =
+        Subscriptions.subscribe(%{
+          item_type: "task",
+          item_id: task.id,
+          user_id: user_id,
+          workspace_id: workspace_id
+        })
+
+      case Notifications.create_notification(%{
+             type: "mention",
+             item_type: "task",
+             item_id: task.id,
+             user_id: user_id,
+             actor_id: actor_id,
+             context: build_task_notification_context(task)
+           }) do
+        {:ok, notification} ->
+          notification = Repo.preload(notification, [:actor])
+          Mentions.broadcast_notification(notification)
+
+        _ ->
+          :ok
+      end
+    else
+      _ -> :ok
+    end
+  end
+
+  defp build_task_notification_context(task) do
+    context = %{taskId: task.id, taskTitle: task.title, boardId: task.list_id}
+
+    if task.parent_id do
+      Map.put(context, :parentTaskId, task.parent_id)
+    else
+      context
     end
   end
 

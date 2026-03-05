@@ -7,8 +7,11 @@ defmodule Bridge.Mentions do
   alias Bridge.{Notifications, Subscriptions, Repo}
 
   @doc """
-  Extracts user IDs from mentions in markdown text.
-  Mentions are in the format: <span class="mention" data-id="user-uuid">@Name</span>
+  Extracts user IDs from mention markup in content.
+
+  Supports both:
+  - Markdown mentions: @[Name](member:user-uuid)
+  - Legacy HTML mentions: <span class="mention" data-id="user-uuid">@Name</span>
 
   ## Examples
 
@@ -16,16 +19,21 @@ defmodule Bridge.Mentions do
       ["abc-123"]
 
   """
-  def extract_mention_ids(text) when is_binary(text) do
-    regex = ~r/data-id="([^"]+)"/
+  @html_mention_regex ~r/data-id="([^"]+)"/
+  @markdown_mention_regex ~r/\(member:([^)]+)\)/
 
-    regex
-    |> Regex.scan(text)
-    |> Enum.map(fn [_full, id] -> id end)
+  def extract_mention_ids(text) when is_binary(text) do
+    (extract_ids(@html_mention_regex, text) ++ extract_ids(@markdown_mention_regex, text))
     |> Enum.uniq()
   end
 
   def extract_mention_ids(_), do: []
+
+  defp extract_ids(regex, text) do
+    regex
+    |> Regex.scan(text)
+    |> Enum.map(fn [_full, id] -> id end)
+  end
 
   @doc """
   Main entry point: notifies subscribers and mentioned users for a new message.

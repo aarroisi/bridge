@@ -1,6 +1,8 @@
 defmodule BridgeWeb.TaskControllerTest do
   use BridgeWeb.ConnCase
 
+  alias Bridge.{Notifications, Subscriptions}
+
   setup do
     workspace = insert(:workspace)
     user = insert(:user, workspace_id: workspace.id)
@@ -275,6 +277,100 @@ defmodule BridgeWeb.TaskControllerTest do
         |> json_response(200)
 
       assert response["data"]["notes"] == "Updated notes"
+    end
+
+    test "creates mention notification and subscription when notes add a new mention", %{
+      conn: conn,
+      workspace: workspace,
+      user: user,
+      list: list,
+      todo_status: todo_status
+    } do
+      mentioned_user = insert(:user, workspace_id: workspace.id, role: "member")
+
+      task =
+        insert(:task,
+          list_id: list.id,
+          status_id: todo_status.id,
+          created_by_id: user.id,
+          notes: "Initial notes"
+        )
+
+      notes = "Loop in @[#{mentioned_user.name}](member:#{mentioned_user.id})"
+
+      response =
+        conn
+        |> put(~p"/api/tasks/#{task.id}", %{notes: notes})
+        |> json_response(200)
+
+      assert response["data"]["notes"] == notes
+      assert Subscriptions.subscribed?("task", task.id, mentioned_user.id)
+
+      notifications = Notifications.list_notifications(mentioned_user.id).entries
+
+      assert Enum.any?(notifications, fn notification ->
+               notification.type == "mention" and
+                 notification.item_type == "task" and
+                 notification.item_id == task.id and
+                 notification.actor_id == user.id
+             end)
+    end
+
+    test "does not create mention notification for self-mention in notes", %{
+      conn: conn,
+      user: user,
+      list: list,
+      todo_status: todo_status
+    } do
+      task = insert(:task, list_id: list.id, status_id: todo_status.id, created_by_id: user.id)
+      notes = "Self mention @[#{user.name}](member:#{user.id})"
+
+      conn
+      |> put(~p"/api/tasks/#{task.id}", %{notes: notes})
+      |> json_response(200)
+
+      notifications = Notifications.list_notifications(user.id).entries
+
+      refute Enum.any?(notifications, fn notification ->
+               notification.type == "mention" and notification.item_id == task.id
+             end)
+    end
+
+    test "does not re-notify existing mentions when editing notes", %{
+      conn: conn,
+      workspace: workspace,
+      user: user,
+      list: list,
+      todo_status: todo_status
+    } do
+      mentioned_user = insert(:user, workspace_id: workspace.id, role: "member")
+
+      task =
+        insert(:task,
+          list_id: list.id,
+          status_id: todo_status.id,
+          created_by_id: user.id,
+          notes: "Initial notes"
+        )
+
+      mention = "@[#{mentioned_user.name}](member:#{mentioned_user.id})"
+
+      conn
+      |> put(~p"/api/tasks/#{task.id}", %{notes: "First pass #{mention}"})
+      |> json_response(200)
+
+      conn
+      |> put(~p"/api/tasks/#{task.id}", %{notes: "First pass #{mention}\n\nMore details"})
+      |> json_response(200)
+
+      mention_notifications =
+        Notifications.list_notifications(mentioned_user.id).entries
+        |> Enum.filter(fn notification ->
+          notification.type == "mention" and notification.item_type == "task" and
+            notification.item_id == task.id
+        end)
+
+      assert length(mention_notifications) == 1
     end
 
     test "updated task reflects changes in show", %{

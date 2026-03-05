@@ -6,6 +6,7 @@ import {
   type RichTextEditorHandle,
 } from "@/lib/milkdown/RichTextEditor";
 import { ContentRenderer } from "@/lib/milkdown/ContentRenderer";
+import type { MentionMember } from "@/components/ui/MentionList";
 
 interface RichTextNotesEditorProps {
   value: string;
@@ -17,6 +18,10 @@ interface RichTextNotesEditorProps {
     attachableId: string;
     onError: (msg: string) => void;
   };
+  mentions?: {
+    members: MentionMember[];
+    onActiveChange?: (active: boolean) => void;
+  };
 }
 
 export function RichTextNotesEditor({
@@ -25,6 +30,7 @@ export function RichTextNotesEditor({
   placeholder = "Add notes...",
   className,
   fileUpload,
+  mentions,
 }: RichTextNotesEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -62,6 +68,7 @@ export function RichTextNotesEditor({
             placeholder={placeholder}
             editable={true}
             fileUpload={fileUpload}
+            mentions={mentions}
             onReady={(handle) => {
               editorHandleRef.current = handle;
             }}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   X,
   Quote,
@@ -24,6 +24,7 @@ import {
 } from "@/types";
 import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { SubscriptionSection } from "./SubscriptionSection";
 import { clsx } from "clsx";
@@ -76,12 +77,25 @@ export function TaskDetailModal({
     toggleTaskStar,
   } = useBoardStore();
   const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
+  const { members } = useAuthStore();
   const { error: toastError } = useToastStore();
 
   const sortedStatuses = [...statuses].sort((a, b) => a.position - b.position);
   const currentStatus = sortedStatuses.find((s) => s.id === task.statusId);
   const selectedAssignee = workspaceMembers.find(
     (m) => m.id === task.assigneeId,
+  );
+
+  const mentionMembers = useMemo(
+    () =>
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        avatar: m.avatar,
+        online: m.online,
+      })),
+    [members],
   );
 
   // Calculate checklist progress
@@ -488,6 +502,7 @@ export function TaskDetailModal({
                   value={task.notes || ""}
                   onSave={handleSaveNotes}
                   placeholder="Add notes..."
+                  mentions={{ members: mentionMembers }}
                   fileUpload={{
                     attachableType: "task",
                     attachableId: task.id,

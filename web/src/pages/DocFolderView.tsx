@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { MobileBackButton } from "@/components/ui/MobileBackButton";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { format } from "date-fns";
 
 export function DocFolderView() {
@@ -25,6 +26,7 @@ export function DocFolderView() {
   }>();
   const folderId = folderIdParam || id;
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { folders, fetchFolders, updateFolder, deleteFolder, toggleFolderStar } =
     useDocFolderStore();
   const { docs, fetchDocs } = useDocStore();
@@ -161,54 +163,56 @@ export function DocFolderView() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleNewDoc}
-                className="flex items-center gap-2 p-2 md:px-4 md:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-              >
-                <Plus size={16} />
-                <span className="hidden md:inline">New Doc</span>
-              </button>
-              <Dropdown
-                align="right"
-                trigger={
-                  <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
-                    <MoreHorizontal size={18} />
-                  </button>
-                }
-              >
-                {!projectIdParam && (
-                  <DropdownItem onClick={() => setShowMembersModal(true)}>
+            {!(isMobile && isEditingName) && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleNewDoc}
+                  className="flex items-center gap-2 p-2 md:px-4 md:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                >
+                  <Plus size={16} />
+                  <span className="hidden md:inline">New Doc</span>
+                </button>
+                <Dropdown
+                  align="right"
+                  trigger={
+                    <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
+                      <MoreHorizontal size={18} />
+                    </button>
+                  }
+                >
+                  {!projectIdParam && (
+                    <DropdownItem onClick={() => setShowMembersModal(true)}>
+                      <span className="flex items-center gap-2">
+                        <Users size={16} />
+                        Members
+                      </span>
+                    </DropdownItem>
+                  )}
+                  <DropdownItem onClick={handleToggleStar}>
                     <span className="flex items-center gap-2">
-                      <Users size={16} />
-                      Members
+                      <Star
+                        size={16}
+                        className={
+                          folder.starred
+                            ? "fill-yellow-400 text-yellow-400"
+                            : ""
+                        }
+                      />
+                      {folder.starred ? "Unstar" : "Star"}
                     </span>
                   </DropdownItem>
-                )}
-                <DropdownItem onClick={handleToggleStar}>
-                  <span className="flex items-center gap-2">
-                    <Star
-                      size={16}
-                      className={
-                        folder.starred
-                          ? "fill-yellow-400 text-yellow-400"
-                          : ""
-                      }
-                    />
-                    {folder.starred ? "Unstar" : "Star"}
-                  </span>
-                </DropdownItem>
-                <DropdownItem
-                  variant="danger"
-                  onClick={() => setShowDeleteConfirm(true)}
-                >
-                  <span className="flex items-center gap-2">
-                    <Trash2 size={16} />
-                    Delete Folder
-                  </span>
-                </DropdownItem>
-              </Dropdown>
-            </div>
+                  <DropdownItem
+                    variant="danger"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Trash2 size={16} />
+                      Delete Folder
+                    </span>
+                  </DropdownItem>
+                </Dropdown>
+              </div>
+            )}
           </div>
         </div>
 

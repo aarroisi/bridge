@@ -27,6 +27,7 @@ import { useBoardStore } from "@/stores/boardStore";
 import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useToastStore } from "@/stores/toastStore";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { Board, DocFolder, Channel } from "@/types";
 
 type ItemType = "board" | "doc_folder" | "channel";
@@ -222,6 +223,7 @@ function EditProjectModal({ project, onSave, onClose }: EditProjectModalProps) {
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { success, error } = useToastStore();
 
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -596,62 +598,64 @@ export function ProjectPage() {
           </div>
         )}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <button
-              onClick={() => setShowAddMenu(!showAddMenu)}
-              className="flex items-center gap-2 p-2 md:px-3 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <Plus size={16} />
-              <span className="hidden md:inline">Add Item</span>
-            </button>
-            {showAddMenu && (
-              <AddItemMenu
-                onAdd={handleAddItem}
-                onClose={() => setShowAddMenu(false)}
-              />
-            )}
-          </div>
-          <Dropdown
-            align="right"
-            trigger={
-              <button className="p-2 hover:bg-dark-surface rounded-lg text-dark-text-muted hover:text-dark-text transition-colors">
-                <MoreHorizontal size={20} />
+        {!(isMobile && editingTitle) && (
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowAddMenu(!showAddMenu)}
+                className="flex items-center gap-2 p-2 md:px-3 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Plus size={16} />
+                <span className="hidden md:inline">Add Item</span>
               </button>
-            }
-          >
-            <DropdownItem onClick={() => setShowMembersModal(true)}>
-              <span className="flex items-center gap-2">
-                <Users size={16} />
-                Members
-              </span>
-            </DropdownItem>
-            <DropdownItem onClick={() => setShowEditModal(true)}>
-              <span className="flex items-center gap-2">
-                <Pencil size={16} />
-                Edit Project
-              </span>
-            </DropdownItem>
-            <DropdownItem onClick={handleToggleStar}>
-              <span className="flex items-center gap-2">
-                <Star
-                  size={16}
-                  className={project.starred ? "fill-yellow-400" : ""}
+              {showAddMenu && (
+                <AddItemMenu
+                  onAdd={handleAddItem}
+                  onClose={() => setShowAddMenu(false)}
                 />
-                {project.starred ? "Unstar" : "Star"}
-              </span>
-            </DropdownItem>
-            <DropdownItem
-              variant="danger"
-              onClick={() => setShowDeleteProjectConfirm(true)}
+              )}
+            </div>
+            <Dropdown
+              align="right"
+              trigger={
+                <button className="p-2 hover:bg-dark-surface rounded-lg text-dark-text-muted hover:text-dark-text transition-colors">
+                  <MoreHorizontal size={20} />
+                </button>
+              }
             >
-              <span className="flex items-center gap-2">
-                <Trash2 size={16} />
-                Delete Project
-              </span>
-            </DropdownItem>
-          </Dropdown>
-        </div>
+              <DropdownItem onClick={() => setShowMembersModal(true)}>
+                <span className="flex items-center gap-2">
+                  <Users size={16} />
+                  Members
+                </span>
+              </DropdownItem>
+              <DropdownItem onClick={() => setShowEditModal(true)}>
+                <span className="flex items-center gap-2">
+                  <Pencil size={16} />
+                  Edit Project
+                </span>
+              </DropdownItem>
+              <DropdownItem onClick={handleToggleStar}>
+                <span className="flex items-center gap-2">
+                  <Star
+                    size={16}
+                    className={project.starred ? "fill-yellow-400" : ""}
+                  />
+                  {project.starred ? "Unstar" : "Star"}
+                </span>
+              </DropdownItem>
+              <DropdownItem
+                variant="danger"
+                onClick={() => setShowDeleteProjectConfirm(true)}
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 size={16} />
+                  Delete Project
+                </span>
+              </DropdownItem>
+            </Dropdown>
+          </div>
+        )}
       </div>
 
       {/* Project Info */}

@@ -159,11 +159,12 @@ export function ChatView() {
     }
   };
 
+  const normalizeRenameInput = (text: string): string => {
+    return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  };
+
   const slugify = (text: string): string => {
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
+    return normalizeRenameInput(text)
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
   };
@@ -227,7 +228,7 @@ export function ChatView() {
                 ref={renameInputRef}
                 type="text"
                 value={renameValue}
-                onChange={(e) => setRenameValue(slugify(e.target.value))}
+                onChange={(e) => setRenameValue(normalizeRenameInput(e.target.value))}
                 onKeyDown={handleRenameKeyDown}
                 onBlur={handleRename}
                 className="text-lg md:text-2xl font-bold text-dark-text bg-transparent border-b-2 border-blue-500 focus:outline-none"
@@ -269,58 +270,61 @@ export function ChatView() {
           )}
           </div>
           <div className="flex items-center gap-3">
-            {entityType === "channel" && entityId && (
-              <SubscriptionSection itemType="channel" itemId={entityId} />
-            )}
-          {entityType === "channel" && !isRenaming && (
-            <Dropdown
-              align="right"
-              trigger={
-                <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
-                  <MoreHorizontal size={18} />
-                </button>
-              }
-            >
-              {!projectId && (
-                <DropdownItem onClick={() => setShowMembersModal(true)}>
+            {entityType === "channel" && !isRenaming && (
+              <Dropdown
+                align="right"
+                trigger={
+                  <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
+                    <MoreHorizontal size={18} />
+                  </button>
+                }
+              >
+                {!projectId && (
+                  <DropdownItem onClick={() => setShowMembersModal(true)}>
+                    <span className="flex items-center gap-2">
+                      <Users size={16} />
+                      Members
+                    </span>
+                  </DropdownItem>
+                )}
+                <DropdownItem onClick={handleStartRename}>
                   <span className="flex items-center gap-2">
-                    <Users size={16} />
-                    Members
+                    <Pencil size={16} />
+                    Rename
                   </span>
                 </DropdownItem>
-              )}
-              <DropdownItem onClick={handleStartRename}>
-                <span className="flex items-center gap-2">
-                  <Pencil size={16} />
-                  Rename
-                </span>
-              </DropdownItem>
-              <DropdownItem onClick={handleToggleStar}>
-                <span className="flex items-center gap-2">
-                  <Star
-                    size={16}
-                    className={
-                      "starred" in item && item.starred
-                        ? "fill-yellow-400 text-yellow-400"
-                        : ""
-                    }
-                  />
-                  {"starred" in item && item.starred ? "Unstar" : "Star"}
-                </span>
-              </DropdownItem>
-              <DropdownItem
-                variant="danger"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                <span className="flex items-center gap-2">
-                  <Trash2 size={16} />
-                  Delete Channel
-                </span>
-              </DropdownItem>
-            </Dropdown>
-          )}
+                <DropdownItem onClick={handleToggleStar}>
+                  <span className="flex items-center gap-2">
+                    <Star
+                      size={16}
+                      className={
+                        "starred" in item && item.starred
+                          ? "fill-yellow-400 text-yellow-400"
+                          : ""
+                      }
+                    />
+                    {"starred" in item && item.starred ? "Unstar" : "Star"}
+                  </span>
+                </DropdownItem>
+                <DropdownItem
+                  variant="danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <span className="flex items-center gap-2">
+                    <Trash2 size={16} />
+                    Delete Channel
+                  </span>
+                </DropdownItem>
+              </Dropdown>
+            )}
           </div>
         </div>
+
+        {entityType === "channel" && entityId && (
+          <div className="px-4 py-2 md:px-6 border-b border-dark-border">
+            <SubscriptionSection itemType="channel" itemId={entityId} />
+          </div>
+        )}
 
         <DiscussionView
           messages={chatMessages}

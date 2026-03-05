@@ -700,104 +700,106 @@ export function BoardView() {
           </div>
         )}
         </div>
-        <div className="flex items-center gap-2">
-          {!isMobile && (
-            <>
-              <button
-                onClick={() => setIsStatusManagerOpen(true)}
-                className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface"
-                title="Manage statuses"
-              >
-                <Settings size={18} />
-              </button>
-              <button
-                onClick={() => setViewMode("board")}
-                className={clsx(
-                  "p-2 rounded transition-colors",
-                  viewMode === "board"
-                    ? "bg-blue-600 text-white"
-                    : "text-dark-text-muted hover:bg-dark-surface",
-                )}
-                title="Board view"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button
-                onClick={() => setViewMode("table")}
-                className={clsx(
-                  "p-2 rounded transition-colors",
-                  viewMode === "table"
-                    ? "bg-blue-600 text-white"
-                    : "text-dark-text-muted hover:bg-dark-surface",
-                )}
-                title="Table view"
-              >
-                <List size={18} />
-              </button>
-            </>
-          )}
-          <Dropdown
-            align="right"
-            trigger={
-              <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
-                <MoreHorizontal size={18} />
-              </button>
-            }
-          >
-            {isMobile && (
+        {!(isMobile && editingTitle) && (
+          <div className="flex items-center gap-2">
+            {!isMobile && (
               <>
-                <DropdownItem onClick={() => setViewMode("board")}>
-                  <span className="flex items-center gap-2">
-                    <LayoutGrid size={16} className={viewMode === "board" ? "text-blue-400" : ""} />
-                    Board View
-                    {viewMode === "board" && <Check size={14} className="ml-auto text-blue-400" />}
-                  </span>
-                </DropdownItem>
-                <DropdownItem onClick={() => setViewMode("table")}>
-                  <span className="flex items-center gap-2">
-                    <List size={16} className={viewMode === "table" ? "text-blue-400" : ""} />
-                    Table View
-                    {viewMode === "table" && <Check size={14} className="ml-auto text-blue-400" />}
-                  </span>
-                </DropdownItem>
-                <DropdownItem onClick={() => setIsStatusManagerOpen(true)}>
-                  <span className="flex items-center gap-2">
-                    <Settings size={16} />
-                    Manage Statuses
-                  </span>
-                </DropdownItem>
+                <button
+                  onClick={() => setIsStatusManagerOpen(true)}
+                  className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface"
+                  title="Manage statuses"
+                >
+                  <Settings size={18} />
+                </button>
+                <button
+                  onClick={() => setViewMode("board")}
+                  className={clsx(
+                    "p-2 rounded transition-colors",
+                    viewMode === "board"
+                      ? "bg-blue-600 text-white"
+                      : "text-dark-text-muted hover:bg-dark-surface",
+                  )}
+                  title="Board view"
+                >
+                  <LayoutGrid size={18} />
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={clsx(
+                    "p-2 rounded transition-colors",
+                    viewMode === "table"
+                      ? "bg-blue-600 text-white"
+                      : "text-dark-text-muted hover:bg-dark-surface",
+                  )}
+                  title="Table view"
+                >
+                  <List size={18} />
+                </button>
               </>
             )}
-            {!projectId && (
-              <DropdownItem onClick={() => setShowMembersModal(true)}>
+            <Dropdown
+              align="right"
+              trigger={
+                <button className="p-2 rounded transition-colors text-dark-text-muted hover:bg-dark-surface">
+                  <MoreHorizontal size={18} />
+                </button>
+              }
+            >
+              {isMobile && (
+                <>
+                  <DropdownItem onClick={() => setViewMode("board")}>
+                    <span className="flex items-center gap-2">
+                      <LayoutGrid size={16} className={viewMode === "board" ? "text-blue-400" : ""} />
+                      Board View
+                      {viewMode === "board" && <Check size={14} className="ml-auto text-blue-400" />}
+                    </span>
+                  </DropdownItem>
+                  <DropdownItem onClick={() => setViewMode("table")}>
+                    <span className="flex items-center gap-2">
+                      <List size={16} className={viewMode === "table" ? "text-blue-400" : ""} />
+                      Table View
+                      {viewMode === "table" && <Check size={14} className="ml-auto text-blue-400" />}
+                    </span>
+                  </DropdownItem>
+                  <DropdownItem onClick={() => setIsStatusManagerOpen(true)}>
+                    <span className="flex items-center gap-2">
+                      <Settings size={16} />
+                      Manage Statuses
+                    </span>
+                  </DropdownItem>
+                </>
+              )}
+              {!projectId && (
+                <DropdownItem onClick={() => setShowMembersModal(true)}>
+                  <span className="flex items-center gap-2">
+                    <Users size={16} />
+                    Members
+                  </span>
+                </DropdownItem>
+              )}
+              <DropdownItem onClick={handleToggleStar}>
                 <span className="flex items-center gap-2">
-                  <Users size={16} />
-                  Members
+                  <Star
+                    size={16}
+                    className={
+                      board?.starred ? "fill-yellow-400 text-yellow-400" : ""
+                    }
+                  />
+                  {board?.starred ? "Unstar" : "Star"}
                 </span>
               </DropdownItem>
-            )}
-            <DropdownItem onClick={handleToggleStar}>
-              <span className="flex items-center gap-2">
-                <Star
-                  size={16}
-                  className={
-                    board?.starred ? "fill-yellow-400 text-yellow-400" : ""
-                  }
-                />
-                {board?.starred ? "Unstar" : "Star"}
-              </span>
-            </DropdownItem>
-            <DropdownItem
-              variant="danger"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              <span className="flex items-center gap-2">
-                <Trash2 size={16} />
-                Delete Board
-              </span>
-            </DropdownItem>
-          </Dropdown>
-        </div>
+              <DropdownItem
+                variant="danger"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 size={16} />
+                  Delete Board
+                </span>
+              </DropdownItem>
+            </Dropdown>
+          </div>
+        )}
       </div>
 
       {viewMode === "board" ? renderBoardView() : renderTableView()}

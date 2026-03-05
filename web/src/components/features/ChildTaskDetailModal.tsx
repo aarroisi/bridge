@@ -24,6 +24,7 @@ import { useBoardStore } from "@/stores/boardStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { SubscriptionSection } from "./SubscriptionSection";
 import { clsx } from "clsx";
 
@@ -57,6 +58,7 @@ export function ChildTaskDetailModal({
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const { updateChildTask, deleteChildTask, toggleTaskStar } = useBoardStore();
   const { sendMessage, fetchMessages, hasMoreMessages } = useChatStore();
   const { members } = useAuthStore();
@@ -296,23 +298,27 @@ export function ChildTaskDetailModal({
             )}
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => toggleTaskStar(task.id)}
-              className="text-dark-text-muted hover:text-yellow-400 transition-colors p-1 hover:bg-dark-surface rounded"
-              title={task.starred ? "Unstar" : "Star"}
-            >
-              <Star
-                size={18}
-                className={task.starred ? "fill-yellow-400 text-yellow-400" : ""}
-              />
-            </button>
-            <button
-              onClick={() => setIsDeleteModalOpen(true)}
-              className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"
-              title="Delete subtask"
-            >
-              <Trash2 size={18} />
-            </button>
+            {!(isMobile && editingTitle) && (
+              <>
+                <button
+                  onClick={() => toggleTaskStar(task.id)}
+                  className="text-dark-text-muted hover:text-yellow-400 transition-colors p-1 hover:bg-dark-surface rounded"
+                  title={task.starred ? "Unstar" : "Star"}
+                >
+                  <Star
+                    size={18}
+                    className={task.starred ? "fill-yellow-400 text-yellow-400" : ""}
+                  />
+                </button>
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"
+                  title="Delete subtask"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </>
+            )}
             <button
               onClick={onClose}
               className="text-dark-text-muted hover:text-dark-text transition-colors p-1 hover:bg-dark-surface rounded"

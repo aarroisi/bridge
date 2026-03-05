@@ -7,7 +7,6 @@ import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { CreateChannelModal } from "@/components/features/CreateChannelModal";
-import { useMemberProfile } from "@/contexts/MemberProfileContext";
 
 export function MobileChatPage() {
   const navigate = useNavigate();
@@ -19,7 +18,6 @@ export function MobileChatPage() {
   const createDirectMessage = useChatStore((s) => s.createDirectMessage);
   const currentUser = useAuthStore((s) => s.user);
   const workspaceMembers = useAuthStore((s) => s.members) || [];
-  const { openMemberProfile } = useMemberProfile();
   const { success, error } = useToastStore();
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
 
@@ -159,14 +157,7 @@ export function MobileChatPage() {
                 isUnread && "font-semibold",
               )}
             >
-              <span
-                className="flex items-center gap-3 flex-1 min-w-0"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openMemberProfile(member.id);
-                }}
-                title={`Open ${member.name}'s profile`}
-              >
+              <span className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar
                   name={member.name}
                   src={member.avatar}

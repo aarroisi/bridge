@@ -28,6 +28,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useToastStore } from "@/stores/toastStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { SubscriptionSection } from "@/components/features/SubscriptionSection";
 import { Message as MessageType } from "@/types";
 
@@ -70,6 +71,7 @@ export function DocView() {
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const commentEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -84,6 +86,7 @@ export function DocView() {
   const docComments = [...rawDocComments].reverse();
   const topLevelComments = docComments.filter((c) => !c.parentId);
   const threadMessages = docComments.filter((c) => c.parentId);
+  const hideMobileHeaderActions = isMobile && editingTitle;
 
   const { members } = useAuthStore();
 
@@ -674,72 +677,76 @@ export function DocView() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {isEditing && !isNewDoc && hasUnsavedChanges() && (
-                <span
-                  className="w-2 h-2 min-w-[0.5rem] min-h-[0.5rem] rounded-full bg-amber-500 animate-pulse mr-1"
-                  title="Unsaved changes"
-                ></span>
-              )}
-              {isNewDoc ? (
+              {!hideMobileHeaderActions && (
                 <>
-                  <button
-                    onClick={handleSave}
-                    disabled={!editedTitle.trim()}
-                    className="text-green-500 hover:text-green-400 transition-colors p-1 hover:bg-dark-surface rounded disabled:opacity-50"
-                    title="Save"
-                  >
-                    <Check size={18} strokeWidth={3} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  {isEditing ? (
+                  {isEditing && !isNewDoc && hasUnsavedChanges() && (
+                    <span
+                      className="w-2 h-2 min-w-[0.5rem] min-h-[0.5rem] rounded-full bg-amber-500 animate-pulse mr-1"
+                      title="Unsaved changes"
+                    ></span>
+                  )}
+                  {isNewDoc ? (
                     <>
                       <button
-                        onClick={handleCancelEdit}
-                        className="text-dark-text-muted hover:text-dark-text transition-colors p-1 hover:bg-dark-surface rounded"
-                        title="Cancel editing"
-                      >
-                        <X size={18} />
-                      </button>
-                      <button
                         onClick={handleSave}
-                        className="text-green-500 hover:text-green-400 transition-colors p-1 hover:bg-dark-surface rounded"
+                        disabled={!editedTitle.trim()}
+                        className="text-green-500 hover:text-green-400 transition-colors p-1 hover:bg-dark-surface rounded disabled:opacity-50"
                         title="Save"
                       >
                         <Check size={18} strokeWidth={3} />
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={handleEnterEditMode}
-                      className="text-dark-text-muted hover:text-dark-text transition-colors p-1 hover:bg-dark-surface rounded"
-                      title="Edit content"
-                    >
-                      <Edit3 size={18} />
-                    </button>
+                    <>
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="text-dark-text-muted hover:text-dark-text transition-colors p-1 hover:bg-dark-surface rounded"
+                            title="Cancel editing"
+                          >
+                            <X size={18} />
+                          </button>
+                          <button
+                            onClick={handleSave}
+                            className="text-green-500 hover:text-green-400 transition-colors p-1 hover:bg-dark-surface rounded"
+                            title="Save"
+                          >
+                            <Check size={18} strokeWidth={3} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={handleEnterEditMode}
+                          className="text-dark-text-muted hover:text-dark-text transition-colors p-1 hover:bg-dark-surface rounded"
+                          title="Edit content"
+                        >
+                          <Edit3 size={18} />
+                        </button>
+                      )}
+                      <button
+                        onClick={handleToggleStar}
+                        className="text-dark-text-muted hover:text-yellow-400 transition-colors p-1 hover:bg-dark-surface rounded"
+                        title={doc?.starred ? "Unstar" : "Star"}
+                      >
+                        <Star
+                          size={18}
+                          className={
+                            doc?.starred
+                              ? "fill-yellow-400 text-yellow-400"
+                              : ""
+                          }
+                        />
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"
+                        title="Delete doc"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
                   )}
-                  <button
-                    onClick={handleToggleStar}
-                    className="text-dark-text-muted hover:text-yellow-400 transition-colors p-1 hover:bg-dark-surface rounded"
-                    title={doc?.starred ? "Unstar" : "Star"}
-                  >
-                    <Star
-                      size={18}
-                      className={
-                        doc?.starred
-                          ? "fill-yellow-400 text-yellow-400"
-                          : ""
-                      }
-                    />
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"
-                    title="Delete doc"
-                  >
-                    <Trash2 size={18} />
-                  </button>
                 </>
               )}
               <button

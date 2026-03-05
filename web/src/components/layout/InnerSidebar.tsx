@@ -20,7 +20,6 @@ import { useChatStore } from "@/stores/chatStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Avatar } from "@/components/ui/Avatar";
-import { useMemberProfile } from "@/contexts/MemberProfileContext";
 import { Category } from "@/types";
 import { CreateProjectModal } from "@/components/features/CreateProjectModal";
 import { CreateBoardModal } from "@/components/features/CreateBoardModal";
@@ -35,7 +34,6 @@ export function InnerSidebar() {
   const collapsedSections = useUIStore((state) => state.collapsedSections);
   const toggleSection = useUIStore((state) => state.toggleSection);
   const { success, error } = useToastStore();
-  const { openMemberProfile } = useMemberProfile();
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const [showCreateDocFolderModal, setShowCreateDocFolderModal] =
@@ -858,11 +856,6 @@ export function InnerSidebar() {
                   >
                     <span
                       className="flex items-center gap-2 flex-1 min-w-0"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openMemberProfile(member.id);
-                      }}
-                      title={`Open ${member.name}'s profile`}
                     >
                       <Avatar
                         name={member.name}

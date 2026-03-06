@@ -6,7 +6,7 @@
 - JSON request/response format throughout (`accepts ["json"]` pipeline)
 - Authentication supports both:
   - Session cookie (`_missionspace_key`)
-  - User API keys (`brk_...`) via header
+  - User API keys (`msk_...`) via header
 
 ## Authentication model
 
@@ -21,11 +21,11 @@
 ### API key model
 
 - API key header options:
-  - `X-API-Key: brk_...`
-  - `Authorization: Bearer brk_...`
+  - `X-API-Key: msk_...`
+  - `Authorization: Bearer msk_...`
 - API keys are attached to users, not directly to workspaces.
 - Workspace context is resolved from the attached user.
-- Only bearer tokens prefixed with `brk_` are treated as API keys.
+- Only bearer tokens prefixed with `msk_` are treated as API keys.
 - Any other bearer token is ignored by auth plug and session auth is used.
 
 ### Protected route behavior (`AuthPlug`)

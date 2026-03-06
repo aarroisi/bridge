@@ -249,9 +249,9 @@ API keys are attached to users (not directly to workspaces). Workspace context i
   "data": {
     "id": "uuid",
     "name": "CI Integration",
-    "key_prefix": "brk_xxxxxxxx",
+    "key_prefix": "msk_xxxxxxxx",
     "scopes": ["item:view", "item:create"],
-    "key": "brk_very_long_secret",
+    "key": "msk_very_long_secret",
     "verify_endpoint": "/api/api-keys/verify"
   }
 }
@@ -272,8 +272,8 @@ API keys are attached to users (not directly to workspaces). Workspace context i
 
 - Auth: API key only
 - Provide key via:
-  - `X-API-Key: brk_...`, or
-  - `Authorization: Bearer brk_...`
+  - `X-API-Key: msk_...`, or
+  - `Authorization: Bearer msk_...`
 - Behavior:
   - Returns `401` when key is invalid/revoked.
   - Returns `200` with key + user + effective scopes when valid.

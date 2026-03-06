@@ -11,7 +11,7 @@ defmodule Missionspace.ApiKeys do
   alias Missionspace.Authorization.Scopes
   alias Missionspace.Repo
 
-  @api_key_prefix "brk_"
+  @api_key_prefix "msk_"
 
   @doc """
   Returns all API keys for a user.

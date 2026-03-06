@@ -41,7 +41,7 @@ Add user-scoped API keys with scope-based authorization so users can automate AP
 ### Verify
 
 - Endpoint: `GET /api/api-keys/verify`
-- Auth via `X-API-Key` or `Authorization: Bearer brk_...`
+- Auth via `X-API-Key` or `Authorization: Bearer msk_...`
 - Returns validity, key metadata, user metadata, and effective scopes.
 
 ## Role change and deletion behavior

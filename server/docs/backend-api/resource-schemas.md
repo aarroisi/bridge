@@ -35,7 +35,7 @@ This page defines the core response objects reused across endpoints.
 {
   "id": "uuid",
   "name": "string",
-  "key_prefix": "brk_xxxxxxxx",
+  "key_prefix": "msk_xxxxxxxx",
   "scopes": ["item:view", "item:create"],
   "last_used_at": "datetime|null",
   "revoked_at": "datetime|null",

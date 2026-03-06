@@ -45,6 +45,15 @@ All content created within a workspace belongs to the workspace, not individual 
 - Time zone should be visible in member profile surfaces so teammates can understand working-hour context.
 - If no value is set, the profile is treated as "timezone not set."
 
+### Multi-User Login on One Device
+
+- A browser/device can remember multiple signed-in accounts for quick switching.
+- Remembered accounts are session-backed (server session key), not global workspace membership.
+- Account switching is explicit: user chooses another remembered account and session is switched.
+- Adding an account requires valid email/password for that account.
+- Log out removes the current account from remembered accounts, but keeps other remembered accounts available on the same device.
+- Scope note: one user still belongs to one workspace; this feature is only about multi-account device UX.
+
 ### Member Deletion (Soft Delete)
 
 When a workspace member is removed:

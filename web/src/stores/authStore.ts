@@ -23,16 +23,26 @@ interface WorkspaceMember {
   online: boolean;
 }
 
+interface DeviceAccount {
+  user: User;
+  workspace: Workspace;
+  current: boolean;
+}
+
 interface AuthState {
   user: User | null;
   workspace: Workspace | null;
   members: WorkspaceMember[];
+  accounts: DeviceAccount[];
   isAuthenticated: boolean;
   isLoading: boolean;
   needsEmailVerification: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  fetchAccounts: () => Promise<void>;
+  switchAccount: (userId: string) => Promise<void>;
+  addAccount: (email: string, password: string) => Promise<void>;
   fetchMembers: () => Promise<void>;
   updateProfile: (data: {
     name?: string;
@@ -87,10 +97,11 @@ async function fetchAuthMeWithRetry(): Promise<Response> {
   throw lastError instanceof Error ? lastError : new Error("Auth check failed");
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   workspace: null,
   members: [],
+  accounts: [],
   isAuthenticated: false,
   isLoading: true,
   needsEmailVerification: false,
@@ -111,7 +122,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         user: data.user,
         workspace: data.workspace,
         isAuthenticated: true,
+        needsEmailVerification: false,
       });
+
+      await get().fetchAccounts();
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -126,7 +140,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       api.clearToken();
       localStorage.removeItem("logged_in");
-      set({ user: null, workspace: null, members: [], isAuthenticated: false });
+      set({
+        user: null,
+        workspace: null,
+        members: [],
+        isAuthenticated: false,
+        needsEmailVerification: false,
+      });
+      await get().fetchAccounts();
     }
   },
 
@@ -149,6 +170,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         localStorage.removeItem("logged_in");
         if (data.error === "email_not_verified") {
           set({
+            user: null,
+            workspace: null,
+            members: [],
             isAuthenticated: false,
             needsEmailVerification: true,
             isLoading: false,
@@ -187,6 +211,41 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
       }));
     }
+
+    await get().fetchAccounts();
+  },
+
+  fetchAccounts: async () => {
+    try {
+      const accounts = await api.get<DeviceAccount[]>("/auth/accounts");
+      set({ accounts });
+    } catch (error) {
+      console.warn("Failed to fetch remembered accounts:", error);
+      set({ accounts: [] });
+    }
+  },
+
+  switchAccount: async (userId: string) => {
+    const data = await api.post<{ user: User; workspace: Workspace }>("/auth/switch-account", {
+      userId,
+    });
+
+    localStorage.setItem("logged_in", "1");
+    set({
+      user: data.user,
+      workspace: data.workspace,
+      members: [],
+      isAuthenticated: true,
+      needsEmailVerification: false,
+      isLoading: false,
+    });
+
+    await get().fetchAccounts();
+  },
+
+  addAccount: async (email: string, password: string) => {
+    await api.post("/auth/add-account", { email, password });
+    await get().fetchAccounts();
   },
 
   fetchMembers: async () => {

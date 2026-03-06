@@ -5,6 +5,8 @@ defmodule MissionspaceWeb.AuthController do
 
   action_fallback(MissionspaceWeb.FallbackController)
 
+  @max_remembered_accounts 10
+
   def register(conn, %{
         "workspace_name" => workspace_name,
         "name" => name,
@@ -16,24 +18,9 @@ defmodule MissionspaceWeb.AuthController do
         conn
         |> put_session(:user_id, user.id)
         |> put_session(:workspace_id, workspace.id)
+        |> remember_account(user.id)
         |> put_status(:created)
-        |> json(%{
-          user: %{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            avatar: user.avatar,
-            timezone: user.timezone,
-            role: user.role,
-            workspace_id: workspace.id
-          },
-          workspace: %{
-            id: workspace.id,
-            name: workspace.name,
-            slug: workspace.slug,
-            logo: workspace.logo
-          }
-        })
+        |> json(auth_payload(user, workspace))
 
       {:error, changeset} ->
         conn
@@ -45,35 +32,18 @@ defmodule MissionspaceWeb.AuthController do
   def login(conn, %{"email" => email, "password" => password}) do
     case Accounts.authenticate_user(email, password) do
       {:ok, user} ->
-        # Set session so resend-verification works
-        conn =
+        if is_nil(user.email_verified_at) do
           conn
           |> put_session(:user_id, user.id)
           |> put_session(:workspace_id, user.workspace_id)
-
-        if is_nil(user.email_verified_at) do
-          conn
           |> put_status(:forbidden)
           |> json(%{error: "email_not_verified"})
         else
           conn
-          |> json(%{
-            user: %{
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              avatar: user.avatar,
-              timezone: user.timezone,
-              role: user.role,
-              workspace_id: user.workspace_id
-            },
-            workspace: %{
-              id: user.workspace.id,
-              name: user.workspace.name,
-              slug: user.workspace.slug,
-              logo: user.workspace.logo
-            }
-          })
+          |> put_session(:user_id, user.id)
+          |> put_session(:workspace_id, user.workspace_id)
+          |> remember_account(user.id)
+          |> json(auth_payload(user, user.workspace))
         end
 
       {:error, :invalid_credentials} ->
@@ -84,9 +54,81 @@ defmodule MissionspaceWeb.AuthController do
   end
 
   def logout(conn, _params) do
+    current_user_id = get_session(conn, :user_id)
+
+    remaining_account_ids =
+      conn
+      |> account_user_ids()
+      |> Enum.reject(&(&1 == current_user_id))
+
     conn
-    |> clear_session()
+    |> delete_session(:user_id)
+    |> delete_session(:workspace_id)
+    |> persist_account_user_ids(remaining_account_ids)
     |> json(%{message: "Logged out successfully"})
+  end
+
+  def accounts(conn, _params) do
+    current_user_id = get_session(conn, :user_id)
+
+    account_summaries =
+      conn
+      |> account_user_ids()
+      |> Enum.map(&account_summary(&1, current_user_id))
+      |> Enum.reject(&is_nil/1)
+
+    conn
+    |> persist_account_user_ids(Enum.map(account_summaries, & &1.user.id))
+    |> json(%{data: account_summaries})
+  end
+
+  def switch_account(conn, %{"user_id" => user_id}) do
+    remembered_user_ids = account_user_ids(conn)
+
+    if user_id in remembered_user_ids do
+      case load_account_user(user_id) do
+        {:ok, user} ->
+          conn
+          |> put_session(:user_id, user.id)
+          |> put_session(:workspace_id, user.workspace_id)
+          |> remember_account(user.id)
+          |> json(auth_payload(user, user.workspace))
+
+        {:error, :not_available} ->
+          conn
+          |> persist_account_user_ids(Enum.reject(remembered_user_ids, &(&1 == user_id)))
+          |> put_status(:forbidden)
+          |> json(%{error: "account_not_available"})
+      end
+    else
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "account_not_available"})
+    end
+  end
+
+  def add_account(conn, %{"email" => email, "password" => password}) do
+    current_user_id = get_session(conn, :user_id)
+
+    case Accounts.authenticate_user(email, password) do
+      {:ok, user} ->
+        if is_nil(user.email_verified_at) do
+          conn
+          |> put_status(:forbidden)
+          |> json(%{error: "email_not_verified"})
+        else
+          user = Missionspace.Repo.preload(user, :workspace)
+
+          conn
+          |> remember_account(user.id)
+          |> json(%{data: account_summary_map(user, current_user_id)})
+        end
+
+      {:error, :invalid_credentials} ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{error: "Invalid email or password"})
+    end
   end
 
   def me(conn, _params) do
@@ -106,23 +148,9 @@ defmodule MissionspaceWeb.AuthController do
               |> put_status(:forbidden)
               |> json(%{error: "email_not_verified"})
             else
-              json(conn, %{
-                user: %{
-                  id: user.id,
-                  name: user.name,
-                  email: user.email,
-                  avatar: user.avatar,
-                  timezone: user.timezone,
-                  role: user.role,
-                  workspace_id: user.workspace_id
-                },
-                workspace: %{
-                  id: user.workspace.id,
-                  name: user.workspace.name,
-                  slug: user.workspace.slug,
-                  logo: user.workspace.logo
-                }
-              })
+              conn
+              |> remember_account(user.id)
+              |> json(auth_payload(user, user.workspace))
             end
 
           {:error, :not_found} ->
@@ -143,23 +171,7 @@ defmodule MissionspaceWeb.AuthController do
       {:ok, user} ->
         user = Missionspace.Repo.preload(user, :workspace)
 
-        json(conn, %{
-          user: %{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            avatar: user.avatar,
-            timezone: user.timezone,
-            role: user.role,
-            workspace_id: user.workspace_id
-          },
-          workspace: %{
-            id: user.workspace.id,
-            name: user.workspace.name,
-            slug: user.workspace.slug,
-            logo: user.workspace.logo
-          }
-        })
+        json(conn, auth_payload(user, user.workspace))
 
       {:error, changeset} ->
         conn
@@ -232,5 +244,98 @@ defmodule MissionspaceWeb.AuthController do
         opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
       end)
     end)
+  end
+
+  defp auth_payload(user, workspace) do
+    %{
+      user: user_payload(user),
+      workspace: workspace_payload(workspace)
+    }
+  end
+
+  defp user_payload(user) do
+    %{
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      timezone: user.timezone,
+      role: user.role,
+      workspace_id: user.workspace_id
+    }
+  end
+
+  defp workspace_payload(workspace) do
+    %{
+      id: workspace.id,
+      name: workspace.name,
+      slug: workspace.slug,
+      logo: workspace.logo
+    }
+  end
+
+  defp account_summary(user_id, current_user_id) do
+    case load_account_user(user_id) do
+      {:ok, user} -> account_summary_map(user, current_user_id)
+      {:error, :not_available} -> nil
+    end
+  end
+
+  defp account_summary_map(user, current_user_id) do
+    %{
+      user: user_payload(user),
+      workspace: workspace_payload(user.workspace),
+      current: user.id == current_user_id
+    }
+  end
+
+  defp load_account_user(user_id) do
+    case Accounts.get_user(user_id) do
+      {:ok, user} ->
+        user = Missionspace.Repo.preload(user, :workspace)
+
+        cond do
+          not user.is_active -> {:error, :not_available}
+          is_nil(user.email_verified_at) -> {:error, :not_available}
+          is_nil(user.workspace) -> {:error, :not_available}
+          true -> {:ok, user}
+        end
+
+      {:error, :not_found} ->
+        {:error, :not_available}
+    end
+  end
+
+  defp remember_account(conn, user_id) do
+    updated_ids =
+      conn
+      |> account_user_ids()
+      |> Enum.reject(&(&1 == user_id))
+      |> then(&[user_id | &1])
+      |> Enum.take(@max_remembered_accounts)
+
+    persist_account_user_ids(conn, updated_ids)
+  end
+
+  defp account_user_ids(conn) do
+    conn
+    |> get_session(:account_user_ids)
+    |> normalize_account_user_ids()
+  end
+
+  defp normalize_account_user_ids(account_ids) when is_list(account_ids) do
+    account_ids
+    |> Enum.filter(&is_binary/1)
+    |> Enum.uniq()
+    |> Enum.take(@max_remembered_accounts)
+  end
+
+  defp normalize_account_user_ids(_), do: []
+
+  defp persist_account_user_ids(conn, account_ids) when is_list(account_ids) do
+    case normalize_account_user_ids(account_ids) do
+      [] -> delete_session(conn, :account_user_ids)
+      normalized_ids -> put_session(conn, :account_user_ids, normalized_ids)
+    end
   end
 end

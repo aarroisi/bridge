@@ -1,16 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
-import { API_URL } from "@/lib/api";
+import { Avatar } from "@/components/ui/Avatar";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login, switchAccount, fetchAccounts, accounts } = useAuthStore();
   const { success, error: showError } = useToastStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const [showCredentialForm, setShowCredentialForm] = useState(false);
+
+  useEffect(() => {
+    void fetchAccounts();
+  }, [fetchAccounts]);
+
+  useEffect(() => {
+    setShowCredentialForm(accounts.length === 0);
+  }, [accounts.length]);
+
+  const handleSwitchAccount = async (userId: string) => {
+    setError("");
+    setSwitchingAccountId(userId);
+
+    try {
+      await switchAccount(userId);
+      success("Signed in successfully!");
+      navigate("/dashboard");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to switch account";
+      setError(errorMessage);
+      showError(errorMessage);
+    } finally {
+      setSwitchingAccountId(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,43 +46,25 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.error === "email_not_verified") {
-          // Session is set server-side, redirect to verify page
-          navigate("/verify-email");
-          return;
-        }
-        throw new Error(data.error || "Login failed");
-      }
-
-      // Update auth store
-      useAuthStore.setState({
-        user: data.user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-
+      await login(email, password);
       success("Signed in successfully!");
-
-      // Navigate to dashboard
       navigate("/dashboard");
     } catch (err) {
-      const errorMessage = (err as Error).message;
+      const errorMessage = err instanceof Error ? err.message : "Login failed";
+
+      if (errorMessage === "email_not_verified") {
+        navigate("/verify-email");
+        return;
+      }
+
       setError(errorMessage);
       showError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  const showAccountChooser = accounts.length > 0 && !showCredentialForm;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-bg px-4">
@@ -63,81 +73,137 @@ export function LoginPage() {
           <h1 className="text-3xl font-bold text-dark-text mb-2">
             Welcome Back
           </h1>
-          <p className="text-dark-text-muted">Sign in to your workspace</p>
+          <p className="text-dark-text-muted">
+            {showAccountChooser ? "Choose an account" : "Sign in to your workspace"}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-900/20 border border-red-500 text-red-200 px-4 py-3 rounded">
-              {error}
+        {error && (
+          <div className="mb-4 bg-red-900/20 border border-red-500 text-red-200 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        {showAccountChooser ? (
+          <div className="space-y-3">
+            {accounts.map((account) => {
+              const isSwitching = switchingAccountId === account.user.id;
+
+              return (
+                <button
+                  key={account.user.id}
+                  type="button"
+                  onClick={() => void handleSwitchAccount(account.user.id)}
+                  disabled={switchingAccountId !== null}
+                  className="w-full rounded-lg border border-dark-border bg-dark-surface px-4 py-3 text-left transition-colors hover:border-blue-500/50 hover:bg-dark-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar name={account.user.name} src={account.user.avatar} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-dark-text">{account.user.name}</p>
+                      <p className="truncate text-xs text-dark-text-muted">{account.user.email}</p>
+                      <p className="truncate text-xs text-dark-text-muted/80">
+                        {account.workspace.name}
+                      </p>
+                    </div>
+                    {isSwitching && <span className="text-xs text-dark-text-muted">Signing in...</span>}
+                  </div>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setShowCredentialForm(true)}
+              className="w-full rounded-lg border border-dark-border px-4 py-3 text-sm text-dark-text-muted transition-colors hover:bg-dark-surface"
+            >
+              Use another account
+            </button>
+
+            <p className="text-center text-sm text-dark-text-muted">
+              Need a new workspace?{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/register")}
+                className="text-blue-400 hover:underline"
+              >
+                Create workspace
+              </button>
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-dark-text mb-2">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="john@example.com"
+                required
+                className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder:text-dark-text-muted focus:outline-none focus:border-blue-500"
+              />
             </div>
-          )}
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-dark-text mb-2"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="john@example.com"
-              required
-              className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder:text-dark-text-muted focus:outline-none focus:border-blue-500"
-            />
-          </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-dark-text mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder:text-dark-text-muted focus:outline-none focus:border-blue-500"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-dark-text mb-2"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              className="w-full px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder:text-dark-text-muted focus:outline-none focus:border-blue-500"
-            />
-          </div>
+            <div className="flex justify-between">
+              {accounts.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCredentialForm(false)}
+                  className="text-sm text-dark-text-muted hover:text-blue-400 transition-colors"
+                >
+                  Back to accounts
+                </button>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="text-sm text-dark-text-muted hover:text-blue-400 transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
 
-          <div className="flex justify-end">
             <button
-              type="button"
-              onClick={() => navigate("/forgot-password")}
-              className="text-sm text-dark-text-muted hover:text-blue-400 transition-colors"
+              type="submit"
+              disabled={loading}
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Forgot password?
+              {loading ? "Signing in..." : "Sign In"}
             </button>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-
-          <p className="text-center text-sm text-dark-text-muted">
-            Don't have an account?{" "}
-            <button
-              type="button"
-              onClick={() => navigate("/register")}
-              className="text-blue-400 hover:underline"
-            >
-              Create workspace
-            </button>
-          </p>
-        </form>
+            <p className="text-center text-sm text-dark-text-muted">
+              Don't have an account?{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/register")}
+                className="text-blue-400 hover:underline"
+              >
+                Create workspace
+              </button>
+            </p>
+          </form>
+        )}
       </div>
     </div>
   );

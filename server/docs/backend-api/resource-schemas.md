@@ -29,6 +29,16 @@ This page defines the core response objects reused across endpoints.
 }
 ```
 
+### `RememberedAuthAccount`
+
+```json
+{
+  "user": "AuthUser",
+  "workspace": "WorkspaceSummary",
+  "current": true
+}
+```
+
 ### `ApiKey`
 
 ```json

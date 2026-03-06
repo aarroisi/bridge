@@ -35,6 +35,162 @@ defmodule MissionspaceWeb.AuthControllerTest do
       assert session_cookie
       assert session_cookie =~ ~r/max-age=1209600/i
       assert session_cookie =~ ~r/expires=/i
+      assert get_session(conn, :account_user_ids) == [user.id]
+    end
+  end
+
+  describe "accounts" do
+    setup do
+      workspace_1 = insert(:workspace)
+      workspace_2 = insert(:workspace)
+      user_1 = insert(:user, workspace_id: workspace_1.id)
+      user_2 = insert(:user, workspace_id: workspace_2.id)
+
+      conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{})
+        |> put_session(:user_id, user_1.id)
+        |> put_session(:workspace_id, workspace_1.id)
+        |> put_session(:account_user_ids, [user_1.id, user_2.id])
+        |> put_req_header("accept", "application/json")
+
+      {:ok, conn: conn, user_1: user_1, user_2: user_2}
+    end
+
+    test "lists remembered accounts and marks current", %{
+      conn: conn,
+      user_1: user_1,
+      user_2: user_2
+    } do
+      response =
+        conn
+        |> get(~p"/api/auth/accounts")
+        |> json_response(200)
+
+      assert length(response["data"]) == 2
+
+      account_1 = Enum.find(response["data"], &(&1["user"]["id"] == user_1.id))
+      account_2 = Enum.find(response["data"], &(&1["user"]["id"] == user_2.id))
+
+      assert account_1["current"] == true
+      assert account_2["current"] == false
+    end
+  end
+
+  describe "switch_account" do
+    setup do
+      workspace_1 = insert(:workspace)
+      workspace_2 = insert(:workspace)
+      user_1 = insert(:user, workspace_id: workspace_1.id)
+      user_2 = insert(:user, workspace_id: workspace_2.id)
+
+      conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{})
+        |> put_session(:user_id, user_1.id)
+        |> put_session(:workspace_id, workspace_1.id)
+        |> put_session(:account_user_ids, [user_1.id, user_2.id])
+        |> put_req_header("accept", "application/json")
+
+      {:ok, conn: conn, user_1: user_1, user_2: user_2}
+    end
+
+    test "switches to a remembered account", %{conn: conn, user_1: user_1, user_2: user_2} do
+      conn =
+        post(conn, ~p"/api/auth/switch-account", %{
+          user_id: user_2.id
+        })
+
+      response = json_response(conn, 200)
+      assert response["user"]["id"] == user_2.id
+      assert get_session(conn, :user_id) == user_2.id
+      assert get_session(conn, :workspace_id) == user_2.workspace_id
+      assert get_session(conn, :account_user_ids) == [user_2.id, user_1.id]
+    end
+
+    test "rejects switching to a non-remembered account", %{conn: conn} do
+      unknown_user = insert(:user)
+
+      response =
+        conn
+        |> post(~p"/api/auth/switch-account", %{user_id: unknown_user.id})
+        |> json_response(403)
+
+      assert response["error"] == "account_not_available"
+    end
+  end
+
+  describe "add_account" do
+    setup do
+      workspace = insert(:workspace)
+      current_user = insert(:user, workspace_id: workspace.id)
+
+      added_user =
+        insert(:user,
+          workspace_id: insert(:workspace).id,
+          email: "second-login@example.com",
+          password_hash: Missionspace.Accounts.User.hash_password("password123")
+        )
+
+      conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{})
+        |> put_session(:user_id, current_user.id)
+        |> put_session(:workspace_id, current_user.workspace_id)
+        |> put_session(:account_user_ids, [current_user.id])
+        |> put_req_header("accept", "application/json")
+
+      {:ok, conn: conn, current_user: current_user, added_user: added_user}
+    end
+
+    test "adds another account without changing current session", %{
+      conn: conn,
+      current_user: current_user,
+      added_user: added_user
+    } do
+      conn =
+        post(conn, ~p"/api/auth/add-account", %{
+          email: added_user.email,
+          password: "password123"
+        })
+
+      response = json_response(conn, 200)
+      assert response["data"]["user"]["id"] == added_user.id
+      assert get_session(conn, :user_id) == current_user.id
+      assert get_session(conn, :workspace_id) == current_user.workspace_id
+      assert get_session(conn, :account_user_ids) == [added_user.id, current_user.id]
+    end
+  end
+
+  describe "logout" do
+    setup do
+      workspace_1 = insert(:workspace)
+      workspace_2 = insert(:workspace)
+      user_1 = insert(:user, workspace_id: workspace_1.id)
+      user_2 = insert(:user, workspace_id: workspace_2.id)
+
+      conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{})
+        |> put_session(:user_id, user_1.id)
+        |> put_session(:workspace_id, workspace_1.id)
+        |> put_session(:account_user_ids, [user_1.id, user_2.id])
+        |> put_req_header("accept", "application/json")
+
+      {:ok, conn: conn, user_2: user_2}
+    end
+
+    test "logs out current account and keeps other remembered accounts", %{
+      conn: conn,
+      user_2: user_2
+    } do
+      conn = post(conn, ~p"/api/auth/logout", %{})
+
+      response = json_response(conn, 200)
+      assert response["message"] == "Logged out successfully"
+      assert get_session(conn, :user_id) == nil
+      assert get_session(conn, :workspace_id) == nil
+      assert get_session(conn, :account_user_ids) == [user_2.id]
     end
   end
 

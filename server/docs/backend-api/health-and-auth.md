@@ -9,7 +9,10 @@
 | POST | `/api/auth/login` | No | Logs in with email/password |
 | POST | `/api/auth/logout` | No | Clears session if present |
 | GET | `/api/auth/me` | Session expected | Public route that reads session directly |
+| GET | `/api/auth/accounts` | No | Lists remembered device accounts from session |
+| POST | `/api/auth/switch-account` | No | Switches current session to a remembered account |
 | PUT | `/api/auth/me` | Yes | Updates current user profile |
+| POST | `/api/auth/add-account` | Yes | Adds another remembered account to current device session |
 | POST | `/api/auth/verify-email` | No | Verifies email by token |
 | POST | `/api/auth/forgot-password` | No | Starts password reset flow |
 | POST | `/api/auth/reset-password` | No | Resets password by token |
@@ -41,6 +44,7 @@
 - Behavior:
   - Creates workspace and first user.
   - Sets session (`user_id`, `workspace_id`).
+  - Adds the user to remembered account ids in session (`account_user_ids`).
   - Sends verification email.
 - Response `201`:
 
@@ -68,6 +72,7 @@
 - Behavior:
   - Authenticates active user with password hash comparison.
   - Sets session before email-verification gate.
+  - On verified login, adds user to remembered account ids in session (`account_user_ids`).
 - Success response `200`:
 
 ```json
@@ -84,7 +89,10 @@
 ## POST `/api/auth/logout`
 
 - Request: none
-- Behavior: clears session
+- Behavior:
+  - Clears current account session (`user_id`, `workspace_id`).
+  - Removes current user from remembered account ids.
+  - Keeps other remembered accounts in session.
 - Response `200`: `{"message":"Logged out successfully"}`
 
 ## GET `/api/auth/me`
@@ -93,6 +101,7 @@
 - Behavior:
   - Reads `:user_id` from session (not via AuthPlug).
   - Returns current user + workspace.
+  - Ensures current user is remembered in `account_user_ids` session list.
 - Success `200`:
 
 ```json
@@ -105,6 +114,85 @@
 - Failure cases:
   - `401` `{"error":"Not authenticated"}`
   - `401` `{"error":"User not found"}`
+  - `403` `{"error":"email_not_verified"}`
+
+## GET `/api/auth/accounts`
+
+- Request: none
+- Behavior:
+  - Reads remembered user ids from session key `account_user_ids`.
+  - Returns only active + email-verified users that still have a workspace.
+  - Cleans stale ids out of session automatically.
+- Response `200`:
+
+```json
+{
+  "data": [
+    {
+      "user": "AuthUser",
+      "workspace": "WorkspaceSummary",
+      "current": true
+    }
+  ]
+}
+```
+
+## POST `/api/auth/switch-account`
+
+- Request body:
+
+```json
+{
+  "user_id": "uuid"
+}
+```
+
+- Behavior:
+  - Only allows switching to users present in session `account_user_ids`.
+  - Sets session (`user_id`, `workspace_id`) to selected account.
+  - Moves selected account to front of remembered account list.
+- Success `200`:
+
+```json
+{
+  "user": "AuthUser",
+  "workspace": "WorkspaceSummary"
+}
+```
+
+- Failure cases:
+  - `403` `{"error":"account_not_available"}`
+
+## POST `/api/auth/add-account`
+
+- Auth: required
+- Request body:
+
+```json
+{
+  "email": "another.user@example.com",
+  "password": "password123"
+}
+```
+
+- Behavior:
+  - Authenticates another active account by credentials.
+  - Adds that user id to session `account_user_ids`.
+  - Does **not** change the currently active session user.
+- Success `200`:
+
+```json
+{
+  "data": {
+    "user": "AuthUser",
+    "workspace": "WorkspaceSummary",
+    "current": false
+  }
+}
+```
+
+- Failure cases:
+  - `401` `{"error":"Invalid email or password"}`
   - `403` `{"error":"email_not_verified"}`
 
 ## PUT `/api/auth/me`

@@ -63,7 +63,7 @@ function DocFoldersIndexRoute() {
 }
 
 function App() {
-  const { checkAuth, fetchMembers, isAuthenticated, isLoading, needsEmailVerification } =
+  const { checkAuth, fetchMembers, isAuthenticated, isLoading, needsEmailVerification, user } =
     useAuthStore();
   const { fetchProjects } = useProjectStore();
   const { fetchBoards } = useBoardStore();
@@ -94,6 +94,7 @@ function App() {
     fetchChannels,
     fetchDirectMessages,
     fetchMembers,
+    user?.id,
   ]);
 
   // Connect to notification channel for real-time updates

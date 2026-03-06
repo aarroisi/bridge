@@ -23,6 +23,8 @@ defmodule MissionspaceWeb.Router do
     post("/auth/login", AuthController, :login)
     post("/auth/logout", AuthController, :logout)
     get("/auth/me", AuthController, :me)
+    get("/auth/accounts", AuthController, :accounts)
+    post("/auth/switch-account", AuthController, :switch_account)
     post("/auth/verify-email", AuthController, :verify_email)
     post("/auth/forgot-password", AuthController, :forgot_password)
     post("/auth/reset-password", AuthController, :reset_password)
@@ -34,6 +36,7 @@ defmodule MissionspaceWeb.Router do
     # Auth routes (authentication required)
     put("/auth/me", AuthController, :update_me)
     post("/auth/resend-verification", AuthController, :resend_verification)
+    post("/auth/add-account", AuthController, :add_account)
 
     # API keys (user scoped)
     get("/api-keys/verify", ApiKeyController, :verify)

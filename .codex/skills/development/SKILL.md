@@ -28,7 +28,7 @@ bridge/
 │   ├── package.json         # Node dependencies
 │   └── vite.config.ts       # Vite configuration
 │
-└── .claude/         # AI assistant configuration
+└── .codex/         # AI assistant configuration
 ```
 
 ## Working with Multiple Projects

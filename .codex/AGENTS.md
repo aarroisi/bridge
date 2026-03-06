@@ -20,19 +20,19 @@ cd server && mix test           cd web && npx playwright test
 4. **E2E Testing**: Use `keyboard.insertText()` for React inputs, NOT `fill()`
 5. **Toast Notifications**: Always show toast after successful backend mutations (create, update, delete) using `useToastStore`
 6. **API Params**: Send params directly without nested wrappers - use `{name, email}` NOT `{user: {name, email}}`
-7. **Product Spec First**: All product decisions must be documented in `.claude/skills/product/SKILL.md`. When a discussion hints at product behavior or business rules:
+7. **Product Spec First**: All product decisions must be documented in `.codex/skills/product/SKILL.md`. When a discussion hints at product behavior or business rules:
    - **Update** the spec if it's a new decision
    - **Debate** if it conflicts with existing spec - don't silently override
    - This keeps decisions aligned and auditable
-8. **Feature Specs**: Every new feature must have a specification file in `.claude/features/`. When implementing a new feature:
-   - Create a markdown file named after the feature (e.g., `.claude/features/search.md`, `.claude/features/subscriptions.md`)
+8. **Feature Specs**: Every new feature must have a specification file in `.codex/features/`. When implementing a new feature:
+   - Create a markdown file named after the feature (e.g., `.codex/features/search.md`, `.codex/features/subscriptions.md`)
    - Document: what it does, how it works, key decisions, entity relationships, and UI behavior
    - Update the spec as the feature evolves — changes are tracked in git alongside the code
    - This makes it easy to generate product docs later
 
 ## Documentation
 
-Detailed guides organized as skills in `.claude/skills/`:
+Detailed guides organized as skills in `.codex/skills/`:
 
 - `/development` - Project structure, commands, monorepo navigation
 - `/architecture` - Patterns: error handling, controllers, multi-tenancy, UUIDs, pagination
@@ -50,5 +50,3 @@ Background skills (auto-loaded by context):
 
 **Backend**: Elixir 1.16+, Phoenix 1.8, PostgreSQL, Phoenix Channels  
 **Frontend**: React 18, TypeScript, Vite, Zustand, Tailwind, Playwright
-
-Claude automatically loads relevant skills based on your work context.

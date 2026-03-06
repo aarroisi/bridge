@@ -38,6 +38,7 @@ mix phx.server
 ```
 
 The backend will be available at:
+
 - API: http://localhost:4000/api
 - WebSocket: ws://localhost:4000/socket
 
@@ -69,6 +70,7 @@ curl http://localhost:4000/api/projects
 ### Test Frontend
 
 Open http://localhost:5173 in your browser. You should see:
+
 - Outer sidebar with 6 icons (Home, Projects, Lists, Docs, Channels, DMs)
 - Inner sidebar showing items based on selected category
 - Main content area
@@ -78,28 +80,34 @@ Open http://localhost:5173 in your browser. You should see:
 The seed file creates:
 
 **Users:**
+
 - Alex Kim (alex@bridge.app)
 - Morgan Jones (morgan@bridge.app)
 - Sam Rivera (sam@bridge.app)
 
 **Projects:**
+
 - Product Launch (starred)
 - Website Redesign
 
 **Lists:**
+
 - Sprint Tasks (with 3 tasks)
 - Design Tasks
 
 **Sample Tasks:**
+
 - "Design new homepage" (in progress, assigned to Alex)
 - "Implement authentication" (todo)
 - "Write user documentation" (done, assigned to Sam)
 
 **Docs:**
+
 - Product Requirements
 - Design System
 
 **Channels:**
+
 - #general (starred)
 - #design
 
@@ -121,11 +129,13 @@ brew services start postgresql
 ### Port Already in Use
 
 **Backend (Port 4000):**
+
 ```bash
 lsof -ti:4000 | xargs kill -9
 ```
 
 **Frontend (Port 5173):**
+
 ```bash
 lsof -ti:5173 | xargs kill -9
 ```
@@ -223,7 +233,7 @@ mix ecto.reset  # Drops, creates, migrates, and seeds
 1. **Customize** - Edit colors in `web/tailwind.config.js`
 2. **Add Features** - Create new contexts, controllers, and components
 3. **Deploy** - See README.md for deployment instructions
-4. **Learn** - Check CLAUDE.md for development conventions
+4. **Learn** - Check .codex/AGENTS.md for development conventions
 
 ## Useful Commands
 
@@ -265,8 +275,8 @@ npm run typecheck
 ## Getting Help
 
 - Check the main README.md for API documentation
-- See CLAUDE.md for code conventions
-- See PRD.md for feature specifications
+- See .codex/AGENTS.md for code conventions
+- See .codex/PRD.md for feature specifications
 - Check the Phoenix docs: https://hexdocs.pm/phoenix
 - Check the React docs: https://react.dev
 

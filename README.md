@@ -16,12 +16,14 @@ Bridge is a modern team collaboration app featuring Docs (rich text posts), List
 ## Tech Stack
 
 ### Backend
+
 - **Elixir 1.18.2** with **Phoenix 1.8.3**
 - **PostgreSQL** database with Ecto
 - **Phoenix Channels** for WebSocket real-time features
 - **Phoenix Presence** for online status tracking
 
 ### Frontend
+
 - **React 18.3** with **TypeScript 5.7**
 - **Vite 6.0** for lightning-fast builds
 - **Zustand 5.0** for state management
@@ -179,6 +181,7 @@ npm run typecheck
 All endpoints are prefixed with `/api`
 
 #### Projects
+
 - `GET /api/projects` - List all projects
 - `GET /api/projects/:id` - Get project
 - `POST /api/projects` - Create project
@@ -186,6 +189,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/projects/:id` - Delete project
 
 #### Lists
+
 - `GET /api/lists` - List all lists
 - `GET /api/lists/:id` - Get list with tasks
 - `POST /api/lists` - Create list
@@ -193,6 +197,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/lists/:id` - Delete list
 
 #### Tasks
+
 - `GET /api/tasks` - List all tasks
 - `GET /api/tasks/:id` - Get task with subtasks
 - `POST /api/tasks` - Create task
@@ -200,6 +205,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/tasks/:id` - Delete task
 
 #### Subtasks
+
 - `GET /api/subtasks` - List all subtasks
 - `GET /api/subtasks/:id` - Get subtask
 - `POST /api/subtasks` - Create subtask
@@ -207,6 +213,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/subtasks/:id` - Delete subtask
 
 #### Docs
+
 - `GET /api/docs` - List all docs
 - `GET /api/docs/:id` - Get doc
 - `POST /api/docs` - Create doc
@@ -214,6 +221,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/docs/:id` - Delete doc
 
 #### Channels
+
 - `GET /api/channels` - List all channels
 - `GET /api/channels/:id` - Get channel
 - `POST /api/channels` - Create channel
@@ -221,6 +229,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/channels/:id` - Delete channel
 
 #### Direct Messages
+
 - `GET /api/direct_messages` - List all DMs
 - `GET /api/direct_messages/:id` - Get DM
 - `POST /api/direct_messages` - Create DM
@@ -228,6 +237,7 @@ All endpoints are prefixed with `/api`
 - `DELETE /api/direct_messages/:id` - Delete DM
 
 #### Messages
+
 - `GET /api/messages?entity_type=channel&entity_id=123` - List messages
 - `GET /api/messages/:id` - Get message
 - `POST /api/messages` - Create message
@@ -250,17 +260,18 @@ Connect to `ws://localhost:4000/socket`
 
 ```javascript
 // Join a channel
-channel.join()
-  .receive("ok", resp => console.log("Joined", resp))
-  .receive("error", resp => console.log("Failed", resp))
+channel
+  .join()
+  .receive("ok", (resp) => console.log("Joined", resp))
+  .receive("error", (resp) => console.log("Failed", resp));
 
 // Send message
-channel.push("new_message", { text: "Hello!" })
+channel.push("new_message", { text: "Hello!" });
 
 // Listen for updates
-channel.on("new_message", payload => {
-  console.log("New message:", payload)
-})
+channel.on("new_message", (payload) => {
+  console.log("New message:", payload);
+});
 ```
 
 ## Database Schema
@@ -288,24 +299,29 @@ channel.on("new_message", payload => {
 ## Architecture Decisions
 
 ### Real-time Strategy
+
 All real-time features use Phoenix Channels for efficient bidirectional communication:
+
 - Task updates broadcast to list subscribers
 - Doc edits broadcast to doc subscribers (excluding sender for collaborative editing)
 - Chat messages broadcast to channel/DM subscribers
 - Presence tracking for online users
 
 ### State Management
+
 - **Zustand** for global app state (entities, UI state)
 - **React state** for local component state
 - **URL** for navigation state
 
 ### Threading Model
+
 - One level of threading (replies to a message)
 - Any message can quote any other message
 - Thread panel opens on the right sidebar
 - Works universally across tasks, docs, channels, and DMs
 
 ### Two-Sidebar Layout
+
 - **Outer sidebar (56px)** - Fixed category navigation
 - **Inner sidebar (208px)** - Collapsible item lists
 - **Main content** - Active view
@@ -346,6 +362,7 @@ npm run build
 ## Sample Data
 
 The seed file creates:
+
 - 3 users (Alex Kim, Morgan Jones, Sam Rivera)
 - 2 projects (Product Launch, Website Redesign)
 - 2 lists with tasks and subtasks
@@ -368,8 +385,9 @@ MIT License - see LICENSE file for details
 ## Support
 
 For issues and questions:
+
 - GitHub Issues: https://github.com/yourusername/bridge/issues
-- Documentation: See PRD.md and CLAUDE.md
+- Documentation: See .codex/PRD.md and .codex/AGENTS.md
 
 ---
 

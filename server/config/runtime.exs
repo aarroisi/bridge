@@ -33,12 +33,26 @@ if System.get_env("FROM_EMAIL") do
   config :missionspace, :from_email, System.get_env("FROM_EMAIL")
 end
 
-if System.get_env("FRONTEND_URL") do
-  config :missionspace, :frontend_url, System.get_env("FRONTEND_URL")
+frontend_url = System.get_env("FRONTEND_URL")
+
+if frontend_url do
+  config :missionspace, :frontend_url, frontend_url
 end
 
-if cors = System.get_env("CORS_ORIGINS") do
-  origins = String.split(cors, ",", trim: true)
+origins =
+  [frontend_url]
+  |> Enum.concat(
+    case System.get_env("CORS_ORIGINS") do
+      nil -> []
+      cors -> String.split(cors, ",", trim: true)
+    end
+  )
+  |> Enum.reject(&is_nil/1)
+  |> Enum.map(&String.trim/1)
+  |> Enum.reject(&(&1 == ""))
+  |> Enum.uniq()
+
+if origins != [] do
   config :missionspace, :cors_origins, origins
   config :missionspace, MissionspaceWeb.Endpoint, check_origin: origins
 end

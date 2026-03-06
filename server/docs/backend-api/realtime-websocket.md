@@ -4,25 +4,20 @@
 
 | Transport | Path | Auth model |
 | --- | --- | --- |
-| Phoenix Socket | `/socket/websocket` | Token in connect params |
+| Phoenix Socket | `/socket/websocket` | Cookie-backed session |
 | Phoenix LiveView Socket | `/live/websocket` | LiveView session transport |
 
 Primary realtime API for app features is `/socket/websocket` with `MissionspaceWeb.UserSocket`.
 
 ## Socket auth (`MissionspaceWeb.UserSocket`)
 
-- Client must pass connect params:
+- Browser clients connect with the existing authenticated session cookie; no explicit token param is required.
+- Backend reads the Phoenix session during the websocket handshake.
+- Connection requires a valid authenticated session with both `user_id` and `workspace_id` present.
+- On success: assigns both `user_id` and `workspace_id` on the socket.
+- If production frontend and API live on different subdomains, `check_origin` must allow the frontend origin (for example `https://missionspace.co`).
 
-```json
-{
-  "token": "phoenix-signed-token"
-}
-```
-
-- Server verifies token with salt `"user socket"` and max age `1209600` seconds.
-- On success: assigns `user_id` on socket.
-
-Note: multiple channel modules expect `socket.assigns.workspace_id`; ensure your socket bootstrap/authorization layer provides it.
+Note: login and `/api/auth/me` do not return a separate websocket token because realtime auth uses the existing browser session.
 
 ## Registered channel topics
 

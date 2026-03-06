@@ -19,7 +19,7 @@ defmodule MissionspaceWeb.Endpoint do
   )
 
   socket("/socket", MissionspaceWeb.UserSocket,
-    websocket: true,
+    websocket: [connect_info: [session: @session_options]],
     longpoll: false
   )
 

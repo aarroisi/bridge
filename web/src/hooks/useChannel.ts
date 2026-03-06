@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Socket, Channel } from 'phoenix'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4000/socket'
+const WS_URL = import.meta.env.VITE_WS_URL || '/socket'
 
 let socket: Socket | null = null
 
 function getSocket(): Socket {
   if (!socket) {
-    const token = localStorage.getItem('auth_token')
-    socket = new Socket(WS_URL, {
-      params: { token },
-    })
+    socket = new Socket(WS_URL)
     socket.connect()
   }
   return socket

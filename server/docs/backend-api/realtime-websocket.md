@@ -1,0 +1,157 @@
+# Realtime WebSocket APIs
+
+## Transport endpoints
+
+| Transport | Path | Auth model |
+| --- | --- | --- |
+| Phoenix Socket | `/socket/websocket` | Token in connect params |
+| Phoenix LiveView Socket | `/live/websocket` | LiveView session transport |
+
+Primary realtime API for app features is `/socket/websocket` with `BridgeWeb.UserSocket`.
+
+## Socket auth (`BridgeWeb.UserSocket`)
+
+- Client must pass connect params:
+
+```json
+{
+  "token": "phoenix-signed-token"
+}
+```
+
+- Server verifies token with salt `"user socket"` and max age `1209600` seconds.
+- On success: assigns `user_id` on socket.
+
+Note: multiple channel modules expect `socket.assigns.workspace_id`; ensure your socket bootstrap/authorization layer provides it.
+
+## Registered channel topics
+
+| Topic pattern | Module |
+| --- | --- |
+| `list:*` | `BridgeWeb.ListChannel` |
+| `task:*` | `BridgeWeb.TaskChannel` |
+| `doc:*` | `BridgeWeb.DocChannel` |
+| `channel:*` | `BridgeWeb.ChatChannel` |
+| `dm:*` | `BridgeWeb.ChatChannel` |
+| `notifications:*` | `BridgeWeb.NotificationChannel` |
+
+## `list:<list_id>` (`BridgeWeb.ListChannel`)
+
+### Join
+
+- Validates list exists in current workspace.
+- On success: assigns `list_id`.
+
+### Client -> server events
+
+| Event | Payload |
+| --- | --- |
+| `new_task` | `{ "task": { ...task fields... } }` |
+| `update_task` | `{ "task_id": "uuid", "updates": { ... } }` |
+| `delete_task` | `{ "task_id": "uuid" }` |
+
+### Server broadcasts
+
+| Event | Payload |
+| --- | --- |
+| `task_created` | `{ "task": Task }` |
+| `task_updated` | `{ "task": Task }` |
+| `task_deleted` | `{ "task_id": "uuid" }` |
+
+## `task:<task_id>` (`BridgeWeb.TaskChannel`)
+
+### Join
+
+- Validates task exists.
+- On success: assigns `task_id`.
+
+### Client -> server events
+
+| Event | Payload |
+| --- | --- |
+| `update_status` | `{ "status": "..." }` |
+| `update_task` | `{ "updates": { ...task fields... } }` |
+| `new_comment` | `{ "text": "string" }` |
+| `assign_user` | `{ "user_id": "uuid" }` |
+
+### Server broadcasts
+
+| Event | Payload |
+| --- | --- |
+| `status_updated` | `{ "task_id": "uuid", "status": "...", "task": Task }` |
+| `task_updated` | `{ "task": Task }` |
+| `comment_added` | `{ "comment": Message, "task_id": "uuid" }` |
+| `user_assigned` | `{ "task_id": "uuid", "assignee": User, "task": Task }` |
+
+## `doc:<doc_id>` (`BridgeWeb.DocChannel`)
+
+### Join
+
+- Validates doc exists in current workspace.
+- On success: assigns `doc_id`.
+
+### Client -> server events
+
+| Event | Payload |
+| --- | --- |
+| `update_content` | `{ "content": "markdown" }` |
+| `update_title` | `{ "title": "string" }` |
+| `new_comment` | `{ "text": "string" }` |
+| `cursor_position` | `{ "position": ... }` |
+| `toggle_starred` | `{}` |
+
+### Server broadcasts
+
+| Event | Payload |
+| --- | --- |
+| `content_updated` | `{ "doc_id": "uuid", "content": "...", "updated_by": "user_id", "doc": Doc }` |
+| `title_updated` | `{ "doc_id": "uuid", "title": "...", "doc": Doc }` |
+| `comment_added` | `{ "comment": Message, "doc_id": "uuid" }` |
+| `cursor_moved` | `{ "user_id": "uuid", "position": ..., "doc_id": "uuid" }` |
+
+## `channel:<channel_id>` and `dm:<dm_id>` (`BridgeWeb.ChatChannel`)
+
+### Join
+
+- `channel:<id>`:
+  - validates channel exists in current workspace.
+  - assigns `channel_id`, `room_type="channel"`.
+- `dm:<id>`:
+  - validates DM exists in workspace.
+  - requires current user to be `user1` or `user2`.
+  - assigns `dm_id`, `room_type="dm"`.
+- After join:
+  - tracks Phoenix Presence.
+  - pushes `presence_state` to client.
+
+### Client -> server events
+
+| Event | Payload |
+| --- | --- |
+| `new_message` | `{ "text": "...", "parent_id": "optional", "quote_id": "optional" }` |
+| `delete_message` | `{ "message_id": "uuid" }` |
+| `update_message` | `{ "message_id": "uuid", "text": "..." }` |
+| `typing_start` | `{}` |
+| `typing_stop` | `{}` |
+
+### Server broadcasts
+
+| Event | Payload |
+| --- | --- |
+| `new_message` | `{ "message": Message }` |
+| `message_deleted` | `{ "message_id": "uuid" }` |
+| `message_updated` | `{ "message": Message }` |
+| `user_typing` | `{ "user_id": "uuid", "typing": true|false }` |
+| `presence_state` | Phoenix Presence state |
+| `presence_diff` | Phoenix Presence diff |
+
+## `notifications:<user_id>` (`BridgeWeb.NotificationChannel`)
+
+### Join
+
+- Only allows user to join topic matching their own `user_id`.
+
+### Server broadcasts
+
+- Event: `new_notification`
+- Trigger helper: `BridgeWeb.NotificationChannel.broadcast_notification(user_id, payload)`

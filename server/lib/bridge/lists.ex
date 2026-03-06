@@ -114,7 +114,9 @@ defmodule Bridge.Lists do
       from(t in Task,
         where: t.parent_id in ^task_ids,
         group_by: t.parent_id,
-        select: {t.parent_id, count(t.id), sum(fragment("CASE WHEN ? THEN 1 ELSE 0 END", t.is_completed))}
+        select:
+          {t.parent_id, count(t.id),
+           sum(fragment("CASE WHEN ? THEN 1 ELSE 0 END", t.is_completed))}
       )
       |> Repo.all()
       |> Map.new(fn {parent_id, total, done} -> {parent_id, {total, done}} end)
@@ -173,7 +175,6 @@ defmodule Bridge.Lists do
   def change_list(%List{} = list, attrs \\ %{}) do
     List.changeset(list, attrs)
   end
-
 
   defdelegate suggest_prefix(name, workspace_id), to: Bridge.Namespaces
   defdelegate check_prefix_available?(prefix, workspace_id), to: Bridge.Namespaces
@@ -323,7 +324,11 @@ defmodule Bridge.Lists do
   def list_tasks_by_assignee(assignee_id, workspace_id) do
     Task
     |> join(:inner, [t], l in assoc(t, :list))
-    |> where([t, l], t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id and is_nil(t.parent_id) and is_nil(t.completed_at))
+    |> where(
+      [t, l],
+      t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id and is_nil(t.parent_id) and
+        is_nil(t.completed_at)
+    )
     |> order_by([t], desc: t.inserted_at)
     |> preload([:list, :assignee, :created_by, :status])
     |> Repo.all()
@@ -335,7 +340,11 @@ defmodule Bridge.Lists do
   def list_child_tasks_by_assignee(assignee_id, workspace_id) do
     Task
     |> join(:inner, [t], l in assoc(t, :list))
-    |> where([t, l], t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id and not is_nil(t.parent_id) and is_nil(t.completed_at))
+    |> where(
+      [t, l],
+      t.assignee_id == ^assignee_id and l.workspace_id == ^workspace_id and
+        not is_nil(t.parent_id) and is_nil(t.completed_at)
+    )
     |> order_by([t], desc: t.inserted_at)
     |> preload([:list, :assignee, :created_by, :status, :parent])
     |> Repo.all()

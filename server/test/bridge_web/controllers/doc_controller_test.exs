@@ -23,8 +23,11 @@ defmodule BridgeWeb.DocControllerTest do
       user: user,
       doc_folder: doc_folder
     } do
-      doc1 = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
-      doc2 = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+      doc1 =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+
+      doc2 =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
       response =
         conn
@@ -49,7 +52,9 @@ defmodule BridgeWeb.DocControllerTest do
       # Doc in another workspace
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_doc_folder = insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
+
+      other_doc_folder =
+        insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
 
       _other_doc =
         insert(:doc,
@@ -155,7 +160,9 @@ defmodule BridgeWeb.DocControllerTest do
       # Create a doc in another workspace
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_doc_folder = insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
+
+      other_doc_folder =
+        insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
 
       _other_doc =
         insert(:doc,
@@ -215,7 +222,9 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns 404 when doc exists but in different workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_doc_folder = insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
+
+      other_doc_folder =
+        insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
 
       other_doc =
         insert(:doc,
@@ -281,7 +290,9 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns 404 when doc exists but in different workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_doc_folder = insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
+
+      other_doc_folder =
+        insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
 
       other_doc =
         insert(:doc,
@@ -308,7 +319,8 @@ defmodule BridgeWeb.DocControllerTest do
       user: user,
       doc_folder: doc_folder
     } do
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+      doc =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
       update_params = %{
         title: ""
@@ -370,7 +382,8 @@ defmodule BridgeWeb.DocControllerTest do
       user: user,
       doc_folder: doc_folder
     } do
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+      doc =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
       conn
       |> delete(~p"/api/docs/#{doc.id}")
@@ -399,7 +412,9 @@ defmodule BridgeWeb.DocControllerTest do
     test "returns 404 when doc exists but in different workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_doc_folder = insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
+
+      other_doc_folder =
+        insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
 
       other_doc =
         insert(:doc,
@@ -422,7 +437,8 @@ defmodule BridgeWeb.DocControllerTest do
       user: user,
       doc_folder: doc_folder
     } do
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+      doc =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
       # Verify it's in the list first
       list_response =

@@ -35,10 +35,12 @@ defmodule BridgeWeb.SearchJSON do
       key: task_key(t),
       board_id: t.list_id,
       parent_id: t.parent_id,
-      status:
-        if(t.status, do: %{name: t.status.name, color: t.status.color}, else: nil),
+      status: if(t.status, do: %{name: t.status.name, color: t.status.color}, else: nil),
       assignee:
-        if(t.assignee, do: %{id: t.assignee.id, name: t.assignee.name, avatar: t.assignee.avatar}, else: nil)
+        if(t.assignee,
+          do: %{id: t.assignee.id, name: t.assignee.name, avatar: t.assignee.avatar},
+          else: nil
+        )
     }
   end
 

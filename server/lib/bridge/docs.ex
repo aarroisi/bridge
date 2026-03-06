@@ -104,7 +104,6 @@ defmodule Bridge.Docs do
     result
   end
 
-
   # ============================================================================
   # Doc functions
   # ============================================================================
@@ -204,7 +203,6 @@ defmodule Bridge.Docs do
   def change_doc(%Doc{} = doc, attrs \\ %{}) do
     Doc.changeset(doc, attrs)
   end
-
 
   def update_doc_content(%Doc{} = doc, content) when is_binary(content) do
     update_doc(doc, %{content: content})

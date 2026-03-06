@@ -41,7 +41,12 @@ defmodule BridgeWeb.ItemMemberControllerTest do
   end
 
   describe "index" do
-    test "lists item members", %{owner_conn: conn, channel: channel, target_user: target_user, workspace: workspace} do
+    test "lists item members", %{
+      owner_conn: conn,
+      channel: channel,
+      target_user: target_user,
+      workspace: workspace
+    } do
       insert(:item_member,
         item_type: "channel",
         item_id: channel.id,
@@ -57,7 +62,11 @@ defmodule BridgeWeb.ItemMemberControllerTest do
   end
 
   describe "create" do
-    test "owner can add item members", %{owner_conn: conn, channel: channel, target_user: target_user} do
+    test "owner can add item members", %{
+      owner_conn: conn,
+      channel: channel,
+      target_user: target_user
+    } do
       conn =
         post(conn, ~p"/api/item-members/channel/#{channel.id}", %{
           "user_id" => target_user.id

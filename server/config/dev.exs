@@ -86,5 +86,6 @@ config :ex_aws, :s3,
 # Web Push (dev)
 config :web_push_encryption, :vapid_details,
   subject: "mailto:dev@localhost",
-  public_key: "BCdOUElSDkbS8lGf8ghJmfKd3H0u9D2MxJsFTAuXFEV0NxW8AzSfMfqQXyHfNr_IVDkR8fxbWJo0LMK4rFuRHyk",
+  public_key:
+    "BCdOUElSDkbS8lGf8ghJmfKd3H0u9D2MxJsFTAuXFEV0NxW8AzSfMfqQXyHfNr_IVDkR8fxbWJo0LMK4rFuRHyk",
   private_key: "lbZQqnMLkpeV0J_s3tLkGQj1OMP53Yf5gaKvsqFjef8"

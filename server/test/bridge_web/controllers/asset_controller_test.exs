@@ -5,7 +5,9 @@ defmodule BridgeWeb.AssetControllerTest do
     workspace = insert(:workspace)
     user = insert(:user, workspace_id: workspace.id)
     doc_folder = insert(:doc_folder, workspace_id: workspace.id, created_by_id: user.id)
-    doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+
+    doc =
+      insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
     conn =
       build_conn()
@@ -74,8 +76,16 @@ defmodule BridgeWeb.AssetControllerTest do
     test "rejects when attachable item not in workspace", %{conn: conn} do
       other_workspace = insert(:workspace)
       other_user = insert(:user, workspace_id: other_workspace.id)
-      other_doc_folder = insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
-      other_doc = insert(:doc, workspace_id: other_workspace.id, author_id: other_user.id, doc_folder_id: other_doc_folder.id)
+
+      other_doc_folder =
+        insert(:doc_folder, workspace_id: other_workspace.id, created_by_id: other_user.id)
+
+      other_doc =
+        insert(:doc,
+          workspace_id: other_workspace.id,
+          author_id: other_user.id,
+          doc_folder_id: other_doc_folder.id
+        )
 
       params = %{
         filename: "test.png",
@@ -117,7 +127,9 @@ defmodule BridgeWeb.AssetControllerTest do
       workspace = insert(:workspace, storage_used_bytes: 5_368_709_120 - 500)
       user = insert(:user, workspace_id: workspace.id)
       doc_folder = insert(:doc_folder, workspace_id: workspace.id, created_by_id: user.id)
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+
+      doc =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
       conn =
         build_conn()

@@ -17,7 +17,10 @@ defmodule Bridge.Stars.UserStar do
     star
     |> cast(attrs, [:user_id, :starrable_type, :starrable_id])
     |> validate_required([:user_id, :starrable_type, :starrable_id])
-    |> validate_inclusion(:starrable_type, ~w(project board doc_folder doc channel direct_message task))
+    |> validate_inclusion(
+      :starrable_type,
+      ~w(project board doc_folder doc channel direct_message task)
+    )
     |> unique_constraint([:user_id, :starrable_type, :starrable_id])
   end
 end

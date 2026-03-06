@@ -350,7 +350,10 @@ defmodule Bridge.Projects do
   """
   def is_item_member?(item_type, item_id, user_id) do
     ItemMember
-    |> where([im], im.item_type == ^item_type and im.item_id == ^item_id and im.user_id == ^user_id)
+    |> where(
+      [im],
+      im.item_type == ^item_type and im.item_id == ^item_id and im.user_id == ^user_id
+    )
     |> Repo.exists?()
   end
 

@@ -105,7 +105,9 @@ defmodule Bridge.AccountsTest do
 
     test "preserves docs created by user", %{workspace: workspace, user: user} do
       doc_folder = insert(:doc_folder, workspace_id: workspace.id, created_by_id: user.id)
-      doc = insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
+
+      doc =
+        insert(:doc, workspace_id: workspace.id, author_id: user.id, doc_folder_id: doc_folder.id)
 
       {:ok, _deleted_user} = Accounts.delete_user(user)
 
@@ -144,10 +146,25 @@ defmodule Bridge.AccountsTest do
       workspace: workspace,
       owner: owner
     } do
-      private_list = insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
-      private_folder = insert(:doc_folder, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
-      private_channel = insert(:channel, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
-      shared_list = insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "shared")
+      private_list =
+        insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
+
+      private_folder =
+        insert(:doc_folder,
+          workspace_id: workspace.id,
+          created_by_id: owner.id,
+          visibility: "private"
+        )
+
+      private_channel =
+        insert(:channel,
+          workspace_id: workspace.id,
+          created_by_id: owner.id,
+          visibility: "private"
+        )
+
+      shared_list =
+        insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "shared")
 
       {:ok, updated_user} = Accounts.update_user(owner, %{role: "member"})
 
@@ -166,7 +183,8 @@ defmodule Bridge.AccountsTest do
       workspace: workspace,
       owner: owner
     } do
-      private_list = insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
+      private_list =
+        insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
 
       {:ok, updated_user} = Accounts.update_user(owner, %{role: "guest"})
 
@@ -176,7 +194,9 @@ defmodule Bridge.AccountsTest do
 
     test "changing member to guest does NOT force visibility change", %{workspace: workspace} do
       member = insert(:user, workspace_id: workspace.id, role: "member")
-      list = insert(:list, workspace_id: workspace.id, created_by_id: member.id, visibility: "shared")
+
+      list =
+        insert(:list, workspace_id: workspace.id, created_by_id: member.id, visibility: "shared")
 
       {:ok, updated_user} = Accounts.update_user(member, %{role: "guest"})
 
@@ -188,7 +208,8 @@ defmodule Bridge.AccountsTest do
       workspace: workspace,
       owner: owner
     } do
-      private_list = insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
+      private_list =
+        insert(:list, workspace_id: workspace.id, created_by_id: owner.id, visibility: "private")
 
       {:ok, updated_user} = Accounts.update_user(owner, %{name: "New Name"})
 

@@ -155,7 +155,6 @@ defmodule Bridge.Chat do
     Channel.changeset(channel, attrs)
   end
 
-
   # ============================================================================
   # DirectMessage functions
   # ============================================================================
@@ -640,7 +639,10 @@ defmodule Bridge.Chat do
   """
   def get_read_position(item_type, item_id, user_id) do
     ReadPosition
-    |> where([rp], rp.item_type == ^item_type and rp.item_id == ^item_id and rp.user_id == ^user_id)
+    |> where(
+      [rp],
+      rp.item_type == ^item_type and rp.item_id == ^item_id and rp.user_id == ^user_id
+    )
     |> Repo.one()
   end
 end

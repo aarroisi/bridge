@@ -14,7 +14,13 @@ defmodule Bridge.Repo.Migrations.UpdateNotificationsForRollup do
     create(
       unique_index(
         :notifications,
-        [:user_id, :type, :item_type, :item_id, "COALESCE(thread_id, '00000000-0000-0000-0000-000000000000')"],
+        [
+          :user_id,
+          :type,
+          :item_type,
+          :item_id,
+          "COALESCE(thread_id, '00000000-0000-0000-0000-000000000000')"
+        ],
         name: :notifications_rollup_unique_idx
       )
     )

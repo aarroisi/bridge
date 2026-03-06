@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
+import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { Message } from "./Message";
 import { DiscussionThread } from "./DiscussionThread";
 import { CommentEditor } from "./CommentEditor";
@@ -33,6 +34,7 @@ interface ChildTaskDetailModalProps {
   parentTask: Task;
   comments: MessageType[];
   workspaceMembers?: User[];
+  shareUrl: string;
   onClose: () => void;
   highlightCommentId?: string | null;
 }
@@ -42,6 +44,7 @@ export function ChildTaskDetailModal({
   parentTask,
   comments,
   workspaceMembers = [],
+  shareUrl,
   onClose,
   highlightCommentId,
 }: ChildTaskDetailModalProps) {
@@ -310,6 +313,12 @@ export function ChildTaskDetailModal({
                     className={task.starred ? "fill-yellow-400 text-yellow-400" : ""}
                   />
                 </button>
+                <CopyLinkButton
+                  url={shareUrl}
+                  label="Copy subtask link"
+                  successMessage="Subtask link copied to clipboard"
+                  errorMessage="Failed to copy subtask link"
+                />
                 <button
                   onClick={() => setIsDeleteModalOpen(true)}
                   className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"

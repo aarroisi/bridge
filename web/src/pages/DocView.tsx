@@ -22,7 +22,9 @@ import { format } from "date-fns";
 import { Message } from "@/components/features/Message";
 import { DiscussionThread } from "@/components/features/DiscussionThread";
 import { CommentEditor } from "@/components/features/CommentEditor";
+import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { buildAbsoluteUrl } from "@/lib/shareLinks";
 import { useDocStore } from "@/stores/docStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -89,6 +91,7 @@ export function DocView() {
   const topLevelComments = docComments.filter((c) => !c.parentId);
   const threadMessages = docComments.filter((c) => c.parentId);
   const hideMobileHeaderActions = isMobile && editingTitle;
+  const docShareUrl = !isNewDoc && docId ? buildAbsoluteUrl(location.pathname) : null;
 
   const { members } = useAuthStore();
 
@@ -740,6 +743,14 @@ export function DocView() {
                           }
                         />
                       </button>
+                      {docShareUrl && (
+                        <CopyLinkButton
+                          url={docShareUrl}
+                          label="Copy doc link"
+                          successMessage="Doc link copied to clipboard"
+                          errorMessage="Failed to copy doc link"
+                        />
+                      )}
                       <button
                         onClick={() => setShowDeleteConfirm(true)}
                         className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"

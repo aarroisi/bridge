@@ -227,6 +227,44 @@ test.describe("Kanban Board", () => {
     await expect(page).toHaveURL(/task=/);
   });
 
+  test("should copy task and subtask links", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await createBoard(page);
+
+    await page
+      .getByTestId("column-todo")
+      .getByRole("button", { name: /add task/i })
+      .click();
+    await page.getByPlaceholder(/task title/i).focus();
+    await page.keyboard.insertText("Shareable Task");
+    await page.getByRole("button", { name: "Add Task", exact: true }).click();
+
+    await page.getByText("Shareable Task").click();
+    await expect(page).toHaveURL(/task=/);
+
+    const expectedTaskUrl = page.url();
+
+    await page.getByRole("button", { name: /copy task link/i }).click();
+    await expect(page.getByText("Task link copied to clipboard")).toBeVisible();
+    const copiedTaskUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copiedTaskUrl).toBe(expectedTaskUrl);
+
+    await page.getByRole("button", { name: /add a subtask/i }).click();
+    await page.getByPlaceholder(/add a subtask/i).focus();
+    await page.keyboard.insertText("Shareable Subtask");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    await page.getByRole("button", { name: /shareable subtask/i }).click();
+    await expect(page).toHaveURL(/subtask=/);
+
+    const expectedSubtaskUrl = page.url();
+
+    await page.getByRole("button", { name: /copy subtask link/i }).click();
+    await expect(page.getByText("Subtask link copied to clipboard")).toBeVisible();
+    const copiedSubtaskUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copiedSubtaskUrl).toBe(expectedSubtaskUrl);
+  });
+
   test("should change task status via detail modal dropdown", async ({
     page,
   }) => {

@@ -38,6 +38,35 @@ test.describe("Critical User Flows", () => {
     await expect(page.getByText("This is test content")).toBeVisible();
   });
 
+  test("should copy a document link", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+
+    await page.goto("/docs/new");
+
+    const titleInput = page.getByPlaceholder(/title/i);
+    await titleInput.fill("Shareable Doc");
+
+    const editor = page.locator(".ProseMirror").first();
+    await editor.click();
+    await editor.fill("Doc content for sharing");
+
+    await page.getByRole("button", { name: /save/i }).first().click();
+    await page
+      .getByRole("button", { name: /^save$/i })
+      .last()
+      .click();
+
+    await page.waitForURL(/\/docs\/[a-f0-9-]+$/);
+
+    const expectedUrl = page.url();
+
+    await page.getByRole("button", { name: /copy doc link/i }).click();
+    await expect(page.getByText("Doc link copied to clipboard")).toBeVisible();
+
+    const copiedUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copiedUrl).toBe(expectedUrl);
+  });
+
   test("should add and display comments with HTML sanitization", async ({
     page,
   }) => {

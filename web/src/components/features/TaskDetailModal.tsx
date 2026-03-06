@@ -12,6 +12,7 @@ import {
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
+import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { Message } from "./Message";
 import { DiscussionThread } from "./DiscussionThread";
 import { CommentEditor } from "./CommentEditor";
@@ -36,6 +37,7 @@ interface TaskDetailModalProps {
   comments: MessageType[];
   statuses: BoardStatus[];
   workspaceMembers?: User[];
+  shareUrl: string;
   onClose: () => void;
   onChildTaskClick?: (childTaskId: string) => void;
   highlightCommentId?: string | null;
@@ -47,6 +49,7 @@ export function TaskDetailModal({
   comments,
   statuses,
   workspaceMembers = [],
+  shareUrl,
   onClose,
   onChildTaskClick,
   highlightCommentId,
@@ -341,6 +344,12 @@ export function TaskDetailModal({
                   className={task.starred ? "fill-yellow-400 text-yellow-400" : ""}
                 />
               </button>
+              <CopyLinkButton
+                url={shareUrl}
+                label="Copy task link"
+                successMessage="Task link copied to clipboard"
+                errorMessage="Failed to copy task link"
+              />
               <button
                 onClick={() => setIsDeleteTaskModalOpen(true)}
                 className="text-dark-text-muted hover:text-red-400 transition-colors p-1 hover:bg-dark-surface rounded"

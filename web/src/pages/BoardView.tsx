@@ -1,5 +1,10 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useSearchParams, useNavigate, useParams } from "react-router-dom";
+import {
+  useSearchParams,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
 import { format } from "date-fns";
 import {
   LayoutGrid,
@@ -52,6 +57,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { STATUS_COLORS, DEFAULT_STATUS_COLOR } from "@/constants/statusColors";
 import { api } from "@/lib/api";
+import { buildBoardItemShareUrl } from "@/lib/shareLinks";
 import { User, Task } from "@/types";
 import { clsx } from "clsx";
 
@@ -156,6 +162,7 @@ function DroppableStatusSection({
 export function BoardView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { projectId, id: boardIdParam } = useParams<{ projectId?: string; id?: string }>();
   const { activeItem } = useUIStore();
   const {
@@ -443,6 +450,9 @@ export function BoardView() {
     newParams.delete("subtask");
     setSearchParams(newParams);
   };
+
+  const buildShareUrl = (taskId: string, subtaskId?: string) =>
+    buildBoardItemShareUrl(location.pathname, searchParams, taskId, subtaskId);
 
   const handleAddTask = (statusId: string) => {
     setNewTaskStatusId(statusId);
@@ -922,6 +932,7 @@ export function BoardView() {
           comments={messages[`task:${taskParam}`] || []}
           statuses={board?.statuses || []}
           workspaceMembers={workspaceMembers}
+          shareUrl={buildShareUrl(selectedTask.id)}
           onClose={handleCloseTask}
           onChildTaskClick={handleChildTaskClick}
           highlightCommentId={!subtaskParam ? highlightCommentId : null}
@@ -935,6 +946,7 @@ export function BoardView() {
           parentTask={selectedTask}
           comments={childTaskMessages}
           workspaceMembers={workspaceMembers}
+          shareUrl={buildShareUrl(selectedTask.id, selectedChildTask.id)}
           onClose={handleCloseChildTask}
           highlightCommentId={subtaskParam ? highlightCommentId : null}
         />

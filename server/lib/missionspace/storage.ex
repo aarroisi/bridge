@@ -20,7 +20,7 @@ defmodule Missionspace.Storage do
       opts = [
         expires_in: @presigned_url_expires_in,
         virtual_host: false,
-        query_params: [{"Content-Type", content_type}]
+        headers: [{"content-type", content_type}]
       ]
 
       case ExAws.S3.presigned_url(ex_aws_config, :put, config[:bucket], storage_key, opts) do

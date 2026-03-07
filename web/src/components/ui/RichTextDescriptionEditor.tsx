@@ -8,7 +8,7 @@ import {
 import { ContentRenderer } from "@/lib/milkdown/ContentRenderer";
 import type { MentionMember } from "@/components/ui/MentionList";
 
-interface RichTextNotesEditorProps {
+interface RichTextDescriptionEditorProps {
   value: string;
   onSave: (value: string) => Promise<void>;
   placeholder?: string;
@@ -24,14 +24,14 @@ interface RichTextNotesEditorProps {
   };
 }
 
-export function RichTextNotesEditor({
+export function RichTextDescriptionEditor({
   value,
   onSave,
-  placeholder = "Add notes...",
+  placeholder = "Add description...",
   className,
   fileUpload,
   mentions,
-}: RichTextNotesEditorProps) {
+}: RichTextDescriptionEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);

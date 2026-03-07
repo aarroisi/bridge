@@ -16,7 +16,7 @@ import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { Message } from "./Message";
 import { DiscussionThread } from "./DiscussionThread";
 import { CommentEditor } from "./CommentEditor";
-import { RichTextNotesEditor } from "@/components/ui/RichTextNotesEditor";
+import { RichTextDescriptionEditor } from "@/components/ui/RichTextDescriptionEditor";
 import {
   Task,
   BoardStatus,
@@ -181,8 +181,8 @@ export function TaskDetailModal({
     await updateTask(task.id, { dueOn });
   };
 
-  const handleSaveNotes = async (notes: string) => {
-    await updateTask(task.id, { notes });
+  const handleSaveDescription = async (description: string) => {
+    await updateTask(task.id, { description });
   };
 
   const handleChildTaskToggle = async (child: Task) => {
@@ -509,16 +509,16 @@ export function TaskDetailModal({
               </div>
             </div>
 
-            {/* Notes Row */}
+            {/* Description Row */}
             <div className="flex items-start gap-6">
               <label className="w-24 flex-shrink-0 text-sm font-medium text-dark-text text-right pt-2">
-                Notes
+                Description
               </label>
               <div className="flex-1">
-                <RichTextNotesEditor
-                  value={task.notes || ""}
-                  onSave={handleSaveNotes}
-                  placeholder="Add notes..."
+                <RichTextDescriptionEditor
+                  value={task.description || ""}
+                  onSave={handleSaveDescription}
+                  placeholder="Add description..."
                   mentions={{ members: mentionMembers }}
                   fileUpload={{
                     attachableType: "task",

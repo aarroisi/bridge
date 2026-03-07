@@ -78,8 +78,8 @@ export function TaskCard({
           </div>
         )}
 
-        {task.notes && task.notes.replace(/<[^>]*>/g, "").trim() && (
-          <span title="Has notes">
+        {task.description && task.description.replace(/<[^>]*>/g, "").trim() && (
+          <span title="Has description">
             <StickyNote size={12} />
           </span>
         )}

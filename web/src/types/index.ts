@@ -124,7 +124,7 @@ export interface Task {
   createdBy?: EmbeddedUser | null;
   dueOn?: string | null;
   completedAt?: string | null;
-  notes?: string | null;
+  description?: string | null;
   childCount: number;
   childDoneCount: number;
   commentCount: number;

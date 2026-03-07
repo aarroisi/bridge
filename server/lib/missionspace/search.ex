@@ -94,7 +94,7 @@ defmodule Missionspace.Search do
     |> Repo.all()
   end
 
-  # Tasks: search title, key (prefix-seq), notes
+  # Tasks: search title and key (prefix-seq)
   defp search_tasks(pattern, workspace_id, user) do
     List
     |> join(:inner, [l], t in Missionspace.Lists.Task, on: t.list_id == l.id)

@@ -260,7 +260,7 @@ Response `200`:
   "title": "Fix bug",
   "list_id": "board-uuid",
   "status_id": "status-uuid",
-  "notes": "optional",
+  "description": "optional",
   "assignee_id": "user-uuid",
   "due_on": "2026-03-20",
   "parent_id": "task-uuid"
@@ -287,10 +287,10 @@ Response `200`:
 
 ### PATCH/PUT `/api/tasks/:id`
 
-- Request body: mutable task fields (`title`, `notes`, `status_id`, `assignee_id`, etc.)
+- Request body: mutable task fields (`title`, `description`, `status_id`, `assignee_id`, etc.)
 - Behavior:
   - Updates completion timestamps based on status/`is_completed` transitions.
-  - If notes changed, detects newly added `member:<uuid>` mentions and creates mention notifications + subscriptions.
+  - If description changed, detects newly added `member:<uuid>` mentions and creates mention notifications + subscriptions.
 - Response `200`: `{"data": Task}`
 - Errors: `403`, `404`, `422`
 

@@ -11,7 +11,7 @@ defmodule Missionspace.Lists.Task do
     field(:position, :integer, default: 0)
     field(:is_completed, :boolean, default: false)
     field(:starred, :boolean, virtual: true, default: false)
-    field(:notes, :string)
+    field(:description, :string)
     field(:due_on, :date)
     field(:completed_at, :utc_datetime_usec)
     field(:comment_count, :integer, virtual: true, default: 0)
@@ -37,7 +37,7 @@ defmodule Missionspace.Lists.Task do
       :sequence_number,
       :position,
       :is_completed,
-      :notes,
+      :description,
       :due_on,
       :completed_at,
       :list_id,

@@ -91,7 +91,7 @@ IO.puts("Created #{Enum.count(Lists.list_lists())} lists")
   Lists.create_task(%{
     title: "Design new homepage",
     status: "doing",
-    notes: "Focus on mobile-first approach",
+    description: "Focus on mobile-first approach",
     list_id: list1.id,
     assignee_id: user1.id,
     created_by_id: user2.id,

@@ -177,7 +177,7 @@ defmodule MissionspaceWeb.TaskController do
     task_params = Map.drop(params, ["id"])
 
     with {:ok, updated_task} <- Lists.update_task(old_task, task_params) do
-      maybe_notify_notes_mentions(
+      maybe_notify_description_mentions(
         old_task,
         updated_task,
         task_params,
@@ -189,12 +189,19 @@ defmodule MissionspaceWeb.TaskController do
     end
   end
 
-  defp maybe_notify_notes_mentions(old_task, updated_task, task_params, actor_id, workspace_id) do
-    notes_updated? = Map.has_key?(task_params, "notes") || Map.has_key?(task_params, :notes)
+  defp maybe_notify_description_mentions(
+         old_task,
+         updated_task,
+         task_params,
+         actor_id,
+         workspace_id
+       ) do
+    description_updated? =
+      Map.has_key?(task_params, "description") || Map.has_key?(task_params, :description)
 
-    if notes_updated? do
-      old_mentions = Mentions.extract_mention_ids(old_task.notes || "") |> MapSet.new()
-      new_mentions = Mentions.extract_mention_ids(updated_task.notes || "") |> MapSet.new()
+    if description_updated? do
+      old_mentions = Mentions.extract_mention_ids(old_task.description || "") |> MapSet.new()
+      new_mentions = Mentions.extract_mention_ids(updated_task.description || "") |> MapSet.new()
 
       added_mentions =
         MapSet.difference(new_mentions, old_mentions)

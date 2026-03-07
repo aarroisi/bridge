@@ -71,7 +71,7 @@ defmodule Missionspace.Factory do
     %Missionspace.Lists.Task{
       title: Faker.Lorem.sentence(3..6),
       sequence_number: sequence(:task_seq, &(&1 + 10000)),
-      notes: Faker.Lorem.paragraph(1..3),
+      description: Faker.Lorem.paragraph(1..3),
       due_on: Date.add(Date.utc_today(), Enum.random(1..30))
     }
   end

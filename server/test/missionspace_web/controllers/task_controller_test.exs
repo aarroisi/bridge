@@ -134,7 +134,7 @@ defmodule MissionspaceWeb.TaskControllerTest do
         |> post(~p"/api/tasks", %{
           title: "New Task",
           status_id: todo_status.id,
-          notes: "Some notes",
+          description: "Some description",
           list_id: list.id
         })
         |> json_response(201)
@@ -142,7 +142,7 @@ defmodule MissionspaceWeb.TaskControllerTest do
       assert response["data"]["title"] == "New Task"
       assert response["data"]["status"]["id"] == todo_status.id
       assert response["data"]["status"]["name"] == "todo"
-      assert response["data"]["notes"] == "Some notes"
+      assert response["data"]["description"] == "Some description"
       assert response["data"]["board_id"] == list.id
       assert response["data"]["created_by_id"] == user.id
       assert response["data"]["id"]
@@ -268,18 +268,23 @@ defmodule MissionspaceWeb.TaskControllerTest do
       assert response["data"]["status"]["id"] == done_status.id
     end
 
-    test "updates task notes", %{conn: conn, user: user, list: list, todo_status: todo_status} do
+    test "updates task description", %{
+      conn: conn,
+      user: user,
+      list: list,
+      todo_status: todo_status
+    } do
       task = insert(:task, list_id: list.id, status_id: todo_status.id, created_by_id: user.id)
 
       response =
         conn
-        |> put(~p"/api/tasks/#{task.id}", %{notes: "Updated notes"})
+        |> put(~p"/api/tasks/#{task.id}", %{description: "Updated description"})
         |> json_response(200)
 
-      assert response["data"]["notes"] == "Updated notes"
+      assert response["data"]["description"] == "Updated description"
     end
 
-    test "creates mention notification and subscription when notes add a new mention", %{
+    test "creates mention notification and subscription when description adds a new mention", %{
       conn: conn,
       workspace: workspace,
       user: user,
@@ -293,17 +298,17 @@ defmodule MissionspaceWeb.TaskControllerTest do
           list_id: list.id,
           status_id: todo_status.id,
           created_by_id: user.id,
-          notes: "Initial notes"
+          description: "Initial description"
         )
 
-      notes = "Loop in @[#{mentioned_user.name}](member:#{mentioned_user.id})"
+      description = "Loop in @[#{mentioned_user.name}](member:#{mentioned_user.id})"
 
       response =
         conn
-        |> put(~p"/api/tasks/#{task.id}", %{notes: notes})
+        |> put(~p"/api/tasks/#{task.id}", %{description: description})
         |> json_response(200)
 
-      assert response["data"]["notes"] == notes
+      assert response["data"]["description"] == description
       assert Subscriptions.subscribed?("task", task.id, mentioned_user.id)
 
       notifications = Notifications.list_notifications(mentioned_user.id).entries
@@ -316,17 +321,17 @@ defmodule MissionspaceWeb.TaskControllerTest do
              end)
     end
 
-    test "does not create mention notification for self-mention in notes", %{
+    test "does not create mention notification for self-mention in description", %{
       conn: conn,
       user: user,
       list: list,
       todo_status: todo_status
     } do
       task = insert(:task, list_id: list.id, status_id: todo_status.id, created_by_id: user.id)
-      notes = "Self mention @[#{user.name}](member:#{user.id})"
+      description = "Self mention @[#{user.name}](member:#{user.id})"
 
       conn
-      |> put(~p"/api/tasks/#{task.id}", %{notes: notes})
+      |> put(~p"/api/tasks/#{task.id}", %{description: description})
       |> json_response(200)
 
       notifications = Notifications.list_notifications(user.id).entries
@@ -336,7 +341,7 @@ defmodule MissionspaceWeb.TaskControllerTest do
              end)
     end
 
-    test "does not re-notify existing mentions when editing notes", %{
+    test "does not re-notify existing mentions when editing description", %{
       conn: conn,
       workspace: workspace,
       user: user,
@@ -350,17 +355,17 @@ defmodule MissionspaceWeb.TaskControllerTest do
           list_id: list.id,
           status_id: todo_status.id,
           created_by_id: user.id,
-          notes: "Initial notes"
+          description: "Initial description"
         )
 
       mention = "@[#{mentioned_user.name}](member:#{mentioned_user.id})"
 
       conn
-      |> put(~p"/api/tasks/#{task.id}", %{notes: "First pass #{mention}"})
+      |> put(~p"/api/tasks/#{task.id}", %{description: "First pass #{mention}"})
       |> json_response(200)
 
       conn
-      |> put(~p"/api/tasks/#{task.id}", %{notes: "First pass #{mention}\n\nMore details"})
+      |> put(~p"/api/tasks/#{task.id}", %{description: "First pass #{mention}\n\nMore details"})
       |> json_response(200)
 
       mention_notifications =

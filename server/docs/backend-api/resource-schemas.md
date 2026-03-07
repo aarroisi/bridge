@@ -242,7 +242,7 @@ This page defines the core response objects reused across endpoints.
   "position": 1000,
   "is_completed": false,
   "starred": false,
-  "notes": "string|null",
+  "description": "string|null",
   "due_on": "date|null",
   "completed_at": "datetime|null",
   "board_id": "uuid",

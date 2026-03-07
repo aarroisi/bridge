@@ -33,7 +33,7 @@ defmodule MissionspaceWeb.TaskJSON do
       position: task.position,
       is_completed: task.is_completed,
       starred: task.starred,
-      notes: task.notes,
+      description: task.description,
       due_on: task.due_on,
       completed_at: task.completed_at,
       board_id: task.list_id,

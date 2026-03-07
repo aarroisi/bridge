@@ -164,8 +164,6 @@ export const CommentEditor = forwardRef<
         : "Ctrl+Enter";
     }, []);
 
-    const shortcutHint = `Enter for newline | ${submitShortcut} to send`;
-
     const sendButton = (
       <button
         onClick={onSubmit}
@@ -241,11 +239,6 @@ export const CommentEditor = forwardRef<
             "[&_.milkdown_.editor]:pb-10",
           )}
         />
-        {!isMobile && (
-          <div className="pointer-events-none absolute bottom-2 left-3 right-14 z-10 truncate text-[11px] text-dark-text-muted">
-            {shortcutHint}
-          </div>
-        )}
         <div className="absolute bottom-2 right-2 z-10">
           {sendButton}
         </div>

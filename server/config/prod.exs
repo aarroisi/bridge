@@ -10,6 +10,13 @@ config :missionspace, MissionspaceWeb.Endpoint,
     hosts: ["localhost", "127.0.0.1"]
   ]
 
+config :sentry,
+  dsn:
+    "https://a14df66e6968a5d976aa0ca985c4bb8a@o4511011598696448.ingest.us.sentry.io/4511011602038784",
+  environment_name: Mix.env(),
+  enable_source_code_context: true,
+  root_source_code_paths: [File.cwd!()]
+
 # Configure Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 

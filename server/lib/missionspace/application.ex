@@ -5,8 +5,12 @@ defmodule Missionspace.Application do
 
   use Application
 
+  @sentry_logger_handler :missionspace_sentry_handler
+
   @impl true
   def start(_type, _args) do
+    maybe_attach_sentry_logger_handler()
+
     children =
       [
         MissionspaceWeb.Telemetry,
@@ -27,6 +31,17 @@ defmodule Missionspace.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Missionspace.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp maybe_attach_sentry_logger_handler do
+    if Application.get_env(:sentry, :dsn) do
+      case :logger.add_handler(@sentry_logger_handler, Sentry.LoggerHandler, %{
+             config: %{metadata: [:file, :line]}
+           }) do
+        :ok -> :ok
+        {:error, {:already_exist, @sentry_logger_handler}} -> :ok
+      end
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

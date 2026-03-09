@@ -20,7 +20,7 @@ defmodule Missionspace.MixProject do
   def application do
     [
       mod: {Missionspace.Application, []},
-      extra_applications: [:logger, :runtime_tools, :oban]
+      extra_applications: [:logger, :runtime_tools, :oban, :sentry]
     ]
   end
 
@@ -50,6 +50,7 @@ defmodule Missionspace.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
+      {:sentry, "~> 10.2.0"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:cors_plug, "~> 3.0"},

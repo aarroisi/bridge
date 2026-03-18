@@ -19,7 +19,7 @@ const sectionItems = [
   {
     id: "api-keys" as const,
     title: "API Keys",
-    description: "Create and manage credentials for automation.",
+    description: "Create and manage credentials for integrations.",
     icon: Code2,
   },
   {
@@ -236,7 +236,7 @@ export function DevelopersModal({ isOpen, onClose }: DevelopersModalProps) {
               <div>
                 <h3 className="text-base font-semibold text-dark-text">API Keys</h3>
                 <p className="mt-1 max-w-3xl text-sm text-dark-text-muted">
-                  Create personal API keys for automation. We only show the raw key once, and each
+                  Create personal API keys for integrations. We only show the raw key once, and each
                   key can only use scopes your current role allows.
                 </p>
               </div>
@@ -351,7 +351,7 @@ export function DevelopersModal({ isOpen, onClose }: DevelopersModalProps) {
                 <div>
                   <h3 className="text-sm font-semibold text-dark-text">Active keys</h3>
                   <p className="mt-1 text-sm text-dark-text-muted">
-                    Manage the keys your automations currently use.
+                    Manage the keys you have issued for external tools.
                   </p>
                 </div>
 

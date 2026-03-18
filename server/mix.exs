@@ -20,7 +20,7 @@ defmodule Missionspace.MixProject do
   def application do
     [
       mod: {Missionspace.Application, []},
-      extra_applications: [:logger, :runtime_tools, :oban, :sentry]
+      extra_applications: [:logger, :runtime_tools, :sentry]
     ]
   end
 
@@ -63,8 +63,6 @@ defmodule Missionspace.MixProject do
       {:httpoison, "~> 2.2", override: true},
       {:sweet_xml, "~> 0.7"},
       {:web_push_encryption, "~> 0.3"},
-      {:jido, "~> 2.0.0-rc.4"},
-      {:oban, "~> 2.17"},
       {:tidewave, "~> 0.5", only: :dev},
       {:ex_machina, "~> 2.7", only: :test},
       {:faker, "~> 0.18", only: :test}

@@ -6,7 +6,7 @@ This documentation covers every backend API currently exposed by the server:
 - WebSocket channels in `lib/missionspace_web/channels/*.ex`
 - Transport endpoints in `lib/missionspace_web/endpoint.ex`
 
-These pages are written for agents and automation, not marketing docs.
+These pages are written for implementation and integration work, not marketing docs.
 
 ## Read this first
 

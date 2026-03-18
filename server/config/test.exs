@@ -47,9 +47,3 @@ config :missionspace, :r2,
 
 # Use mock storage in tests
 config :missionspace, :storage_adapter, :mock
-
-config :missionspace, Oban,
-  repo: Missionspace.Repo,
-  testing: :manual,
-  plugins: false,
-  queues: false

@@ -15,7 +15,6 @@ import { DocFolderView } from "./pages/DocFolderView";
 import { DocView } from "./pages/DocView";
 import { ChatView } from "./pages/ChatView";
 import { GeneralSettingsPage } from "./pages/GeneralSettingsPage";
-import { AutomationSettingsPage } from "./pages/AutomationSettingsPage";
 import { WorkspaceMembersPage } from "./pages/WorkspaceMembersPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -344,14 +343,6 @@ function App() {
           element={
             <SettingsLayout>
               <WorkspaceMembersPage />
-            </SettingsLayout>
-          }
-        />
-        <Route
-          path="/settings/automation"
-          element={
-            <SettingsLayout>
-              <AutomationSettingsPage />
             </SettingsLayout>
           }
         />

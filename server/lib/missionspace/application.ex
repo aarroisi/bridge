@@ -17,8 +17,6 @@ defmodule Missionspace.Application do
         Missionspace.Repo,
         {DNSCluster, query: Application.get_env(:missionspace, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Missionspace.PubSub},
-        Missionspace.Jido,
-        {Oban, Application.fetch_env!(:missionspace, Oban)},
         # Start presence tracking
         MissionspaceWeb.Presence,
         # Start a worker by calling: Missionspace.Worker.start_link(arg)
